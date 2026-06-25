@@ -1,0 +1,114 @@
+# =========================================================
+# Overtime Project - Root .gitignore
+# Structure:
+# /backend  = Express API
+# /frontend = React app
+# =========================================================
+
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Package manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# Build output
+dist/
+build/
+backend/dist/
+backend/build/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# Runtime / logs
+logs/
+backend/logs/
+frontend/logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage / testing
+coverage/
+backend/coverage/
+frontend/coverage/
+.nyc_output/
+
+# Uploads / generated files
+uploads/
+storage/
+public/uploads/
+backend/uploads/
+backend/storage/
+backend/public/uploads/
+frontend/public/uploads/
+tmp/
+temp/
+backend/tmp/
+backend/temp/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+backend/.cache/
+backend/.eslintcache
+frontend/.cache/
+frontend/.eslintcache
+frontend/.parcel-cache/
+
+# PM2 local files
+.pm2/
+ecosystem.config.local.js
+backend/ecosystem.config.local.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+.idea/
+*.swp
+*.swo
+
+# Database dumps / local backups
+*.sql
+*.dump
+*.bak
+*.backup
+
+# SSL / SSH / keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+backend/id_rsa*
+backend/id_ed25519*
+
+# Misc local files
+*.local
