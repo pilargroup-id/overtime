@@ -10,7 +10,7 @@ const initialFormValues = {
   is_active: '1',
 }
 
-const brandFields = [
+const reqOvertimeFields = [
   {
     name: 'code',
     label: 'Code',
@@ -23,10 +23,10 @@ const brandFields = [
   },
 ]
 
-function DialogCreateBrand({
+function DialogCreateReqOvertime({
   isOpen = false,
-  eyebrow = 'Create Brand',
-  title = 'Create Brand',
+  eyebrow = 'Create Req Overtime',
+  title = 'Create Req Overtime',
   onClose,
   onCreated,
 }) {

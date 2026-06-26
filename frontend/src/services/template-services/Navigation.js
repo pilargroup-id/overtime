@@ -12,9 +12,8 @@ import {
 export const defaultNavigationPath = '/dashboard'
 
 export const implementedNavigationPaths = [
-  '/FormLembur',
-  '/TicketsOverview',
-  '/ProjectsOverview',
+  '/RequestOvertime',
+  '/ApprovalOvertime',
   '/Reports',
   '/Reports/TeamPerformance',
   '/Table',
@@ -25,15 +24,15 @@ export const implementedNavigationPaths = [
 
 export const primaryNavigationItems = [
   {
-    id: 'form-lembur',
-    label: 'Form Lembur',
-    href: '/FormLembur',
+    id: 'RequestOvertime',
+    label: 'Request Overtime',
+    href: '/RequestOvertime',
     icon: Ticket01,
   },
   {
-    id: 'tickes-overview',
-    label: 'Tickets Overview',
-    href: '/TicketsOverview',
+    id: 'ApprovalOvertime',
+    label: 'Approval Overtime',
+    href: '/ApprovalOvertime',
     icon: TrendingUp,
   },
   {

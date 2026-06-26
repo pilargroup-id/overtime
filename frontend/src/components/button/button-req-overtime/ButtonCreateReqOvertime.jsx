@@ -1,11 +1,11 @@
 import { useState } from 'react'
 
-import DialogCreateBrand from '../../Dialog/dialog-brands/DialogCreateBrand.jsx'
-import { Boxes01 } from '../../template/TemplateIcons.jsx'
+import DialogCreateReqOvertime from '../../Dialog/dialog-req-overtime/DialogCreateReqOvertime.jsx'
+import { FileText01 } from '../../template/TemplateIcons.jsx'
 
-function ButtonCreateBrand({
+function ButtonCreateReqOvertime({
   className = '',
-  children = 'Create Brand',
+  children = 'Create Req Overtime',
   dialogProps = {},
   iconSize = 18,
   onClick,
@@ -30,9 +30,9 @@ function ButtonCreateBrand({
     setIsDialogOpen(false)
   }
 
-  const handleCreated = (createdBrand) => {
-    dialogProps.onCreated?.(createdBrand)
-    onCreated?.(createdBrand)
+  const handleCreated = (createdReqOvertime) => {
+    dialogProps.onCreated?.(createdReqOvertime)
+    onCreated?.(createdReqOvertime)
   }
 
   return (
@@ -44,11 +44,11 @@ function ButtonCreateBrand({
         onClick={handleOpenDialog}
         aria-expanded={isDialogOpen}
       >
-        <Boxes01 size={iconSize} aria-hidden="true" />
+        <FileText01 size={iconSize} aria-hidden="true" />
         <span>{children}</span>
       </button>
 
-      <DialogCreateBrand
+      <DialogCreateReqOvertime
         {...dialogProps}
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
@@ -58,4 +58,4 @@ function ButtonCreateBrand({
   )
 }
 
-export default ButtonCreateBrand
+export default ButtonCreateReqOvertime

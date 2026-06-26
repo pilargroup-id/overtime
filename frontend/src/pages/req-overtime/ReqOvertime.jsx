@@ -1,36 +1,38 @@
 import { useState } from 'react'
 
-import ButtonCreateFormLembur from '../../components/button/button-req-overtime/ButtonCreateReqOvertime.jsx'
-import DataTableFormLembur from '../../components/table/dekstop/form-lembur/DataTableFormLembur.jsx'
+import ButtonCreateReqOvertime from '../../components/button/button-req-overtime/ButtonCreateReqOvertime.jsx'
+import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOvertime.jsx'
 
-function FormLemburPages({ activePage, searchQuery }) {
-  const [formLemburRefreshKey, setFormLemburRefreshKey] = useState(0)
+function ReqOvertimePages({ activePage, searchQuery }) {
+  const [reqOvertimeRefreshKey, setReqOvertimeRefreshKey] = useState(0)
+  const pageTitle = activePage?.title ?? 'Request Overtime'
+  const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
   return (
     <section
       className="dashboard-panel users-table-card parents-table-card"
-      aria-label={activePage.title}
+      aria-label={pageTitle}
     >
       <div className="users-table-card__header">
         <div>
-          <p className="dashboard-panel__eyebrow">{activePage.eyebrow}</p>
-          <h1 className="dashboard-panel__title">{activePage.title}</h1>
+          <p className="dashboard-panel__eyebrow">{pageEyebrow}</p>
+          <h1 className="dashboard-panel__title">{pageTitle}</h1>
         </div>
 
         <div className="users-table-card__actions">
-          <ButtonCreateBrand
-            onCreated={() => setBrandRefreshKey((currentKey) => currentKey + 1)}
+          <ButtonCreateReqOvertime
+            onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
         </div>
       </div>
 
-      <DataTableBrands
+      <DataTableReqOvertime
         searchQuery={searchQuery}
-        tableLabel={`${activePage.title} table`}
-        refreshKey={brandRefreshKey}
+        tableLabel={`${pageTitle} table`}
+        refreshKey={reqOvertimeRefreshKey}
       />
     </section>
   )
 }
 
-export default BrandsPages
+export default ReqOvertimePages
