@@ -12,7 +12,7 @@ import {
 export const defaultNavigationPath = '/dashboard'
 
 export const implementedNavigationPaths = [
-  '/MyTickets',
+  '/FormLembur',
   '/TicketsOverview',
   '/ProjectsOverview',
   '/Reports',
@@ -25,9 +25,9 @@ export const implementedNavigationPaths = [
 
 export const primaryNavigationItems = [
   {
-    id: 'my-tickets',
-    label: 'My Tickets',
-    href: '/MyTickets',
+    id: 'form-lembur',
+    label: 'Form Lembur',
+    href: '/FormLembur',
     icon: Ticket01,
   },
   {
