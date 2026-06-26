@@ -104,6 +104,10 @@ select {
   overscroll-behavior: contain;
 }
 
+.dashboard-main--mytickets {
+  overflow: hidden;
+}
+
 .sidebar {
   background: linear-gradient(180deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
   width: var(--sidebar-current-width);
@@ -1161,38 +1165,118 @@ select {
   gap: 24px;
 }
 
+.dashboard-content--mytickets {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .dashboard-overview {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+  align-items: start;
 }
 
 .dashboard-card,
 .dashboard-panel {
   border: 1px solid rgba(26, 42, 87, 0.08);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--panel-shadow);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.04);
 }
 
 .dashboard-card {
   display: flex;
   flex-direction: column;
-  padding: 22px;
+  padding: 18px 18px;
+  gap: 12px;
+  min-height: 126px;
   transition:
-    border-color 0.25s ease,
-    background 0.25s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease;
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.dashboard-card__meta {
+.dashboard-card.clickable {
+  cursor: pointer;
+}
+
+.dashboard-card.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+}
+
+
+.dashboard-card__badge-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-card__label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.dashboard-card__footer-text {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  color: rgba(15, 23, 42, 0.64);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.card-accent-bar {
+  height: 3px;
+  width: 100%;
+  border-radius: 9999px;
+  margin-bottom: 12px;
+}
+
+.dashboard-card__value {
+  display: block;
+  margin-top: 0;
+  color: var(--primary-blue);
+  font-size: 2.4rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.dashboard-card.active {
+  box-shadow: 0 22px 56px rgba(42, 157, 143, 0.18);
+}
+
+.dashboard-card.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.08);
+  pointer-events: none;
 }
 
 .dashboard-card--disabled {
@@ -1501,6 +1585,354 @@ select {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
   gap: 24px;
+}
+
+.mtickets-table .users-table {
+  min-width: 1140px;
+}
+
+.mytickets-table-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mytickets-table-card__header {
+  align-items: center;
+}
+
+.mytickets-table-card__title-group {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.mytickets-table-card__title {
+  line-height: 1.15;
+}
+
+.mtickets-status-card__value {
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.mtickets-table-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.mtickets-table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mtickets-table::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.mtickets-table .users-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f4f7fb;
+  padding: 0.82rem 0.88rem;
+  font-size: 0.72rem;
+}
+
+.mtickets-table .users-table td {
+  padding: 0.78rem 0.88rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.mtickets-table .users-table__identity {
+  gap: 0.7rem;
+  min-width: 190px;
+}
+
+.mtickets-table .users-table__avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 0.76rem;
+}
+
+.mtickets-table .users-table__name {
+  font-size: 0.92rem;
+}
+
+.mtickets-table .users-table__meta {
+  font-size: 0.68rem;
+}
+
+.mtickets-table .users-table__status--inline {
+  padding: 0.16rem 0.5rem;
+  font-size: 0.64rem;
+}
+
+.mtickets-table .users-table__detail-button {
+  min-height: 32px;
+  padding: 0.45rem 0.78rem;
+  font-size: 0.8rem;
+}
+
+.mtickets-table-shell .users-table-pagination {
+  flex-shrink: 0;
+}
+
+.mtickets-table-shell .users-table-pagination__meta {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.mtickets-table-shell .users-table-pagination__page-size {
+  justify-content: flex-start;
+  gap: 0.55rem;
+}
+
+.mtickets-table-shell .users-table-pagination__summary {
+  line-height: 1.4;
+}
+
+.mtickets-table-shell .users-table-pagination__select {
+  padding-right: 2.3rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.5L7 8.5L10.5 5.5' stroke='%231A2A57' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.95rem center;
+  background-size: 0.85rem;
+}
+
+.mtickets-table-shell .users-table-pagination__select:focus-visible {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.5L7 8.5L10.5 5.5' stroke='%231A2A57' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.95rem center;
+  background-size: 0.85rem;
+}
+
+.mtickets-timeline {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.mtickets-timeline__item {
+  display: grid;
+  grid-template-columns: minmax(150px, 185px) 24px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.mtickets-timeline__time {
+  display: grid;
+  align-content: start;
+  gap: 0.15rem;
+  padding-top: 0.1rem;
+  text-align: right;
+}
+
+.mtickets-timeline__day,
+.mtickets-timeline__hour {
+  margin: 0;
+}
+
+.mtickets-timeline__day {
+  color: var(--primary-blue);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.mtickets-timeline__hour {
+  color: #69758f;
+  font-size: 0.74rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.mtickets-timeline__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mtickets-timeline__connector {
+  width: 2px;
+  flex: 1 1 auto;
+  min-height: 0.9rem;
+  border-radius: 999px;
+  background: rgba(26, 42, 87, 0.12);
+}
+
+.mtickets-timeline__connector--hidden {
+  visibility: hidden;
+}
+
+.mtickets-timeline__dot {
+  width: 16px;
+  height: 16px;
+  margin: 0.2rem 0;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: rgba(26, 42, 87, 0.18);
+  box-shadow: 0 0 0 2px rgba(26, 42, 87, 0.08);
+}
+
+.mtickets-timeline__dot--active {
+  background: #18786e;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.18);
+}
+
+.mtickets-timeline__dot--pending {
+  background: #d5a021;
+  box-shadow: 0 0 0 2px rgba(233, 196, 106, 0.24);
+}
+
+.mtickets-timeline__dot--app {
+  background: #18786e;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.18);
+}
+
+.mtickets-timeline__dot--inactive {
+  background: #51627f;
+  box-shadow: 0 0 0 2px rgba(81, 98, 127, 0.14);
+}
+
+.mtickets-timeline__content {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(26, 42, 87, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(244, 248, 252, 0.95) 100%
+  );
+}
+
+.mtickets-timeline__title {
+  margin: 0;
+  color: var(--primary-blue);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.mtickets-timeline__description {
+  margin: 0;
+  color: #51627f;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.mtickets-timeline__empty {
+  margin: 0;
+  color: #51627f;
+  font-size: 0.88rem;
+}
+
+.mtickets-table__detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mtickets-table__detail-copy {
+  margin: 0;
+  max-width: 540px;
+  color: #51627f;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.mtickets-timeline-popup {
+  width: min(100%, 840px);
+}
+
+.mtickets-timeline-popup__body {
+  max-height: min(72vh, 680px);
+  overflow: auto;
+}
+
+.mtickets-table__detail-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.mtickets-table__detail-item {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(26, 42, 87, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.mtickets-table__detail-label {
+  margin: 0;
+  color: var(--accent-teal-dark);
+  font-size: 0.7rem;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mtickets-table__detail-value {
+  margin: 0;
+  color: var(--primary-blue);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .mtickets-table__detail-actions {
+    align-items: stretch;
+  }
+
+  .mtickets-timeline__item {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .mtickets-timeline__rail {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .mtickets-timeline__content {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mtickets-timeline__time {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.7rem;
+    padding-top: 0;
+    text-align: left;
+  }
+
+  .mtickets-timeline-popup {
+    width: min(100%, 100%);
+  }
 }
 
 .dashboard-panel {
@@ -2002,12 +2434,272 @@ select {
   margin-bottom: 18px;
 }
 
+.chart-card__header--split {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-card__header-copy {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.chart-card__header-action {
+  width: 124px;
+  flex: 0 0 124px;
+  margin-left: auto;
+}
+
 .chart-card__body {
   min-width: 0;
 }
 
 .chart-card__body > * {
   min-width: 0;
+}
+
+.team-performance-chart {
+  display: grid;
+  gap: 1rem;
+}
+
+.team-performance-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.year-dropdown-tp {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+
+.year-dropdown-tp__trigger {
+  min-height: 48px;
+  width: 100%;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.85rem 1.4rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-teal-dark) 100%);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(42, 157, 143, 0.24);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.year-dropdown-tp__trigger:hover,
+.year-dropdown-tp__trigger--open {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(42, 157, 143, 0.3);
+  filter: saturate(1.04);
+}
+
+.year-dropdown-tp__trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(42, 157, 143, 0.16),
+    0 16px 32px rgba(42, 157, 143, 0.3);
+}
+
+.year-dropdown-tp__copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+  text-align: left;
+}
+
+.year-dropdown-tp__label {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.68rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.year-dropdown-tp__value {
+  color: #fff;
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.year-dropdown-tp__chevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.88);
+  transition: transform 0.2s ease;
+}
+
+.year-dropdown-tp__chevron--open {
+  transform: rotate(180deg);
+}
+
+.year-dropdown-tp__menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 100%;
+  min-width: 100%;
+  display: grid;
+  gap: 0.38rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(26, 42, 87, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 54px rgba(26, 42, 87, 0.18);
+  backdrop-filter: blur(18px);
+  z-index: 12;
+}
+
+.year-dropdown-tp__option {
+  width: 100%;
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.78rem 0.88rem;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--primary-blue);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.year-dropdown-tp__option:hover {
+  transform: translateY(-1px);
+  border-color: rgba(42, 157, 143, 0.2);
+  background: rgba(42, 157, 143, 0.08);
+  box-shadow: 0 12px 24px rgba(26, 42, 87, 0.08);
+}
+
+.year-dropdown-tp__option:focus-visible {
+  outline: none;
+  border-color: rgba(42, 157, 143, 0.28);
+  box-shadow:
+    0 0 0 4px rgba(42, 157, 143, 0.12),
+    0 12px 24px rgba(26, 42, 87, 0.08);
+}
+
+.year-dropdown-tp__option--selected {
+  border-color: rgba(42, 157, 143, 0.18);
+  background: linear-gradient(135deg, rgba(42, 157, 143, 0.12) 0%, rgba(42, 157, 143, 0.18) 100%);
+  box-shadow: 0 14px 28px rgba(42, 157, 143, 0.12);
+}
+
+.year-dropdown-tp__option-label {
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.team-performance-chart__legend-item {
+  position: relative;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(26, 42, 87, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.team-performance-chart__legend-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(42, 157, 143, 0.35);
+  box-shadow: 0 14px 26px rgba(26, 42, 87, 0.1);
+}
+
+.team-performance-chart__legend-item:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(42, 157, 143, 0.14),
+    0 14px 26px rgba(26, 42, 87, 0.1);
+}
+
+.team-performance-chart__legend-item--hidden {
+  opacity: 0.55;
+}
+
+.team-performance-chart__legend-swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.team-performance-chart__legend-label {
+  line-height: 1.1;
+}
+
+.team-performance-chart__legend-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+  min-width: 160px;
+  max-width: min(220px, calc(100vw - 48px));
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: var(--primary-blue);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: left;
+  box-shadow: 0 18px 34px rgba(26, 42, 87, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  z-index: 5;
+}
+
+.team-performance-chart__legend-item:hover .team-performance-chart__legend-tooltip,
+.team-performance-chart__legend-item:focus-visible .team-performance-chart__legend-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.team-performance-chart__empty {
+  padding: 1.25rem;
+  border: 1px dashed rgba(26, 42, 87, 0.16);
+  border-radius: 18px;
+  background: rgba(248, 251, 253, 0.92);
+  color: #5a6b88;
+  font-weight: 700;
+  line-height: 1.6;
 }
 
 .users-table-wrapper {
@@ -3105,6 +3797,10 @@ select {
   width: min(100%, 560px);
 }
 
+.mtickets-create-popup {
+  width: min(100%, 860px);
+}
+
 .register-user-popup--users {
   width: min(100%, 980px);
 }
@@ -3171,12 +3867,37 @@ select {
   color: #7f8da8;
 }
 
+.register-user-popup__select--arrow-offset {
+  padding-right: 3rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5L8 10L12 6.5' stroke='%231A2A57' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.95rem;
+}
+
 .register-user-popup__input:focus,
 .register-user-popup__select:focus {
   outline: none;
   border-color: rgba(42, 157, 143, 0.7);
   background: #ffffff;
   box-shadow: 0 0 0 4px rgba(42, 157, 143, 0.12);
+}
+
+.register-user-popup__select--arrow-offset:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 9.5L8 6L12 9.5' stroke='%231A2A57' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.95rem;
+}
+
+.register-user-popup__select--arrow-offset:active {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 9.5L8 6L12 9.5' stroke='%231A2A57' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.95rem;
 }
 
 .register-user-popup__dropdown-wrapper {
@@ -3205,6 +3926,75 @@ select {
 .register-user-popup__dropdown-button:hover {
   border-color: rgba(42, 157, 143, 0.4);
   background: #ffffff;
+}
+
+.register-user-popup__upload {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 1.35rem 1.1rem;
+  border: 1.5px dashed rgba(42, 157, 143, 0.38);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(238, 252, 249, 0.9) 0%, #ffffff 100%);
+  color: var(--primary-blue);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.register-user-popup__upload:hover,
+.register-user-popup__upload.is-drag-active {
+  border-color: rgba(42, 157, 143, 0.72);
+  background: linear-gradient(180deg, rgba(229, 250, 245, 0.95) 0%, #ffffff 100%);
+  box-shadow: 0 0 0 4px rgba(42, 157, 143, 0.1);
+  transform: translateY(-1px);
+}
+
+.register-user-popup__upload-input {
+  display: none;
+}
+
+.register-user-popup__upload-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(42, 157, 143, 0.12);
+  color: var(--accent-teal-dark);
+}
+
+.register-user-popup__upload-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.register-user-popup__upload-meta {
+  color: #5a6b88;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.register-user-popup__upload-file {
+  min-height: 1.25rem;
+  color: var(--accent-teal-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.mtickets-create-popup__upload-panel {
+  align-content: start;
+}
+
+.mtickets-create-popup__upload {
+  min-height: 100%;
+  align-content: center;
 }
 
 .register-user-popup__dropdown-button:focus {
@@ -3650,6 +4440,10 @@ select {
     flex-direction: column;
   }
 
+  .mytickets-table-card__header {
+    align-items: stretch;
+  }
+
   .users-table-card__action {
     width: 100%;
   }
@@ -3791,6 +4585,29 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .chart-card__header--split {
+    align-items: stretch;
+  }
+
+  .chart-card__header-action {
+    width: 100%;
+  }
+
+  .year-dropdown-tp {
+    width: 100%;
+  }
+
+  .year-dropdown-tp__trigger {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .year-dropdown-tp__menu {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+
   .range-date-panel__actions {
     display: grid;
   }
@@ -3871,5 +4688,10 @@ select {
   .dashboard-popup,
   .register-user-popup {
     border-radius: 20px;
+  }
+
+  .team-performance-chart__legend-item {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

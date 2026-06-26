@@ -111,6 +111,7 @@ function ButtonRangeDate({ label = 'Tanggal', className = '', onChange }) {
           onApply={() => setIsOpen(false)}
           onClear={handleClear}
           onClose={() => setIsOpen(false)}
+          popupVariant="dashboard"
           hideTrigger
           openPickerSignal={openPickerSignal}
         />

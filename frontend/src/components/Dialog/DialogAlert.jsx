@@ -15,7 +15,7 @@ const DEFAULT_TITLES = {
   info: 'Informasi',
 }
 
-function AlertModal({
+function DialogAlert({
   open = false,
   onClose,
   title,
@@ -45,4 +45,4 @@ function AlertModal({
   )
 }
 
-export default AlertModal
+export default DialogAlert

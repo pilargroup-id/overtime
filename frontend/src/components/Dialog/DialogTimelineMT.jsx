@@ -2,14 +2,14 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 import { XClose } from '../template/TemplateIcons.jsx'
+import TimeLineMT from '../timeline/TimeLineMT.jsx'
 
-function DialogEdit({
+function DialogTimelineMT({
   isOpen = false,
-  eyebrow = 'Edit Data',
-  title = 'Edit Data',
-  user = null,
+  eyebrow = 'Dialog',
+  title = 'Timeline',
+  items = [],
   onClose,
-  onConfirm,
 }) {
   useEffect(() => {
     if (!isOpen) {
@@ -37,21 +37,19 @@ function DialogEdit({
     return null
   }
 
-  const hasUserMeta = Boolean(user?.department || user?.role)
-
   const dialogNode = (
     <div className="dashboard-popup-overlay" role="presentation" onClick={onClose}>
       <div
-        className="dashboard-popup"
+        className="dashboard-popup mtickets-timeline-popup"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-edit-title"
+        aria-labelledby="dialog-timeline-title"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dashboard-popup__header">
           <div>
             <p className="dashboard-popup__eyebrow">{eyebrow}</p>
-            <h2 className="dashboard-popup__title" id="dialog-edit-title">
+            <h2 className="dashboard-popup__title" id="dialog-timeline-title">
               {title}
             </h2>
           </div>
@@ -66,32 +64,8 @@ function DialogEdit({
           </button>
         </div>
 
-        <div className="dashboard-popup__body">
-          <p className="dashboard-popup__text">
-            Data untuk <strong>{user?.name ?? 'item ini'}</strong> siap dibuka ke proses edit.
-          </p>
-          {hasUserMeta ? (
-            <p className="dashboard-popup__text">
-              Department: {user.department} | Role: {user.role}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="dashboard-popup__actions">
-          <button
-            type="button"
-            className="dashboard-popup__button dashboard-popup__button--secondary"
-            onClick={onClose}
-          >
-            Batal
-          </button>
-          <button
-            type="button"
-            className="dashboard-popup__button dashboard-popup__button--primary"
-            onClick={() => onConfirm?.(user)}
-          >
-            Edit
-          </button>
+        <div className="dashboard-popup__body mtickets-timeline-popup__body">
+          <TimeLineMT items={items} />
         </div>
       </div>
     </div>
@@ -100,4 +74,4 @@ function DialogEdit({
   return createPortal(dialogNode, document.body)
 }
 
-export default DialogEdit
+export default DialogTimelineMT

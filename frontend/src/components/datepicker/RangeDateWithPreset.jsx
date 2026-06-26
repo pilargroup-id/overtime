@@ -10,8 +10,8 @@ import { enGB } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { useAlert } from '../../hooks/useAlert';
-import AlertModal from '../AlertModal';
-import RevenueLastUpdate from '../RevenueLastUpdate';
+import AlertModal from '../dialog/DialogAlert.jsx';
+import { XClose } from '../template/TemplateIcons.jsx';
 
 const formatDateDisplay = (monthDay, year) => {
   const [month, day] = monthDay.split('-');
@@ -49,6 +49,7 @@ export const DateRangePickerWithPresets = ({
   mobileFullPage = false,
   onCancel,
   onClose,
+  popupVariant = 'default',
 }) => {
   const { alertState, showWarning, showError, closeAlert } = useAlert();
   const [selectionRange, setSelectionRange] = useState(getDefaultSelectionRange);
@@ -65,6 +66,7 @@ export const DateRangePickerWithPresets = ({
   const isSingleCalendar = resolvedCalendarMonths === 1;
   const isMobilePicker = mobileModal || mobileFullPage;
   const isMobileFullPage = mobileFullPage;
+  const isDashboardPopup = popupVariant === 'dashboard';
   
   const MAX_RANGE_DATES = 1;
   const isRangeLimitReached = !allowReplaceExistingRange && rangeDates.length >= MAX_RANGE_DATES;
@@ -494,7 +496,9 @@ export const DateRangePickerWithPresets = ({
                 onClick={() => handleDismissPicker(onClose)}
                 sx={{
                   zIndex: (theme) => theme.zIndex.modal + 29,
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  backgroundColor: isDashboardPopup
+                    ? 'rgba(10, 18, 40, 0.68)'
+                    : 'rgba(0, 0, 0, 0.5)',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               />
@@ -514,11 +518,17 @@ export const DateRangePickerWithPresets = ({
                   bottom: isMobileFullPage ? 0 : 'auto',
                   transform: isMobileFullPage ? 'none' : 'translate(-50%, -50%)',
                   zIndex: (theme) => theme.zIndex.modal + 30,
-                  borderRadius: isMobileFullPage ? 0 : 3,
+                  borderRadius: isMobileFullPage ? 0 : (isDashboardPopup ? '24px' : 3),
                   overflow: 'hidden',
                   bgcolor: 'white',
-                  border: isMobileFullPage ? 'none' : '1px solid #E2E8F0',
-                  boxShadow: isMobileFullPage ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2)',
+                  border: isMobileFullPage
+                    ? 'none'
+                    : (isDashboardPopup ? '1px solid rgba(26, 42, 87, 0.12)' : '1px solid #E2E8F0'),
+                  boxShadow: isMobileFullPage
+                    ? 'none'
+                    : (isDashboardPopup
+                      ? '0 28px 80px rgba(10, 18, 40, 0.32)'
+                      : '0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2)'),
                   width: isMobileFullPage
                     ? '100vw'
                     : isMobilePicker
@@ -636,42 +646,81 @@ export const DateRangePickerWithPresets = ({
                 {/* Header dengan judul dan tombol tutup */}
                 <Box sx={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: isDashboardPopup ? 'flex-start' : 'center',
                   justifyContent: 'space-between',
-                  px: 2,
-                  pt: isMobileFullPage ? 'calc(env(safe-area-inset-top, 0px) + 12px)' : 2,
-                  pb: 1.5,
-                  borderBottom: '1px solid #F1F5F9',
-                  bgcolor: '#FAFBFC',
+                  gap: 2,
+                  px: isDashboardPopup ? 2.5 : 2,
+                  pt: isMobileFullPage
+                    ? 'calc(env(safe-area-inset-top, 0px) + 12px)'
+                    : (isDashboardPopup ? 2.5 : 2),
+                  pb: isDashboardPopup ? 2 : 1.5,
+                  borderBottom: isDashboardPopup
+                    ? '1px solid rgba(26, 42, 87, 0.1)'
+                    : '1px solid #F1F5F9',
+                  background: isDashboardPopup
+                    ? 'linear-gradient(180deg, rgba(24, 43, 88, 1) 0%, rgba(27, 55, 112, 0.96) 100%)'
+                    : '#FAFBFC',
                   position: isMobileFullPage ? 'sticky' : 'static',
                   top: 0,
                   zIndex: 1
                 }}>
-                  <Typography sx={{
-                    fontSize: '1.125rem',
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                    letterSpacing: '-0.01em'
-                  }}>
-                    Pilih Range Tanggal
-                  </Typography>
+                  <Box>
+                    {isDashboardPopup ? (
+                      <Typography sx={{
+                        mb: 0.5,
+                        color: 'rgba(233, 196, 106, 0.92)',
+                        fontSize: '0.75rem',
+                        fontFamily: '"IBM Plex Mono", monospace',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}>
+                        Filter Ticket
+                      </Typography>
+                    ) : null}
+                    <Typography sx={{
+                      fontSize: isDashboardPopup ? '1.2rem' : '1.125rem',
+                      fontWeight: isDashboardPopup ? 700 : 600,
+                      color: isDashboardPopup ? '#FFFFFF' : '#0F172A',
+                      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                      letterSpacing: '-0.01em'
+                    }}>
+                      Pilih Range Tanggal
+                    </Typography>
+                  </Box>
                   <Button
                     onClick={() => handleDismissPicker(onClose)}
                     sx={{
                       minWidth: 'auto',
-                      width: '32px',
-                      height: '32px',
+                      width: isDashboardPopup ? '36px' : '32px',
+                      height: isDashboardPopup ? '36px' : '32px',
                       p: 0,
-                      borderRadius: '50%',
-                      color: '#64748B',
+                      borderRadius: isDashboardPopup ? '10px' : '50%',
+                      color: isDashboardPopup ? '#FFFFFF' : '#64748B',
+                      border: isDashboardPopup
+                        ? '1px solid rgba(255, 255, 255, 0.18)'
+                        : '1px solid transparent',
+                      bgcolor: isDashboardPopup ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                      transition: 'transform 0.2s ease, background 0.2s ease, border-color 0.2s ease',
                       '&:hover': {
-                        bgcolor: '#F1F5F9',
-                        color: '#0F172A'
+                        bgcolor: isDashboardPopup ? 'rgba(255, 255, 255, 0.14)' : '#F1F5F9',
+                        color: isDashboardPopup ? '#FFFFFF' : '#0F172A',
+                        borderColor: isDashboardPopup
+                          ? 'rgba(233, 196, 106, 0.4)'
+                          : 'transparent',
+                        transform: 'translateY(-1px)',
+                      },
+                      '&:focus-visible': {
+                        outline: 'none',
+                        borderColor: isDashboardPopup
+                          ? 'rgba(233, 196, 106, 0.55)'
+                          : '#2F6FB2',
+                        boxShadow: isDashboardPopup
+                          ? '0 0 0 4px rgba(233, 196, 106, 0.12)'
+                          : '0 0 0 4px rgba(47, 111, 178, 0.14)',
                       }
                     }}
                   >
-                    X
+                    <XClose size={18} />
                   </Button>
                 </Box>
 
@@ -863,14 +912,14 @@ export const DateRangePickerWithPresets = ({
                         color: '#475569',
                         textTransform: 'none',
                         fontSize: '0.875rem',
-                        fontWeight: 500,
+                        fontWeight: isDashboardPopup ? 600 : 500,
                         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                        borderRadius: 1.5,
+                        borderRadius: isDashboardPopup ? '999px' : 1.5,
                         flex: isMobilePicker ? 1 : '0 0 auto',
-                        px: 2.5,
+                        px: isDashboardPopup ? 2.75 : 2.5,
                         py: 0.75,
                         minWidth: isMobilePicker ? 0 : '100px',
-                        height: '40px',
+                        height: isDashboardPopup ? '44px' : '40px',
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         '&:hover': {
                           borderColor: '#2F6FB2',
@@ -888,31 +937,44 @@ export const DateRangePickerWithPresets = ({
                       onClick={handleAddRange}
                       disabled={isRangeLimitReached}
                       sx={{
-                        bgcolor: '#2F6FB2',
+                        bgcolor: isDashboardPopup ? 'transparent' : '#2F6FB2',
+                        background: isDashboardPopup
+                          ? 'linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-teal-dark) 100%)'
+                          : 'none',
                         color: 'white',
                         textTransform: 'none',
                         fontSize: '0.875rem',
                         fontWeight: 600,
                         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                        borderRadius: 1.5,
+                        borderRadius: isDashboardPopup ? '999px' : 1.5,
                         flex: isMobilePicker ? 1 : '0 0 auto',
-                        px: 3,
+                        px: isDashboardPopup ? 3.25 : 3,
                         py: 0.75,
                         minWidth: isMobilePicker ? 0 : '140px',
-                        height: '40px',
-                        boxShadow: '0 2px 4px rgba(47, 111, 178, 0.2)',
+                        height: isDashboardPopup ? '44px' : '40px',
+                        boxShadow: isDashboardPopup
+                          ? '0 10px 24px rgba(42, 157, 143, 0.28)'
+                          : '0 2px 4px rgba(47, 111, 178, 0.2)',
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         '&:hover': {
-                          bgcolor: '#1F4E8C',
-                          boxShadow: '0 4px 8px rgba(47, 111, 178, 0.3)',
+                          bgcolor: isDashboardPopup ? 'transparent' : '#1F4E8C',
+                          background: isDashboardPopup
+                            ? 'linear-gradient(135deg, #3AB3A4 0%, #1E8A7E 100%)'
+                            : 'none',
+                          boxShadow: isDashboardPopup
+                            ? '0 14px 30px rgba(42, 157, 143, 0.34)'
+                            : '0 4px 8px rgba(47, 111, 178, 0.3)',
                           transform: 'translateY(-1px)'
                         },
                         '&:active': {
                           transform: 'translateY(0)',
-                          boxShadow: '0 2px 4px rgba(47, 111, 178, 0.25)'
+                          boxShadow: isDashboardPopup
+                            ? '0 10px 24px rgba(42, 157, 143, 0.28)'
+                            : '0 2px 4px rgba(47, 111, 178, 0.25)'
                         },
                         '&:disabled': {
                           bgcolor: '#E2E8F0',
+                          background: '#E2E8F0',
                           color: '#94A3B8',
                           boxShadow: 'none',
                           transform: 'none',

@@ -1,4 +1,4 @@
-import '../../styles/templateStyle/TemplateComponents.css'
+import '../../styles/template-style/TemplateComponents.css'
 
 function CardBox({
   as: Component = 'article',

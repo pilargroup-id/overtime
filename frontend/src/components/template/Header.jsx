@@ -17,10 +17,10 @@ import {
   getDepartmentFilterOptions,
   getSelectedDepartmentFilterLabel,
 } from './departmentFilter.js'
-import '../../styles/templateStyle/TemplateComponents.css'
+import '../../styles/template-style/TemplateComponents.css'
 
 function Header({
-  title = 'Nama Project',
+  title = 'Ticketing Legal',
   breadcrumb = [
     { label: 'All', href: '#' },
     { label: 'Finance', href: '#', active: true },

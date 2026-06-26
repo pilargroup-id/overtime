@@ -71,6 +71,7 @@ function RangeDate({
   onApply,
   onClear,
   onClose,
+  popupVariant = 'default',
   hideTrigger = false,
   openPickerSignal = 0,
 }) {
@@ -98,6 +99,7 @@ function RangeDate({
       allowReplaceExistingRange
       hideTrigger={hideTrigger}
       openPickerSignal={openPickerSignal}
+      popupVariant={popupVariant}
     />
   )
 }

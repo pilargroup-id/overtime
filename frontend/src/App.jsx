@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import BackgroundMain from './components/template/BackgroundMain.jsx'
-import DialogDelete from './components/Dialog/DialogDelete.jsx'
-import DialogEdit from './components/Dialog/DialogEdit.jsx'
+import DialogDelete from './components/dialog/DialogDelete.jsx'
+import DialogEdit from './components/dialog/DialogEdit.jsx'
 import Header from './components/template/Header.jsx'
 import Sidebar from './components/template/Sidebar.jsx'
 import DataTable, {
@@ -19,18 +19,20 @@ import HorizontalBarChartPreview from './components/chart/HorizontalBarChart.jsx
 import LineChartPreview from './components/chart/LineChart.jsx'
 import PieChartPreview from './components/chart/PieChart.jsx'
 import { Edit03, Trash03, Users01 } from './components/template/TemplateIcons.jsx'
+import MyTickets from './pages/my-tickets/MyTickets.jsx'
+import TeamPerformence from './pages/reports/team-performence/TeamPerformence.jsx'
 
 function getCurrentPath() {
   if (typeof window === 'undefined') {
-    return '/dashboard'
+    return '/MyTickets'
   }
 
-  return window.location.pathname === '/' ? '/dashboard' : window.location.pathname
+  return window.location.pathname === '/' ? '/MyTickets' : window.location.pathname
 }
 
 const pageDetails = {
-  '/dashboard': {
-    title: 'Dashboard',
+  '/MyTickets': {
+    title: 'MyTickets',
     eyebrow: 'Legal Operations',
     value: '24',
     detail: 'Tiket aktif yang sedang diproses oleh tim legal.',
@@ -59,17 +61,35 @@ const pageDetails = {
     value: '8',
     detail: 'Contoh komponen table dengan kolom action inline untuk edit dan delete.',
   },
+  '/TicketsOverview': {
+    title: 'Tickets Overview',
+    eyebrow: 'Ticket Analytics',
+    value: '24',
+    detail: 'Ringkasan status dan performa tiket legal.',
+  },
+  '/ProjectsOverview': {
+    title: 'Projects Overview',
+    eyebrow: 'Project Summary',
+    value: '7',
+    detail: 'Ringkasan proyek dan aktivitas terkait.',
+  },
   '/Chart': {
     title: 'Chart',
     eyebrow: 'Visual Analytics',
     value: '5',
     detail: 'Kumpulan chart yang siap dipakai untuk visualisasi data.',
   },
+  '/Reports/TeamPerformance': {
+    title: 'Team Performance',
+    eyebrow: 'Reports',
+    value: '4',
+    detail: 'Performa bulanan setiap user lengkap dengan progress completed dan pending.',
+  },
   '/users': {
     title: 'Users',
     eyebrow: 'Access Control',
     value: '16',
-    detail: 'User internal dengan akses ke dashboard legal.',
+    detail: 'User internal yang memiliki akses ke aplikasi legal dengan berbagai peran dan status.',
   },
   '/settings': {
     title: 'Settings',
@@ -103,7 +123,7 @@ const userRows = [
     jobLevel: 'Staff',
     status: 'Active',
     statusKey: 'active',
-    apps: ['Dashboard', 'Legal Docs', 'Tickets'],
+    apps: ['MyTickets', 'Legal Docs', 'Tickets'],
     createdAt: '2026-01-10',
     updatedAt: '2026-04-29',
     lastActive: '2026-04-30 09:10',
@@ -377,7 +397,6 @@ function App() {
   const [usersPageSize, setUsersPageSize] = useState(DEFAULT_USERS_PAGE_SIZE)
   const [activeActionDialog, setActiveActionDialog] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
-
   useEffect(() => {
     const handleRouteChange = () => {
       setActivePath(getCurrentPath())
@@ -390,11 +409,12 @@ function App() {
     }
   }, [])
 
-  const activePage = pageDetails[activePath] ?? pageDetails['/dashboard']
+  const activePage = pageDetails[activePath] ?? pageDetails['/MyTickets']
   const isUsersPage = activePath === '/users'
   const isTableActionsPage = activePath === '/TableActions'
   const isTablePage = tablePagePaths.includes(activePath)
   const isChartPage = activePath === '/Chart'
+  const isTeamPerformancePage = activePath === '/Reports/TeamPerformance'
   const tableEntityLabel = isUsersPage ? 'user' : 'data'
   const selectedUserName = selectedUser?.name ?? 'data ini'
 
@@ -490,6 +510,10 @@ function App() {
 
   const overviewCards = useMemo(
     () => {
+      if (activePath === '/MyTickets') {
+        return []
+      }
+
       if (isTablePage) {
         return [
           {
@@ -514,7 +538,7 @@ function App() {
       return [
         activePage,
         {
-          title: 'SLA Review',
+          title: 'MyTickets',
           eyebrow: 'Performance',
           value: '92%',
           detail: 'Permintaan yang selesai sebelum batas SLA.',
@@ -527,7 +551,7 @@ function App() {
         },
       ]
     },
-    [activePage, activeUsersCount, isTablePage, tableUsers.length, uniqueAppsCount],
+    [activePage, activeUsersCount, isTablePage, tableUsers.length, uniqueAppsCount, activePath],
   )
 
   const shellClassName = [
@@ -560,11 +584,11 @@ function App() {
 
       <div className="dashboard-stage">
         <Header
-          title="Nama Project"
+          title="Ticketing Legal"
           showMenuButton
           onMenuToggle={() => setMobileSidebarOpen(true)}
           breadcrumb={[
-            { label: 'Nama Project', href: '#' },
+            { label: 'Ticketing Legal', href: '#' },
             { label: activePage.title, href: '#', active: true },
           ]}
           searchProps={{
@@ -583,22 +607,33 @@ function App() {
           onRefresh={() => setLastUpdated(new Date())}
         />
 
-        <main className="dashboard-main">
-          <div className="dashboard-content">
-            <section className="dashboard-overview" aria-label="Ringkasan dashboard">
-              {overviewCards.map((card) => (
-                <article className="dashboard-card" key={card.title}>
-                  <div className="dashboard-card__meta">
-                    <p className="dashboard-card__label">{card.eyebrow}</p>
-                    <span className="dashboard-card__state">Active</span>
-                  </div>
-                  <strong className="dashboard-card__value">{card.value}</strong>
-                  <p className="dashboard-card__detail">{card.detail}</p>
-                </article>
-              ))}
-            </section>
+        <main
+          className={`dashboard-main${activePath === '/MyTickets' ? ' dashboard-main--mytickets' : ''}`}
+        >
+          <div
+            className={`dashboard-content${activePath === '/MyTickets' ? ' dashboard-content--mytickets' : ''}`}
+          >
+            {activePath !== '/MyTickets' && !isTeamPerformancePage && (
+              <section className="dashboard-overview" aria-label="Ringkasan dashboard">
+                {overviewCards.map((card) => (
+                  <article className="dashboard-card" key={card.title}>
+                    <div className="dashboard-card__badge-row">
+                      <div className="status-badge">
+                        <span className="dashboard-card__label">{card.title}</span>
+                      </div>
+                    </div>
+                    <strong className="dashboard-card__value">{card.value}</strong>
+                    <p className="dashboard-card__detail">{card.detail}</p>
+                  </article>
+                ))}
+              </section>
+            )}
 
-            {isTablePage ? (
+            {activePath === '/MyTickets' ? (
+              <MyTickets activePage={activePage} searchQuery={searchQuery} />
+            ) : isTeamPerformancePage ? (
+              <TeamPerformence />
+            ) : isTablePage ? (
               <section className="dashboard-panel users-table-card" aria-label={activePage.title}>
                 <div className="users-table-card__header">
                   <div>

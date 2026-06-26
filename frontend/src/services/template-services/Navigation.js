@@ -5,14 +5,18 @@ import {
   Ticket01,
   Table01,
   Chart01,
+  Folder,
+  TrendingUp,
 } from '../../components/template/TemplateIcons.jsx'
 
 export const defaultNavigationPath = '/dashboard'
 
 export const implementedNavigationPaths = [
-  '/dashboard',
-  '/tickets',
-  '/documents',
+  '/MyTickets',
+  '/TicketsOverview',
+  '/ProjectsOverview',
+  '/Reports',
+  '/Reports/TeamPerformance',
   '/Table',
   '/TableActions',
   '/users',
@@ -21,22 +25,40 @@ export const implementedNavigationPaths = [
 
 export const primaryNavigationItems = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    id: 'tickets',
-    label: 'Tickets',
-    href: '/tickets',
+    id: 'my-tickets',
+    label: 'My Tickets',
+    href: '/MyTickets',
     icon: Ticket01,
   },
   {
-    id: 'documents',
-    label: 'Documents',
-    href: '/documents',
+    id: 'tickes-overview',
+    label: 'Tickets Overview',
+    href: '/TicketsOverview',
+    icon: TrendingUp,
+  },
+  {
+    id: 'projects-overview',
+    label: 'Projects Overview',
+    href: '/ProjectsOverview',
+    icon: Folder,
+  },
+  {
+    id: 'reports',
+    label: 'Reports',
+    href: '/Reports',
     icon: FileText01,
+    children: [
+      {
+        id: 'team-performance',
+        label: 'Team Performance',
+        href: '/Reports/TeamPerformance',
+      },
+      {
+        id : 'executive-insights',
+        label: 'Executive Insights',
+        href: '/Reports/ExecutiveInsights',
+      }
+    ]
   },
   {
     id: 'table',
