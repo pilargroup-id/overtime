@@ -141,6 +141,18 @@ function getDetailSections(detail, row, index) {
   return detail.sections ?? []
 }
 
+function getDetailActions(detail, row, index) {
+  if (!detail) {
+    return []
+  }
+
+  if (typeof detail.actions === 'function') {
+    return detail.actions(row, index) ?? []
+  }
+
+  return detail.actions ?? []
+}
+
 export function DataTableStatus({
   children,
   variant = 'active',
@@ -296,6 +308,9 @@ function DataTable({
                 const detailTitle = resolveTemplateValue(detail?.title, row, index)
                 const detailDescription = resolveTemplateValue(detail?.description, row, index)
                 const detailEyebrow = resolveTemplateValue(detail?.eyebrow, row, index)
+                const detailActions = getDetailActions(detail, row, index)
+                const DetailButtonIcon = detail?.buttonIcon ?? ChevronDown
+                const detailButtonLabel = isExpanded ? 'Tutup detail' : 'Buka detail'
                 const rowClassName = [
                   'users-table__row',
                   isRowInteractive ? 'users-table__row--interactive' : '',
@@ -332,23 +347,56 @@ function DataTable({
                           <CreateButton
                             variant="detail"
                             type="button"
+                            className={detail?.buttonIconOnly ? 'users-table__detail-button--icon-only' : ''}
                             onClick={(event) => {
                               event.stopPropagation()
                               handleToggleRow(rowKey)
                             }}
                             aria-expanded={isExpanded}
                             aria-controls={accordionId}
-                            title={isExpanded ? 'Tutup detail' : 'Buka detail'}
+                            aria-label={detail.buttonLabel ?? detailButtonLabel}
+                            title={detail.buttonLabel ?? detailButtonLabel}
                           >
-                            <span>{detail.buttonLabel ?? 'Detail'}</span>
-                            <ChevronDown
-                              size={16}
+                            {detail?.buttonIconOnly ? null : (
+                              <span>{detail.buttonLabel ?? 'Detail'}</span>
+                            )}
+                            <DetailButtonIcon
+                              size={detail?.buttonIconOnly ? 18 : 16}
                               aria-hidden="true"
                               className={`users-table__detail-icon${
                                 isExpanded ? ' users-table__detail-icon--open' : ''
                               }`}
                             />
                           </CreateButton>
+
+                          {detailActions.map((action) => {
+                            if (action.hidden?.(row, index)) {
+                              return null
+                            }
+
+                            const Icon = action.icon
+                            const buttonLabel = action.label ?? action.key ?? 'Action'
+                            const isIconOnlyAction = Boolean(action.iconOnly)
+
+                            return (
+                              <CreateButton
+                                key={action.key ?? buttonLabel}
+                                variant={isIconOnlyAction ? 'bareIcon' : 'accordion'}
+                                tone={action.variant === 'danger' ? 'danger' : 'default'}
+                                type="button"
+                                disabled={action.disabled?.(row, index) ?? action.disabled}
+                                aria-label={buttonLabel}
+                                title={buttonLabel}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  action.onClick?.(row, index, event)
+                                }}
+                              >
+                                {Icon ? <Icon size={16} aria-hidden="true" /> : null}
+                                {!Icon || !isIconOnlyAction ? action.label : null}
+                              </CreateButton>
+                            )
+                          })}
                         </td>
                       ) : null}
                     </tr>
@@ -424,30 +472,32 @@ function DataTable({
                             {actions.length > 0 ? (
                               <div className="users-table__accordion-actions">
                                 {actions.map((action) => {
-                                  if (action.hidden?.(row, index)) {
-                                    return null
-                                  }
+                              if (action.hidden?.(row, index)) {
+                                return null
+                              }
 
-                                  const Icon = action.icon
+                              const Icon = action.icon
+                              const isIconOnlyAction = Boolean(action.iconOnly)
+                              const actionButtonVariant = isIconOnlyAction ? 'icon' : 'accordion'
 
-                                  return (
-                                    <CreateButton
-                                      key={action.key ?? action.label}
-                                      variant="accordion"
-                                      tone={action.variant === 'danger' ? 'danger' : 'default'}
-                                      type="button"
-                                      disabled={action.disabled?.(row, index) ?? action.disabled}
-                                      onClick={(event) => {
-                                        event.stopPropagation()
-                                        action.onClick?.(row, index, event)
-                                      }}
-                                    >
-                                      {Icon ? <Icon size={16} aria-hidden="true" /> : null}
-                                      {action.label}
-                                    </CreateButton>
-                                  )
-                                })}
-                              </div>
+                              return (
+                                <CreateButton
+                                  key={action.key ?? action.label}
+                                  variant={actionButtonVariant}
+                                  tone={action.variant === 'danger' ? 'danger' : 'default'}
+                                  type="button"
+                                  disabled={action.disabled?.(row, index) ?? action.disabled}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    action.onClick?.(row, index, event)
+                                  }}
+                                >
+                                  {Icon ? <Icon size={16} aria-hidden="true" /> : null}
+                                  {isIconOnlyAction ? null : action.label}
+                                </CreateButton>
+                              )
+                            })}
+                          </div>
                             ) : null}
                           </div>
                         </td>

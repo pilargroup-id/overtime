@@ -613,7 +613,7 @@ GET /api/overtime/requests?status=SUBMITTED&talenta_status=PENDING&page=1&limit=
 
 ```http
 POST /api/overtime/requests
-```
+``` 
 
 Body submit untuk diri sendiri:
 
@@ -746,7 +746,7 @@ Response jika sebagian / semua sukses:
     "failed_items": [
       {
         "employee_id": "USER_ID_003",
-        "message": "You are not allowed to submit overtime request for this employee",
+        "message": "You are no//requet allowed to submit overtime request for this employee",
         "errors": null
       }
     ]

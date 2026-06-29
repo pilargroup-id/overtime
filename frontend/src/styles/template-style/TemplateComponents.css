@@ -108,6 +108,10 @@ select {
   overflow: hidden;
 }
 
+.dashboard-main--table-fixed {
+  overflow: hidden;
+}
+
 .sidebar {
   background: linear-gradient(180deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
   width: var(--sidebar-current-width);
@@ -1171,6 +1175,11 @@ select {
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+.dashboard-content--table-fixed {
+  height: 100%;
+  min-height: 0;
+}
+
 .dashboard-overview {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1624,6 +1633,26 @@ select {
   flex: 1;
   min-height: 0;
   flex-direction: column;
+}
+
+.req-overtime-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.req-overtime-page .users-table-card__header {
+  flex-shrink: 0;
+}
+
+.req-overtime-table-shell {
+  margin-top: 22px;
+}
+
+.req-overtime-table-shell .users-table-wrapper {
+  margin-top: 0;
 }
 
 .mtickets-table {
@@ -2853,6 +2882,13 @@ select {
   gap: 0.5rem;
 }
 
+.users-table__detail-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .users-table__detail-button {
   min-height: 36px;
   display: inline-flex;
@@ -2958,6 +2994,46 @@ select {
 
 .users-table__icon-button svg {
   flex-shrink: 0;
+}
+
+.users-table__bare-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    color 0.2s ease;
+}
+
+.users-table__bare-icon-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.85;
+}
+
+.users-table__bare-icon-button:focus-visible {
+  outline: 2px solid rgba(42, 157, 143, 0.45);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.users-table__bare-icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.users-table__bare-icon-button--danger {
+  color: #b42318;
+}
+
+.users-table__bare-icon-button svg {
+  display: block;
 }
 
 .users-table__apps {
@@ -3200,11 +3276,11 @@ select {
 }
 
 .users-table__accordion-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  display: contents;
+}
+
+.users-table__accordion-actions > * + * {
+  margin-inline-start: 0.75rem;
 }
 
 .users-table__accordion-button {
@@ -3799,6 +3875,123 @@ select {
 
 .mtickets-create-popup {
   width: min(100%, 860px);
+}
+
+.overtime-create-popup {
+  width: min(100%, 780px);
+}
+
+.overtime-create-popup .dashboard-popup__body {
+  max-height: min(72vh, 680px);
+  overflow-y: auto;
+}
+
+.overtime-create-popup .register-user-popup__layout {
+  grid-template-columns: 1fr;
+}
+
+.overtime-create-popup .register-user-popup__grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: start;
+}
+
+.overtime-create-popup__field--half {
+  grid-column: span 3;
+}
+
+.overtime-create-popup__field--third {
+  grid-column: span 2;
+}
+
+.overtime-create-popup__field--full {
+  grid-column: 1 / -1;
+}
+
+.overtime-create-popup .register-user-popup__input,
+.overtime-create-popup .register-user-popup__select {
+  min-height: 46px;
+  font-size: 0.95rem;
+}
+
+.overtime-create-popup .master-project-popup__textarea {
+  min-height: 112px;
+  line-height: 1.5;
+}
+
+.overtime-create-popup__employee-select {
+  min-height: 118px;
+  line-height: 1.5;
+}
+
+.overtime-create-popup__employee-dropdown {
+  position: relative;
+}
+
+.overtime-create-popup__employee-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.overtime-create-popup__employee-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  max-height: 230px;
+  padding: 0.45rem;
+  overflow-y: auto;
+  border: 1px solid rgba(26, 42, 87, 0.12);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(26, 42, 87, 0.16);
+}
+
+.overtime-create-popup__employee-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  color: var(--primary-blue);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.overtime-create-popup__employee-option:hover {
+  background: rgba(42, 157, 143, 0.08);
+}
+
+.overtime-create-popup__employee-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--secondary-teal);
+}
+
+.overtime-create-popup__employee-empty {
+  margin: 0;
+  padding: 0.8rem;
+  color: #5a6b88;
+  font-size: 0.9rem;
+}
+
+.overtime-create-popup__employee-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.overtime-create-popup__employee-selected span {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(42, 157, 143, 0.1);
+  color: var(--secondary-teal);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .register-user-popup--users {
@@ -4650,6 +4843,15 @@ select {
 
   .register-user-popup__grid {
     grid-template-columns: 1fr;
+  }
+
+  .overtime-create-popup .register-user-popup__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overtime-create-popup__field--half,
+  .overtime-create-popup__field--third {
+    grid-column: 1 / -1;
   }
 }
 

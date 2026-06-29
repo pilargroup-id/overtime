@@ -5,6 +5,7 @@ import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
 
 const initialFormValues = {
+  employee_ids: [],
   day_type: 'WORKDAY',
   work_date: '',
   start_time: '',
@@ -70,21 +71,52 @@ function normalizeCompensationTypes(responseData) {
   return []
 }
 
-function DialogCreateReqOvertime({
+function normalizeEligibleEmployees(responseData) {
+  if (Array.isArray(responseData)) {
+    return responseData
+  }
+
+  if (Array.isArray(responseData?.data)) {
+    return responseData.data
+  }
+
+  if (Array.isArray(responseData?.rows)) {
+    return responseData.rows
+  }
+
+  if (Array.isArray(responseData?.results)) {
+    return responseData.results
+  }
+
+  return []
+}
+
+function getEmployeeLabel(employee) {
+  const name = employee.name || employee.username || employee.email || employee.id
+  const internalId = employee.internal_id ? ` (${employee.internal_id})` : ''
+
+  return `${name}${internalId}`
+}
+
+function DialogCreateBulkReqOvertime({
   isOpen = false,
-  eyebrow = 'Create Req Overtime',
-  title = 'Create Req Overtime',
+  eyebrow = 'Create Bulk Req Overtime',
+  title = 'Create Bulk Req Overtime',
   onClose,
   onCreated,
 }) {
   const [formValues, setFormValues] = useState(initialFormValues)
+  const [eligibleEmployees, setEligibleEmployees] = useState([])
   const [compensationTypes, setCompensationTypes] = useState([])
+  const [isLoadingEligibleEmployees, setIsLoadingEligibleEmployees] = useState(false)
   const [isLoadingCompensationTypes, setIsLoadingCompensationTypes] = useState(false)
+  const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
   const resetDialogState = useCallback(() => {
     setFormValues(initialFormValues)
+    setIsEmployeeDropdownOpen(false)
     setIsSubmitting(false)
     setErrorMessage('')
   }, [])
@@ -119,6 +151,34 @@ function DialogCreateReqOvertime({
 
     let isMounted = true
 
+    const loadEligibleEmployees = async () => {
+      setIsLoadingEligibleEmployees(true)
+      setErrorMessage('')
+
+      try {
+        const response = await api.overtimeRequests.eligibleEmployees({
+          limit: 100,
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setEligibleEmployees(normalizeEligibleEmployees(response))
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setEligibleEmployees([])
+        setErrorMessage(error?.message || 'Gagal memuat eligible employees.')
+      } finally {
+        if (isMounted) {
+          setIsLoadingEligibleEmployees(false)
+        }
+      }
+    }
+
     const loadCompensationTypes = async () => {
       setIsLoadingCompensationTypes(true)
       setErrorMessage('')
@@ -148,6 +208,7 @@ function DialogCreateReqOvertime({
       }
     }
 
+    loadEligibleEmployees()
     loadCompensationTypes()
 
     return () => {
@@ -164,7 +225,19 @@ function DialogCreateReqOvertime({
     }))
   }
 
+  const handleEmployeeToggle = (employeeId) => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      employee_ids: currentValues.employee_ids.includes(employeeId)
+        ? currentValues.employee_ids.filter(
+            (selectedEmployeeId) => selectedEmployeeId !== employeeId,
+          )
+        : [...currentValues.employee_ids, employeeId],
+    }))
+  }
+
   const buildPayload = () => ({
+    employee_ids: formValues.employee_ids,
     day_type: formValues.day_type,
     work_date: formValues.work_date,
     start_time: formValues.start_time,
@@ -180,6 +253,7 @@ function DialogCreateReqOvertime({
     const payload = buildPayload()
 
     if (
+      !payload.employee_ids.length ||
       !payload.day_type ||
       !payload.work_date ||
       !payload.start_time ||
@@ -188,7 +262,7 @@ function DialogCreateReqOvertime({
       !payload.result_description ||
       !payload.compensation_type_id
     ) {
-      setErrorMessage('Lengkapi seluruh data request overtime terlebih dahulu.')
+      setErrorMessage('Pilih employee dan lengkapi seluruh data request overtime terlebih dahulu.')
       return
     }
 
@@ -196,12 +270,19 @@ function DialogCreateReqOvertime({
     setErrorMessage('')
 
     try {
-      const createdReqOvertime = await api.overtimeRequests.create(payload)
+      const createdBulkOvertime = await api.overtimeRequests.bulkCreate(payload)
 
-      onCreated?.(createdReqOvertime)
+      onCreated?.(createdBulkOvertime)
       handleClose()
     } catch (error) {
-      setErrorMessage(error?.message || 'Gagal membuat request overtime.')
+      const failedItems = error?.data?.errors?.failed_items
+      const failedMessage = Array.isArray(failedItems)
+        ? failedItems.map((item) => item.message).filter(Boolean).join(', ')
+        : ''
+
+      setErrorMessage(
+        failedMessage || error?.message || 'Gagal membuat bulk request overtime.',
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -215,6 +296,15 @@ function DialogCreateReqOvertime({
     return null
   }
 
+  const selectedEmployees = eligibleEmployees.filter((employee) =>
+    formValues.employee_ids.includes(employee.id),
+  )
+  const employeeDropdownLabel = isLoadingEligibleEmployees
+    ? 'Loading eligible employees...'
+    : selectedEmployees.length
+      ? `${selectedEmployees.length} employee selected`
+      : 'Select employees'
+
   const dialogNode = (
     <div
       className="dashboard-popup-overlay"
@@ -225,14 +315,14 @@ function DialogCreateReqOvertime({
         className="dashboard-popup register-user-popup mtickets-create-popup parent-create-popup overtime-create-popup"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-create-req-overtime-title"
+        aria-labelledby="dialog-create-bulk-req-overtime-title"
         onClick={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
       >
         <div className="dashboard-popup__header">
           <div>
             <p className="dashboard-popup__eyebrow">{eyebrow}</p>
-            <h2 className="dashboard-popup__title" id="dialog-create-req-overtime-title">
+            <h2 className="dashboard-popup__title" id="dialog-create-bulk-req-overtime-title">
               {title}
             </h2>
           </div>
@@ -253,6 +343,69 @@ function DialogCreateReqOvertime({
             <div className="register-user-popup__main">
               <div className="register-user-popup__form">
                 <div className="register-user-popup__grid">
+                  <div className="register-user-popup__field overtime-create-popup__field--full">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="bulk-req-overtime-employee-dropdown"
+                    >
+                      Employee
+                    </label>
+                    <div className="overtime-create-popup__employee-dropdown">
+                      <button
+                        id="bulk-req-overtime-employee-dropdown"
+                        type="button"
+                        className="register-user-popup__select overtime-create-popup__employee-trigger"
+                        onClick={() =>
+                          setIsEmployeeDropdownOpen((currentValue) => !currentValue)
+                        }
+                        disabled={isSubmitting || isLoadingEligibleEmployees}
+                        aria-expanded={isEmployeeDropdownOpen}
+                      >
+                        <span>{employeeDropdownLabel}</span>
+                        <span aria-hidden="true">v</span>
+                      </button>
+
+                      {isEmployeeDropdownOpen ? (
+                        <div className="overtime-create-popup__employee-menu">
+                          {eligibleEmployees.length > 0 ? (
+                            eligibleEmployees.map((employee) => {
+                              const employeeId = employee.id
+
+                              return (
+                                <label
+                                  key={employeeId}
+                                  className="overtime-create-popup__employee-option"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={formValues.employee_ids.includes(employeeId)}
+                                    onChange={() => handleEmployeeToggle(employeeId)}
+                                    disabled={isSubmitting}
+                                  />
+                                  <span>{getEmployeeLabel(employee)}</span>
+                                </label>
+                              )
+                            })
+                          ) : (
+                            <p className="overtime-create-popup__employee-empty">
+                              Tidak ada eligible employee.
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                    <p className="register-user-popup__hint">
+                      Pilih satu atau lebih employee untuk bulk request.
+                    </p>
+                    {selectedEmployees.length > 0 ? (
+                      <div className="overtime-create-popup__employee-selected">
+                        {selectedEmployees.map((employee) => (
+                          <span key={employee.id}>{getEmployeeLabel(employee)}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
                   <div className="register-user-popup__field overtime-create-popup__field--half">
                     <label
                       className="register-user-popup__label"
@@ -382,4 +535,4 @@ function DialogCreateReqOvertime({
   return createPortal(dialogNode, document.body)
 }
 
-export default DialogCreateReqOvertime
+export default DialogCreateBulkReqOvertime

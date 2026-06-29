@@ -37,6 +37,19 @@ function App() {
   ]
     .filter(Boolean)
     .join(' ')
+  const isFixedTablePage = activePath === '/RequestOvertime'
+  const mainClassName = [
+    'dashboard-main',
+    isFixedTablePage ? 'dashboard-main--table-fixed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const contentClassName = [
+    'dashboard-content',
+    isFixedTablePage ? 'dashboard-content--table-fixed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   const renderContent = () => {
     switch (activePath) {
@@ -106,8 +119,8 @@ function App() {
           ]}
         />
 
-        <main className="dashboard-main">
-          <div className="dashboard-content">
+        <main className={mainClassName}>
+          <div className={contentClassName}>
             {renderContent()}
           </div>
         </main>

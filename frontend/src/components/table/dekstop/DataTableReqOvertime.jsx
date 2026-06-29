@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import api from '../../../services/api.js'
-import { getPaginationItems } from '../../../services/my-tickets/DataTableMT.js'
 import DataTable, {
   DataTableIdentity,
   DataTableStatus,
 } from '../DataTable.jsx'
+import { FileText01, XCircle } from '../../template/TemplateIcons.jsx'
+import DialogValidationCancelRO from '../../Dialog/dialog-req-overtime/DialogValidationCancelRO.jsx'
 
 const DEFAULT_PAGE_SIZE = 10
-const PAGE_SIZE_OPTIONS = [10, 25, 50]
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) {
@@ -88,6 +89,33 @@ function formatDuration(totalMinutes) {
   return `${remainingMinutes}m`
 }
 
+function getNestedValue(source, path) {
+  return path.split('.').reduce((value, key) => value?.[key], source)
+}
+
+function formatCompensation(request, compensationTypeMap) {
+  const compensationNameFields = [
+    'compensation_type_name',
+    'compensation_name',
+    'compensationType.name',
+    'compensationType.code',
+    'compensation_type.name',
+    'compensation_type.code',
+  ]
+
+  for (const field of compensationNameFields) {
+    const value = getNestedValue(request, field)
+
+    if (String(value ?? '').trim()) {
+      return formatValue(value)
+    }
+  }
+
+  const mappedName = compensationTypeMap.get(String(request.compensation_type_id))
+
+  return mappedName ? formatValue(mappedName) : formatValue(request.compensation_type_id)
+}
+
 function getStatusVariant(status) {
   const normalizedStatus = String(status ?? '').toUpperCase()
 
@@ -106,6 +134,10 @@ function getStatusVariant(status) {
   return 'app'
 }
 
+function isCanceledStatus(status) {
+  return String(status ?? '').toUpperCase() === 'CANCELED'
+}
+
 function getPaginationSummary(firstItem, lastItem, totalItems) {
   if (totalItems === 0) {
     return '0 dari 0 request'
@@ -114,39 +146,64 @@ function getPaginationSummary(firstItem, lastItem, totalItems) {
   return `${firstItem}-${lastItem} dari ${totalItems} request`
 }
 
-const columns = [
+function createColumns(compensationTypeMap) {
+  return [
   {
     key: 'request',
     header: 'Request',
-    headerStyle: { width: '28%' },
-    cellStyle: { width: '28%' },
+    headerStyle: { width: '23%' },
+    cellStyle: { width: '23%' },
     render: (request) => (
       <DataTableIdentity
-        title={formatValue(request.request_number)}
-        subtitle={formatValue(request.employee_name_snapshot)}
+        title={formatValue(request.employee_name_snapshot)}
+        subtitle={formatValue(request.request_number)}
+      />
+    ),
+  },
+ {
+    key: 'department',
+    header: 'Department & Company',
+    headerStyle: { width: '15%' },
+    cellStyle: { width: '15%' },
+    render: (request) => (
+      <DataTableIdentity
+        title={formatValue(request.department_name_snapshot)}
+        subtitle={formatValue(request.company_name_snapshot)}
       />
     ),
   },
   {
+    key: 'dayType',
+    header: 'Day Type',
+    headerStyle: { width: '10%'},
+    render : (request) => formatValue(request.day_type)
+  },
+  {
     key: 'workDate',
     header: 'Work Date',
-    headerStyle: { width: '18%' },
-    cellStyle: { width: '18%' },
+    headerStyle: { width: '15%' },
+    cellStyle: { width: '15%' },
     render: (request) => formatDate(request.work_date),
   },
   {
     key: 'time',
     header: 'Time',
-    headerStyle: { width: '18%' },
-    cellStyle: { width: '18%' },
+    headerStyle: { width: '15%' },
+    cellStyle: { width: '15%' },
     render: (request) => `${formatTime(request.start_time)} - ${formatTime(request.end_time)}`,
   },
   {
     key: 'duration',
     header: 'Duration',
-    headerStyle: { width: '14%' },
-    cellStyle: { width: '14%' },
+    headerStyle: { width: '12%' },
+    cellStyle: { width: '12%' },
     render: (request) => formatDuration(request.total_minutes),
+  },
+  {
+    key: 'compensation',
+    header: 'Compensation',
+    headerStyle: { width: '10%'},
+    render : (request) => formatCompensation(request, compensationTypeMap)
   },
   {
     key: 'status',
@@ -160,6 +217,7 @@ const columns = [
     ),
   },
 ]
+}
 
 function DataTableReqOvertime({
   searchQuery = '',
@@ -172,11 +230,53 @@ function DataTableReqOvertime({
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
+  const [cancelingRequestId, setCancelingRequestId] = useState(null)
+  const [cancelRequest, setCancelRequest] = useState(null)
+  const [cancelErrorMessage, setCancelErrorMessage] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
+  const [compensationTypeMap, setCompensationTypeMap] = useState(() => new Map())
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadCompensationTypes = async () => {
+      try {
+        const response = await api.compensationTypes.list({ limit: 500 })
+        const rows = normalizeResponseRows(response)
+        const nextMap = new Map()
+
+        rows.forEach((compensationType) => {
+          if (compensationType?.id === undefined || compensationType?.id === null) {
+            return
+          }
+
+          nextMap.set(
+            String(compensationType.id),
+            compensationType.name ?? compensationType.code ?? compensationType.id,
+          )
+        })
+
+        if (isMounted) {
+          setCompensationTypeMap(nextMap)
+        }
+      } catch {
+        if (isMounted) {
+          setCompensationTypeMap(new Map())
+        }
+      }
+    }
+
+    loadCompensationTypes()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -223,7 +323,49 @@ function DataTableReqOvertime({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, searchQuery])
+  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
+
+  const handleCancelRequest = (request) => {
+    setCancelRequest(request)
+    setCancelErrorMessage('')
+  }
+
+  const handleCloseCancelDialog = () => {
+    if (cancelingRequestId) {
+      return
+    }
+
+    setCancelRequest(null)
+    setCancelErrorMessage('')
+  }
+
+  const handleConfirmCancelRequest = async () => {
+    const requestId = cancelRequest?.id
+
+    if (!requestId) {
+      setCancelErrorMessage('Request overtime tidak memiliki ID untuk dibatalkan.')
+      return
+    }
+
+    setCancelingRequestId(requestId)
+    setCancelErrorMessage('')
+    setErrorMessage('')
+
+    try {
+      await api.overtimeRequests.cancel(requestId)
+      setRequestRows((rows) =>
+        rows.map((row) =>
+          String(row.id) === String(requestId) ? { ...row, status: 'CANCELED' } : row,
+        ),
+      )
+      setCancelRequest(null)
+      setReloadKey((key) => key + 1)
+    } catch (error) {
+      setCancelErrorMessage(error?.message || 'Gagal membatalkan request overtime.')
+    } finally {
+      setCancelingRequestId(null)
+    }
+  }
 
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const firstItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1
@@ -234,7 +376,6 @@ function DataTableReqOvertime({
       summary: getPaginationSummary(firstItem, lastItem, totalItems),
       currentPage: safeCurrentPage,
       totalPages,
-      items: getPaginationItems(safeCurrentPage, totalPages),
       pageSize,
       pageSizeOptions: PAGE_SIZE_OPTIONS,
       pageSizeLabel: 'Tampilkan',
@@ -258,51 +399,84 @@ function DataTableReqOvertime({
     ? 'Memuat data request overtime...'
     : errorMessage || 'Belum ada request overtime untuk ditampilkan.'
 
+  const columns = useMemo(
+    () => createColumns(compensationTypeMap),
+    [compensationTypeMap],
+  )
+
   return (
-    <DataTable
-      className="mtickets-table"
-      rows={requestRows}
-      columns={columns}
-      getRowId={(request, index) => request.id ?? request.request_number ?? index}
-      tableLabel={tableLabel}
-      emptyMessage={emptyMessage}
-      pagination={pagination}
-      detail={{
-        buttonLabel: 'Detail',
-        eyebrow: 'Request Overtime',
-        title: (request) => formatValue(request.request_number),
-        description: (request) => formatValue(request.task_description),
-        sections: (request) => [
-          {
-            title: 'Employee',
-            fields: [
-              { label: 'Name', value: formatValue(request.employee_name_snapshot) },
-              { label: 'Employee ID', value: formatValue(request.employee_internal_id_snapshot) },
-              { label: 'Department', value: formatValue(request.department_name_snapshot) },
-              { label: 'Company', value: formatValue(request.company_name_snapshot) },
+    <>
+      <div className="mtickets-table-shell req-overtime-table-shell">
+        <DataTable
+          className="mtickets-table"
+          rows={requestRows}
+          columns={columns}
+          getRowId={(request, index) => request.id ?? request.request_number ?? index}
+          tableLabel={tableLabel}
+          emptyMessage={emptyMessage}
+          pagination={pagination}
+          detail={{
+            buttonLabel: 'Detail request',
+            buttonIcon: FileText01,
+            buttonIconOnly: true,
+            columnLabel: 'Action',
+            eyebrow: 'Request Overtime',
+            title: (request) => formatValue(request.request_number),
+            description: (request) => formatValue(request.task_description),
+            actions: [
+              {
+                key: 'cancel',
+                label: 'Cancel request',
+                icon: XCircle,
+                variant: 'danger',
+                iconOnly: true,
+                hidden: (request) => isCanceledStatus(request.status),
+                disabled: (request) => String(cancelingRequestId) === String(request.id),
+                onClick: handleCancelRequest,
+              },
             ],
-          },
-          {
-            title: 'Overtime',
-            fields: [
-              { label: 'Day Type', value: formatValue(request.day_type) },
-              { label: 'Work Date', value: formatDate(request.work_date) },
-              { label: 'End Date', value: formatDate(request.end_date) },
-              { label: 'Duration', value: formatDuration(request.total_minutes) },
+            sections: (request) => [
+              {
+                title: 'Employee',
+                fields: [
+                  { label: 'Name', value: formatValue(request.employee_name_snapshot) },
+                  { label: 'Employee ID', value: formatValue(request.employee_internal_id_snapshot) },
+                  { label: 'Department', value: formatValue(request.department_name_snapshot) },
+                  { label: 'Company', value: formatValue(request.company_name_snapshot) },
+                ],
+              },
+              {
+                title: 'Overtime',
+                fields: [
+                  { label: 'Day Type', value: formatValue(request.day_type) },
+                  { label: 'Work Date', value: formatDate(request.work_date) },
+                  { label: 'End Date', value: formatDate(request.end_date) },
+                  { label: 'Duration', value: formatDuration(request.total_minutes) },
+                ],
+              },
+              {
+                title: 'Result',
+                wide: true,
+                fields: [
+                  { label: 'Task', value: formatValue(request.task_description) },
+                  { label: 'Result', value: formatValue(request.result_description) },
+                  { label: 'Talenta Status', value: formatValue(request.talenta_status) },
+                ],
+              },
             ],
-          },
-          {
-            title: 'Result',
-            wide: true,
-            fields: [
-              { label: 'Task', value: formatValue(request.task_description) },
-              { label: 'Result', value: formatValue(request.result_description) },
-              { label: 'Talenta Status', value: formatValue(request.talenta_status) },
-            ],
-          },
-        ],
-      }}
-    />
+          }}
+        />
+      </div>
+
+      <DialogValidationCancelRO
+        isOpen={Boolean(cancelRequest)}
+        request={cancelRequest}
+        isSubmitting={Boolean(cancelingRequestId)}
+        errorMessage={cancelErrorMessage}
+        onClose={handleCloseCancelDialog}
+        onConfirm={handleConfirmCancelRequest}
+      />
+    </>
   )
 }
 

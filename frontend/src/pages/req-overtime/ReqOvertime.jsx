@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import ButtonCreateBulkReqOvertime from '../../components/button/button-req-overtime/ButtonCreateBulkReqOvertime.jsx'
 import ButtonCreateReqOvertime from '../../components/button/button-req-overtime/ButtonCreateReqOvertime.jsx'
 import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOvertime.jsx'
 
@@ -10,7 +11,7 @@ function ReqOvertimePages({ activePage, searchQuery }) {
 
   return (
     <section
-      className="dashboard-panel users-table-card parents-table-card"
+      className="dashboard-panel users-table-card parents-table-card req-overtime-page"
       aria-label={pageTitle}
     >
       <div className="users-table-card__header">
@@ -21,6 +22,9 @@ function ReqOvertimePages({ activePage, searchQuery }) {
 
         <div className="users-table-card__actions">
           <ButtonCreateReqOvertime
+            onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
+          />
+          <ButtonCreateBulkReqOvertime
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
         </div>

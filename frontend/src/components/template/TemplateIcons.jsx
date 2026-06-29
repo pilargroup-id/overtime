@@ -225,6 +225,16 @@ export function XClose(props) {
   )
 }
 
+export function XCircle(props) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15 9 9 15" />
+      <path d="m9 9 6 6" />
+    </IconBase>
+  )
+}
+
 export function Folder(props) {
   return (
     <IconBase {...props}>

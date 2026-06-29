@@ -2,6 +2,7 @@ const buttonClassNames = {
   detail: 'users-table__detail-button',
   accordion: 'users-table__accordion-button',
   icon: 'users-table__icon-button',
+  bareIcon: 'users-table__bare-icon-button',
   pagination: 'users-table-pagination__button',
 }
 
@@ -18,6 +19,7 @@ function CreateButton({
     buttonClassNames[variant] ?? buttonClassNames.accordion,
     variant === 'accordion' && tone === 'danger' ? 'users-table__accordion-button--danger' : '',
     variant === 'icon' && tone === 'danger' ? 'users-table__icon-button--danger' : '',
+    variant === 'bareIcon' && tone === 'danger' ? 'users-table__bare-icon-button--danger' : '',
     variant === 'pagination' && active ? 'users-table-pagination__button--active' : '',
     className,
   ]
