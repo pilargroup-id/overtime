@@ -10,6 +10,10 @@ import {
 import '../../styles/template-style/TemplateComponents.css'
 
 function getInitials(name) {
+  if (!name) {
+    return 'U'
+  }
+
   return name
     .split(' ')
     .filter(Boolean)
@@ -156,7 +160,7 @@ function Sidebar({
   collapsed = false,
   mobileOpen = false,
   activePath = '/dashboard',
-  userName = 'Al fatih',
+  userName = 'Al Fatih',
   userRole = 'Frontend Developer',
   primaryItems = primaryNavigationItems,
   secondaryItems = secondaryNavigationItems,

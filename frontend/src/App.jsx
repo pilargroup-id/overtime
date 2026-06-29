@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
+import api from './services/api.js'
 
 import BackgroundMain from './components/template/BackgroundMain.jsx'
 import Header from './components/template/Header.jsx'
 import Sidebar from './components/template/Sidebar.jsx'
 import RequestOvertime from './pages/req-overtime/ReqOvertime.jsx'
-// import ApprovalOvertime from './pages/app-overtime/ApprovalOvertimePages.js'
+import ApprovalOvertime from './pages/approval-overtime/ApprovalOvertime.jsx'
+
+const DEFAULT_USER_PROFILE = {
+  name: 'Al Fatih',
+  role: 'Frontend Developer',
+}
 
 function getCurrentPath() {
   if (typeof window === 'undefined') {
@@ -14,10 +20,24 @@ function getCurrentPath() {
   return window.location.pathname === '/' ? '/RequestOvertime' : window.location.pathname
 }
 
+function getUserProfileFromAuthResponse(response) {
+  const authUser = response?.data
+
+  if (!authUser) {
+    return DEFAULT_USER_PROFILE
+  }
+
+  return {
+    name: authUser.name ?? authUser.username ?? DEFAULT_USER_PROFILE.name,
+    role: authUser.job_position ?? authUser.department_name ?? DEFAULT_USER_PROFILE.role,
+  }
+}
+
 function App() {
   const [activePath, setActivePath] = useState(getCurrentPath)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState(DEFAULT_USER_PROFILE)
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -28,6 +48,34 @@ function App() {
 
     return () => {
       window.removeEventListener('popstate', handleRouteChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadCurrentUser = async () => {
+      try {
+        const response = await api.auth.me()
+
+        if (!isMounted) {
+          return
+        }
+
+        setCurrentUser(getUserProfileFromAuthResponse(response))
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setCurrentUser(DEFAULT_USER_PROFILE)
+      }
+    }
+
+    loadCurrentUser()
+
+    return () => {
+      isMounted = false
     }
   }, [])
 
@@ -95,8 +143,8 @@ function App() {
         collapsed={sidebarCollapsed}
         mobileOpen={mobileSidebarOpen}
         activePath={activePath}
-        userName="Al Fatih"
-        userRole="Frontend Developer"
+        userName={currentUser.name}
+        userRole={currentUser.role}
         onToggleCollapse={() => setSidebarCollapsed((currentValue) => !currentValue)}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />

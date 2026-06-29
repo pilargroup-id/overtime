@@ -14,12 +14,11 @@ export const defaultNavigationPath = '/dashboard'
 export const implementedNavigationPaths = [
   '/RequestOvertime',
   '/ApprovalOvertime',
-  '/Reports',
-  '/Reports/TeamPerformance',
-  '/Table',
-  '/TableActions',
-  '/users',
-  '/Chart',
+  '/ReportOvertime',
+  '/Master',
+  '/Master/CompensationType',
+  '/Master/UserPermissions',
+  '/Master/ApprovalRules',
 ]
 
 export const primaryNavigationItems = [
@@ -36,52 +35,34 @@ export const primaryNavigationItems = [
     icon: TrendingUp,
   },
   {
-    id: 'projects-overview',
-    label: 'Projects Overview',
-    href: '/ProjectsOverview',
-    icon: Folder,
+    id: 'report-overtime',
+    label: 'Report Overtime',
+    href: '/ReportOvertime',
+  icon: Chart01,
   },
   {
-    id: 'reports',
-    label: 'Reports',
-    href: '/Reports',
-    icon: FileText01,
-    children: [
-      {
-        id: 'team-performance',
-        label: 'Team Performance',
-        href: '/Reports/TeamPerformance',
-      },
-      {
-        id : 'executive-insights',
-        label: 'Executive Insights',
-        href: '/Reports/ExecutiveInsights',
-      }
-    ]
-  },
-  {
-    id: 'table',
-    label: 'Table',
+    id: 'master',
+    label: 'Master',
+    href: '/Master',
     icon: Table01,
     children: [
       {
-        id: 'table-data',
-        label: 'Data Table',
-        href: '/Table',
+        id: 'compensation-type',
+        label: 'Compensation Types',
+        href: '/Master/CompensationType',
       },
       {
-        id: 'table-users',
-        label: 'Data Table Actions',
-        href: '/TableActions',
+        id : 'user-permissions',
+        label: 'User Permissions',
+        href: '/Master/UserPermissions',
       },
-    ],
+      {
+        id: 'approval-rules',
+        label: 'Approval Rules',
+        href: 'Master/ApprovalRules'
+      }
+    ]
   },
-  {
-    id: 'chart',
-    label: 'Chart',
-    href: '/Chart',
-    icon: Chart01,
-  }
 ]
 
 export const secondaryNavigationItems = [
