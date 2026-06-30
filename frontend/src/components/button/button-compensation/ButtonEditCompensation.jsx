@@ -1,7 +1,7 @@
 import CreateButton from '../CreateButton.jsx'
 import { Edit03 } from '../../template/TemplateIcons.jsx'
 
-function ButtonEditUserPermission({ className = '', title = 'Edit', ...buttonProps }) {
+function ButtonEditCompensation({ className = '', title = 'Edit', ...buttonProps }) {
   return (
     <CreateButton
       {...buttonProps}
@@ -18,4 +18,4 @@ function ButtonEditUserPermission({ className = '', title = 'Edit', ...buttonPro
   )
 }
 
-export default ButtonEditUserPermission
+export default ButtonEditCompensation

@@ -1,12 +1,12 @@
 
 import { useState } from 'react';
 
-import ButtonCreateUserPermission from '../../components/button/button-user-permissions/ButtonCreateUserPermission';
-import DataTableUserPermission from '../../components/table/dekstop/DataTableUserPermission.jsx'
+import ButtonCreateCompensation from '../../components/button/button-compensation/ButtonCreateCompensation';
+import DataTableCompensationType from '../../components/table/dekstop/DataTableCompensationType.jsx'
 
-function UserPermission({ activePage, searchQuery }) {
-  const [userPermissionRefreshKey, setUserPermissionRefreshKey] = useState(0)
-  const pageTitle = activePage?.title ?? 'User Permissions'
+function CompensationType({ activePage, searchQuery }) {
+  const [compensationTypeRefreshKey, setCompensationTypeRefreshKey] = useState(0)
+  const pageTitle = activePage?.title ?? 'Compensation Types'
   const pageEyebrow = activePage?.eyebrow ?? 'Master Data'
 
   return (
@@ -21,9 +21,9 @@ function UserPermission({ activePage, searchQuery }) {
         </div>
 
           <div className="users-table-card__actions">
-          <ButtonCreateUserPermission
+          <ButtonCreateCompensation
             onCreated={() =>
-              setUserPermissionRefreshKey((currentKey) => currentKey + 1)
+              setCompensationTypeRefreshKey((currentKey) => currentKey + 1)
             }
           />
         </div>
@@ -31,15 +31,15 @@ function UserPermission({ activePage, searchQuery }) {
 
       <div className="dashboard-stack">
         <p className="dashboard-stack__text">
-          Halaman user permissions sudah terhubung ke menu dan siap dilanjutkan untuk isi tabel
-          atau form akses user.
+          Halaman compensation types terhubung ke endpoint master compensation types untuk
+          membuat, mengubah, dan mengelola tipe kompensasi overtime.
         </p>
       </div>
 
-      <DataTableUserPermission
+      <DataTableCompensationType
         searchQuery={searchQuery}
         tableLabel={`${pageTitle} table`}
-        refreshKey={userPermissionRefreshKey}
+        refreshKey={compensationTypeRefreshKey}
       />
 
     </section>
@@ -47,4 +47,4 @@ function UserPermission({ activePage, searchQuery }) {
   )
 }
 
-export default UserPermission
+export default CompensationType

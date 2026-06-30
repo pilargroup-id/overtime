@@ -1,7 +1,7 @@
 import CreateButton from '../CreateButton.jsx'
 import { Trash03 } from '../../template/TemplateIcons.jsx'
 
-function ButtonDeleteUserPermission({ className = '', title = 'Delete', ...buttonProps }) {
+function ButtonDeleteCompensation({ className = '', title = 'Delete', ...buttonProps }) {
   return (
     <CreateButton
       {...buttonProps}
@@ -19,4 +19,5 @@ function ButtonDeleteUserPermission({ className = '', title = 'Delete', ...butto
   )
 }
 
-export default ButtonDeleteUserPermission
+export default ButtonDeleteCompensation
+
