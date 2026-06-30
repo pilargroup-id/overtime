@@ -9,6 +9,7 @@ import ApprovalOvertime from './pages/approval-overtime/ApprovalOvertime.jsx'
 import ReportOvertime from './pages/report-overtime/ReportOvertime.jsx'
 import UserPermission from './pages/user-permission/UserPermission.jsx'
 import CompensationType from './pages/compensation-type/CompensationType.jsx'
+import ApprovalRules from './pages/approval-rules/ApprovalRules.jsx'
 
 const DEFAULT_USER_PROFILE = {
   name: 'Al Fatih',
@@ -113,7 +114,9 @@ function App() {
       case '/Master/UserPermissions':
         return <UserPermission />
       case '/Master/CompensationType':
-        return <CompensationType /> 
+        return <CompensationType />
+      case '/Master/ApprovalRules':
+        return <ApprovalRules /> 
       default:
         return (
           <section className="dashboard-grid" aria-label="Not Found">
@@ -145,6 +148,8 @@ function App() {
         return 'User Permissions'
       case '/Maste/CompensationType':
         return 'Compensation Type'
+      case '/Master/ApprovalRules':
+        return 'ApprovalRules'
       default:
         return 'Overtime App'
     }
