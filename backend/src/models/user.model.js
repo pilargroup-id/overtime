@@ -51,6 +51,72 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+async function findUsersByIds(ids = []) {
+  const normalizedIds = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
+
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const [rows] = await centralDb.query(
+    `SELECT
+       cu.id,
+       cu.internal_id,
+       cu.username,
+       cu.email,
+       cu.name
+     FROM central_users cu
+     WHERE cu.id IN (?)
+     ORDER BY cu.name ASC`,
+    [normalizedIds]
+  );
+
+  return rows;
+}
+
+async function findDepartmentsByIds(ids = []) {
+  const normalizedIds = [...new Set(ids.filter((id) => id !== null && id !== undefined && id !== ''))];
+
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const [rows] = await centralDb.query(
+    `SELECT
+       md.id,
+       md.name,
+       md.code,
+       md.company_id
+     FROM master_departments md
+     WHERE md.id IN (?)
+     ORDER BY md.name ASC`,
+    [normalizedIds]
+  );
+
+  return rows;
+}
+
+async function findCompaniesByIds(ids = []) {
+  const normalizedIds = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
+
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const [rows] = await centralDb.query(
+    `SELECT
+       mc.id,
+       mc.code,
+       mc.name
+     FROM master_companies mc
+     WHERE mc.id IN (?)
+     ORDER BY mc.name ASC`,
+    [normalizedIds]
+  );
+
+  return rows;
+}
+
 async function findUserDepartments(userId) {
   const [rows] = await centralDb.query(
     `SELECT
@@ -313,6 +379,9 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
 module.exports = {
   findByUsername,
   findById,
+  findUsersByIds,
+  findDepartmentsByIds,
+  findCompaniesByIds,
   findUserDepartments,
   findUserCompanies,
   findUserProjects,

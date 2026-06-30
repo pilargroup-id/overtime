@@ -1,11 +1,8 @@
 import {
-  FileText01,
-  LayoutDashboard,
   LogOutLeft01,
   Ticket01,
   Table01,
   Chart01,
-  Folder,
   TrendingUp,
 } from '../../components/template/TemplateIcons.jsx'
 
@@ -52,16 +49,16 @@ export const primaryNavigationItems = [
         href: '/Master/CompensationType',
       },
       {
-        id : 'user-permissions',
+        id: 'user-permissions',
         label: 'User Permissions',
         href: '/Master/UserPermissions',
       },
       {
         id: 'approval-rules',
         label: 'Approval Rules',
-        href: 'Master/ApprovalRules'
-      }
-    ]
+        href: '/Master/ApprovalRules',
+      },
+    ],
   },
 ]
 

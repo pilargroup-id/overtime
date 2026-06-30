@@ -58,6 +58,7 @@ const createResource = (path) => ({
     api.get(`${path}/${id}`, { ...options, params }),
   create: (data, options) => api.post(path, data, options),
   update: (id, data, options) => api.put(`${path}/${id}`, data, options),
+  remove: (id, options) => api.delete(`${path}/${id}`, options),
 });
 
 const createReadOnlyResource = (path) => ({

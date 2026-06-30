@@ -1,4 +1,5 @@
 const UserPermissionModel = require('../../models/master/user-permission.model');
+const UserModel = require('../../models/user.model');
 
 const ALLOWED_PERMISSION_TYPES = [
   'REQUEST_CREATE_SCOPED',
@@ -31,6 +32,51 @@ function normalizeNullable(value) {
   if (value === undefined) return undefined;
   if (value === '') return null;
   return value;
+}
+
+function createMapById(rows = []) {
+  return new Map(rows.map((row) => [String(row.id), row]));
+}
+
+async function enrichWithDisplayNames(rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return rows;
+  }
+
+  const userIds = rows.flatMap((row) => [row.user_id, row.granted_by]);
+  const companyIds = rows.map((row) => row.company_id);
+  const departmentIds = rows.map((row) => row.department_id);
+
+  const [users, companies, departments] = await Promise.all([
+    UserModel.findUsersByIds(userIds),
+    UserModel.findCompaniesByIds(companyIds),
+    UserModel.findDepartmentsByIds(departmentIds),
+  ]);
+
+  const userMap = createMapById(users);
+  const companyMap = createMapById(companies);
+  const departmentMap = createMapById(departments);
+
+  return rows.map((row) => {
+    const user = userMap.get(String(row.user_id));
+    const grantedBy = userMap.get(String(row.granted_by));
+    const company = companyMap.get(String(row.company_id));
+    const department = departmentMap.get(String(row.department_id));
+
+    return {
+      ...row,
+      user_name: user?.name || null,
+      username: user?.username || null,
+      user_internal_id: user?.internal_id || null,
+      user_email: user?.email || null,
+      company_name: company?.name || null,
+      company_code: company?.code || null,
+      department_name: department?.name || null,
+      department_code: department?.code || null,
+      granted_by_name: grantedBy?.name || null,
+      granted_by_username: grantedBy?.username || null,
+    };
+  });
 }
 
 function validatePayload(payload, isUpdate = false) {
@@ -156,8 +202,10 @@ async function list(query) {
     UserPermissionModel.countAll(filters),
   ]);
 
+  const enrichedData = await enrichWithDisplayNames(data);
+
   return {
-    data,
+    data: enrichedData,
     meta: {
       page,
       limit,
@@ -168,7 +216,10 @@ async function list(query) {
 }
 
 async function getById(id) {
-  return UserPermissionModel.findById(id);
+  const row = await UserPermissionModel.findById(id);
+  const [enrichedRow = null] = await enrichWithDisplayNames(row ? [row] : []);
+
+  return enrichedRow;
 }
 
 async function create(payload, authUser) {

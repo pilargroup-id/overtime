@@ -6,6 +6,8 @@ import Header from './components/template/Header.jsx'
 import Sidebar from './components/template/Sidebar.jsx'
 import RequestOvertime from './pages/req-overtime/ReqOvertime.jsx'
 import ApprovalOvertime from './pages/approval-overtime/ApprovalOvertime.jsx'
+import ReportOvertime from './pages/report-overtime/ReportOvertime.jsx'
+import UserPermission from './pages/user-permission/UserPermission.jsx'
 
 const DEFAULT_USER_PROFILE = {
   name: 'Al Fatih',
@@ -105,6 +107,10 @@ function App() {
         return <RequestOvertime />
       case '/ApprovalOvertime':
         return <ApprovalOvertime />
+      case '/ReportOvertime':
+        return <ReportOvertime />
+      case '/Master/UserPermissions':
+        return <UserPermission />
       default:
         return (
           <section className="dashboard-grid" aria-label="Not Found">
@@ -130,6 +136,10 @@ function App() {
         return 'Request Overtime'
       case '/ApprovalOvertime':
         return 'Approval Overtime'
+      case '/ReportOvertime':
+        return 'Report Overtime'
+      case '/Master/UserPermissions':
+        return 'User Permissions'
       default:
         return 'Overtime App'
     }
