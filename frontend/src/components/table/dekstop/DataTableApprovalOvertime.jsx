@@ -5,7 +5,13 @@ import DataTable, {
   DataTableIdentity,
   DataTableStatus,
 } from '../DataTable.jsx'
-import { FileText01 } from '../../template/TemplateIcons.jsx'
+
+// import-button 
+import ButtonApprove from '../../button/button-approval-overtime/ButtonApprove.jsx'
+import ButtonReject from '../../button/button-approval-overtime/ButtonReject.jsx'
+
+// import-dialog
+import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/DialogValidationApproveRO.jsx'
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
@@ -136,11 +142,35 @@ function formatCompensation(row, compensationTypeMap) {
 }
 
 function getRequestStatus(row) {
-  return row?.request_status ?? row?.status ?? ''
+  const requestStatus = row?.request_status ?? row?.overtime_request_status ?? row?.request?.status
+
+  if (requestStatus) {
+    return requestStatus
+  }
+
+  const status = String(row?.status ?? '').toUpperCase()
+
+  return ['SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELED'].includes(status) ? row.status : ''
 }
 
 function getApprovalStatus(row) {
-  return row?.status ?? row?.approval_status ?? ''
+  const approvalStatus = row?.approval_status ?? row?.approval?.status
+
+  if (approvalStatus) {
+    return approvalStatus
+  }
+
+  const status = String(row?.status ?? '').toUpperCase()
+
+  return ['PENDING', 'APPROVED', 'REJECTED', 'CANCELED'].includes(status) ? row.status : ''
+}
+
+function normalizeStatus(value) {
+  return String(value ?? '').trim().toUpperCase()
+}
+
+function getApprovalId(row) {
+  return row?.approval_id ?? row?.id
 }
 
 function getApprovalTimeValue(row) {
@@ -166,10 +196,15 @@ function getStatusVariant(status) {
 }
 
 function isPendingRow(row) {
-  return (
-    String(getApprovalStatus(row)).toUpperCase() === 'PENDING' &&
-    String(getRequestStatus(row)).toUpperCase() === 'SUBMITTED'
-  )
+  const approvalStatus = normalizeStatus(getApprovalStatus(row))
+  const requestStatus = normalizeStatus(getRequestStatus(row))
+  const finalStatuses = ['APPROVED', 'REJECTED', 'CANCELED']
+
+  if (finalStatuses.includes(approvalStatus) || finalStatuses.includes(requestStatus)) {
+    return false
+  }
+
+  return approvalStatus === 'PENDING' || requestStatus === 'SUBMITTED' || !approvalStatus
 }
 
 function getPaginationSummary(firstItem, lastItem, totalItems) {
@@ -275,6 +310,11 @@ function DataTableApprovalOvertime({
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [compensationTypeMap, setCompensationTypeMap] = useState(() => new Map())
+  const [approvalDialog, setApprovalDialog] = useState({
+    action: 'approve',
+    request: null,
+    errorMessage: '',
+  })
 
   useEffect(() => {
     setCurrentPage(1)
@@ -364,41 +404,104 @@ function DataTableApprovalOvertime({
     }
   }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
 
-  const handleApprovalAction = async (row, action) => {
-    const approvalId = row?.id ?? row?.approval_id
+  const handleOpenApprovalDialog = (row, action) => {
+    if (!isPendingRow(row)) {
+      setErrorMessage('Hanya approval dengan status PENDING dan request SUBMITTED yang bisa diproses.')
+      return
+    }
+
+    const approvalId = getApprovalId(row)
 
     if (!approvalId) {
       setErrorMessage('Approval ID untuk row ini tidak ditemukan.')
       return
     }
 
+    setErrorMessage('')
+    setApprovalDialog({
+      action,
+      request: row,
+      errorMessage: '',
+    })
+  }
+
+  const handleCloseApprovalDialog = () => {
+    if (processingApprovalAction) {
+      return
+    }
+
+    setApprovalDialog({
+      action: 'approve',
+      request: null,
+      errorMessage: '',
+    })
+  }
+
+  const handleConfirmApprovalAction = async (note) => {
+    const row = approvalDialog.request
+    const action = approvalDialog.action
+    const approvalId = getApprovalId(row)
+
+    if (!approvalId) {
+      setApprovalDialog((currentDialog) => ({
+        ...currentDialog,
+        errorMessage: 'Approval ID untuk request ini tidak ditemukan.',
+      }))
+      return
+    }
+
+    const trimmedNote = String(note ?? '').trim()
+
+    if (!trimmedNote) {
+      setApprovalDialog((currentDialog) => ({
+        ...currentDialog,
+        errorMessage: 'Note wajib diisi sebelum melanjutkan approval.',
+      }))
+      return
+    }
+
     setProcessingApprovalAction(`${action}:${approvalId}`)
     setErrorMessage('')
+    setApprovalDialog((currentDialog) => ({
+      ...currentDialog,
+      errorMessage: '',
+    }))
 
     try {
       const response =
         action === 'approve'
-          ? await api.overtimeApprovals.approve(approvalId)
-          : await api.overtimeApprovals.reject(approvalId)
+          ? await api.overtimeApprovals.approve(approvalId, { note: trimmedNote })
+          : await api.overtimeApprovals.reject(approvalId, { note: trimmedNote })
 
       const nextRow = response?.data ?? null
 
       if (nextRow) {
         setApprovalRows((rows) =>
           rows.map((currentRow) =>
-            String(currentRow.id ?? currentRow.approval_id) === String(approvalId)
-              ? { ...currentRow, ...nextRow }
+            String(getApprovalId(currentRow)) === String(approvalId)
+              ? {
+                  ...currentRow,
+                  ...nextRow,
+                  id: currentRow.id ?? nextRow.approval_id,
+                  approval_id: nextRow.approval_id ?? currentRow.approval_id,
+                  status: nextRow.approval_status ?? nextRow.status ?? currentRow.status,
+                  request_status: nextRow.request_status ?? currentRow.request_status,
+                  note: trimmedNote,
+                  acted_at: nextRow.acted_at ?? nextRow.updated_at ?? new Date().toISOString(),
+                }
               : currentRow,
           ),
         )
       } else {
         setApprovalRows((rows) =>
           rows.map((currentRow) =>
-            String(currentRow.id ?? currentRow.approval_id) === String(approvalId)
+            String(getApprovalId(currentRow)) === String(approvalId)
               ? {
                   ...currentRow,
                   status: action === 'approve' ? 'APPROVED' : 'REJECTED',
+                  approval_status: action === 'approve' ? 'APPROVED' : 'REJECTED',
                   request_status: action === 'approve' ? 'APPROVED' : 'REJECTED',
+                  note: trimmedNote,
                   acted_at: new Date().toISOString(),
                 }
               : currentRow,
@@ -406,12 +509,19 @@ function DataTableApprovalOvertime({
         )
       }
 
+      setApprovalDialog({
+        action: 'approve',
+        request: null,
+        errorMessage: '',
+      })
       setReloadKey((key) => key + 1)
     } catch (error) {
-      setErrorMessage(
-        error?.message ||
+      setApprovalDialog((currentDialog) => ({
+        ...currentDialog,
+        errorMessage:
+          error?.message ||
           `Gagal ${action === 'approve' ? 'menyetujui' : 'menolak'} approval overtime.`,
-      )
+      }))
     } finally {
       setProcessingApprovalAction('')
     }
@@ -470,59 +580,60 @@ function DataTableApprovalOvertime({
           pagination={pagination}
           detail={{
             buttonLabel: 'Detail request',
-            buttonIcon: FileText01,
-            buttonIconOnly: true,
+            buttonHidden: true,
             columnLabel: 'Action',
+            indicatorColumnKey: 'request',
+            headerStyle: { width: '18%', minWidth: '204px', textAlign: 'center' },
+            cellStyle: { width: '18%', minWidth: '204px', textAlign: 'center' },
             eyebrow: 'Approval Overtime',
             title: (row) => formatValue(row.request_number),
-            description: (row) => formatValue(row.task_description),
             actions: [
               {
                 key: 'approve',
                 label: 'Approve',
-                hidden: (row) => !isPendingRow(row),
+                buttonComponent: ButtonApprove,
                 disabled: (row) =>
-                  processingApprovalAction === `approve:${row.id ?? row.approval_id}`,
-                onClick: (row) => handleApprovalAction(row, 'approve'),
+                  processingApprovalAction === `approve:${getApprovalId(row)}`,
+                onClick: (row) => handleOpenApprovalDialog(row, 'approve'),
               },
               {
                 key: 'reject',
                 label: 'Reject',
                 variant: 'danger',
-                hidden: (row) => !isPendingRow(row),
+                buttonComponent: ButtonReject,
                 disabled: (row) =>
-                  processingApprovalAction === `reject:${row.id ?? row.approval_id}`,
-                onClick: (row) => handleApprovalAction(row, 'reject'),
+                  processingApprovalAction === `reject:${getApprovalId(row)}`,
+                onClick: (row) => handleOpenApprovalDialog(row, 'reject'),
               },
             ],
             sections: (row) => [
-              {
-                title: 'Employee',
-                fields: [
-                  { label: 'Name', value: formatValue(row.employee_name_snapshot) },
-                  { label: 'Employee ID', value: formatValue(row.employee_internal_id_snapshot) },
-                  { label: 'Department', value: formatValue(row.department_name_snapshot) },
-                  { label: 'Company', value: formatValue(row.company_name_snapshot) },
-                ],
-              },
-              {
-                title: 'Approval',
-                fields: [
-                  { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
-                  { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
-                  { label: 'Approver', value: formatValue(row.approver_name_snapshot) },
-                  { label: 'Approval Time', value: formatDateTime(getApprovalTimeValue(row)) },
-                ],
-              },
-              {
-                title: 'Overtime',
-                fields: [
-                  { label: 'Day Type', value: formatValue(row.day_type) },
-                  { label: 'Work Date', value: formatDate(row.work_date) },
-                  { label: 'End Date', value: formatDate(row.end_date) },
-                  { label: 'Duration', value: formatDuration(row.total_minutes) },
-                ],
-              },
+              // {
+              //   title: 'Employee',
+              //   fields: [
+              //     { label: 'Name', value: formatValue(row.employee_name_snapshot) },
+              //     { label: 'Employee ID', value: formatValue(row.employee_internal_id_snapshot) },
+              //     { label: 'Department', value: formatValue(row.department_name_snapshot) },
+              //     { label: 'Company', value: formatValue(row.company_name_snapshot) },
+              //   ],
+              // },
+              // {
+              //   title: 'Approval',
+              //   fields: [
+              //     { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
+              //     { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
+              //     { label: 'Approver', value: formatValue(row.approver_name_snapshot) },
+              //     { label: 'Approval Time', value: formatDateTime(getApprovalTimeValue(row)) },
+              //   ],
+              // },
+              // {
+              //   title: 'Overtime',
+              //   fields: [
+              //     { label: 'Day Type', value: formatValue(row.day_type) },
+              //     { label: 'Work Date', value: formatDate(row.work_date) },
+              //     { label: 'End Date', value: formatDate(row.end_date) },
+              //     { label: 'Duration', value: formatDuration(row.total_minutes) },
+              //   ],
+              // },
               {
                 title: 'Result',
                 wide: true,
@@ -537,6 +648,16 @@ function DataTableApprovalOvertime({
           }}
         />
       </div>
+
+      <DialogValidationApproveRO
+        isOpen={Boolean(approvalDialog.request)}
+        request={approvalDialog.request}
+        action={approvalDialog.action}
+        isSubmitting={Boolean(processingApprovalAction)}
+        errorMessage={approvalDialog.errorMessage}
+        onClose={handleCloseApprovalDialog}
+        onConfirm={handleConfirmApprovalAction}
+      />
     </>
   )
 }

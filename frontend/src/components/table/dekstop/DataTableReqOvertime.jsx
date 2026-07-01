@@ -5,8 +5,8 @@ import DataTable, {
   DataTableIdentity,
   DataTableStatus,
 } from '../DataTable.jsx'
-import { FileText01, XCircle } from '../../template/TemplateIcons.jsx'
 import DialogValidationCancelRO from '../../Dialog/dialog-req-overtime/DialogValidationCancelRO.jsx'
+import ButtonCancelReqOvertime from '../../button/button-req-overtime/ButtonCancelReqOvertime.jsx'
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
@@ -151,8 +151,8 @@ function createColumns(compensationTypeMap) {
   {
     key: 'request',
     header: 'Request',
-    headerStyle: { width: '23%' },
-    cellStyle: { width: '23%' },
+    headerStyle: { width: '20%' },
+    cellStyle: { width: '20%' },
     render: (request) => (
       <DataTableIdentity
         title={formatValue(request.employee_name_snapshot)}
@@ -195,8 +195,8 @@ function createColumns(compensationTypeMap) {
   {
     key: 'duration',
     header: 'Duration',
-    headerStyle: { width: '12%' },
-    cellStyle: { width: '12%' },
+    headerStyle: { width: '10%' },
+    cellStyle: { width: '10%' },
     render: (request) => formatDuration(request.total_minutes),
   },
   {
@@ -417,43 +417,25 @@ function DataTableReqOvertime({
           pagination={pagination}
           detail={{
             buttonLabel: 'Detail request',
-            buttonIcon: FileText01,
-            buttonIconOnly: true,
+            buttonHidden: true,
             columnLabel: 'Action',
+            indicatorColumnKey: 'request',
+            headerStyle: { width: '12%', minWidth: '132px', textAlign: 'center' },
+            cellStyle: { width: '12%', minWidth: '132px', textAlign: 'center' },
             eyebrow: 'Request Overtime',
             title: (request) => formatValue(request.request_number),
-            description: (request) => formatValue(request.task_description),
             actions: [
               {
                 key: 'cancel',
                 label: 'Cancel request',
-                icon: XCircle,
                 variant: 'danger',
-                iconOnly: true,
+                buttonComponent: ButtonCancelReqOvertime,
                 hidden: (request) => isCanceledStatus(request.status),
                 disabled: (request) => String(cancelingRequestId) === String(request.id),
                 onClick: handleCancelRequest,
               },
             ],
             sections: (request) => [
-              {
-                title: 'Employee',
-                fields: [
-                  { label: 'Name', value: formatValue(request.employee_name_snapshot) },
-                  { label: 'Employee ID', value: formatValue(request.employee_internal_id_snapshot) },
-                  { label: 'Department', value: formatValue(request.department_name_snapshot) },
-                  { label: 'Company', value: formatValue(request.company_name_snapshot) },
-                ],
-              },
-              {
-                title: 'Overtime',
-                fields: [
-                  { label: 'Day Type', value: formatValue(request.day_type) },
-                  { label: 'Work Date', value: formatDate(request.work_date) },
-                  { label: 'End Date', value: formatDate(request.end_date) },
-                  { label: 'Duration', value: formatDuration(request.total_minutes) },
-                ],
-              },
               {
                 title: 'Result',
                 wide: true,

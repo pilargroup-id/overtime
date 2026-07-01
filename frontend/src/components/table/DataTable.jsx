@@ -288,7 +288,11 @@ function DataTable({
               ))}
 
               {hasDetail ? (
-                <th scope="col" className="users-table__detail-header">
+                <th
+                  scope="col"
+                  className="users-table__detail-header"
+                  style={detail.headerStyle}
+                >
                   {detail.columnLabel ?? 'Detail'}
                 </th>
               ) : null}
@@ -310,6 +314,7 @@ function DataTable({
                 const detailEyebrow = resolveTemplateValue(detail?.eyebrow, row, index)
                 const detailActions = getDetailActions(detail, row, index)
                 const DetailButtonIcon = detail?.buttonIcon ?? ChevronDown
+                const isDetailButtonHidden = detail?.buttonHidden === true
                 const detailButtonLabel = isExpanded ? 'Tutup detail' : 'Buka detail'
                 const rowClassName = [
                   'users-table__row',
@@ -332,42 +337,82 @@ function DataTable({
                       aria-expanded={hasDetail ? isExpanded : undefined}
                       aria-controls={hasDetail ? accordionId : undefined}
                     >
-                      {columns.map((column) => (
-                        <td
-                          key={column.key}
-                          className={column.cellClassName}
-                          style={column.cellStyle}
-                        >
-                          {renderBasicValue(getColumnValue(column, row, index))}
-                        </td>
-                      ))}
+                      {columns.map((column) => {
+                        const cellValue = renderBasicValue(getColumnValue(column, row, index))
+                        const hasDetailIndicator =
+                          hasDetail && detail?.indicatorColumnKey === column.key
+
+                        return (
+                          <td
+                            key={column.key}
+                            className={column.cellClassName}
+                            style={column.cellStyle}
+                          >
+                            {hasDetailIndicator ? (
+                              <div className="users-table__detail-indicator-cell">
+                                <CreateButton
+                                  variant="bareIcon"
+                                  type="button"
+                                  className="users-table__detail-indicator-button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleToggleRow(rowKey)
+                                  }}
+                                  aria-expanded={isExpanded}
+                                  aria-controls={accordionId}
+                                  aria-label={detail.buttonLabel ?? detailButtonLabel}
+                                  title={detail.buttonLabel ?? detailButtonLabel}
+                                >
+                                  <DetailButtonIcon
+                                    size={16}
+                                    aria-hidden="true"
+                                    className={`users-table__detail-icon${
+                                      isExpanded ? ' users-table__detail-icon--open' : ''
+                                    }`}
+                                  />
+                                </CreateButton>
+
+                                <div className="users-table__detail-indicator-content">
+                                  {cellValue}
+                                </div>
+                              </div>
+                            ) : (
+                              cellValue
+                            )}
+                          </td>
+                        )
+                      })}
 
                       {hasDetail ? (
-                        <td className="users-table__detail-cell">
-                          <CreateButton
-                            variant="detail"
-                            type="button"
-                            className={detail?.buttonIconOnly ? 'users-table__detail-button--icon-only' : ''}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleToggleRow(rowKey)
-                            }}
-                            aria-expanded={isExpanded}
-                            aria-controls={accordionId}
-                            aria-label={detail.buttonLabel ?? detailButtonLabel}
-                            title={detail.buttonLabel ?? detailButtonLabel}
-                          >
-                            {detail?.buttonIconOnly ? null : (
-                              <span>{detail.buttonLabel ?? 'Detail'}</span>
-                            )}
-                            <DetailButtonIcon
-                              size={detail?.buttonIconOnly ? 18 : 16}
-                              aria-hidden="true"
-                              className={`users-table__detail-icon${
-                                isExpanded ? ' users-table__detail-icon--open' : ''
-                              }`}
-                            />
-                          </CreateButton>
+                        <td className="users-table__detail-cell" style={detail.cellStyle}>
+                          {isDetailButtonHidden ? null : (
+                            <CreateButton
+                              variant="detail"
+                              type="button"
+                              className={
+                                detail?.buttonIconOnly ? 'users-table__detail-button--icon-only' : ''
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleToggleRow(rowKey)
+                              }}
+                              aria-expanded={isExpanded}
+                              aria-controls={accordionId}
+                              aria-label={detail.buttonLabel ?? detailButtonLabel}
+                              title={detail.buttonLabel ?? detailButtonLabel}
+                            >
+                              {detail?.buttonIconOnly ? null : (
+                                <span>{detail.buttonLabel ?? 'Detail'}</span>
+                              )}
+                              <DetailButtonIcon
+                                size={detail?.buttonIconOnly ? 18 : 16}
+                                aria-hidden="true"
+                                className={`users-table__detail-icon${
+                                  isExpanded ? ' users-table__detail-icon--open' : ''
+                                }`}
+                              />
+                            </CreateButton>
+                          )}
 
                           {detailActions.map((action) => {
                             if (action.hidden?.(row, index)) {
@@ -377,6 +422,22 @@ function DataTable({
                             const Icon = action.icon
                             const buttonLabel = action.label ?? action.key ?? 'Action'
                             const isIconOnlyAction = Boolean(action.iconOnly)
+                            const ActionButton = action.buttonComponent
+
+                            if (ActionButton) {
+                              return (
+                                <ActionButton
+                                  key={action.key ?? buttonLabel}
+                                  disabled={action.disabled?.(row, index) ?? action.disabled}
+                                  aria-label={buttonLabel}
+                                  title={buttonLabel}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    action.onClick?.(row, index, event)
+                                  }}
+                                />
+                              )
+                            }
 
                             return (
                               <CreateButton

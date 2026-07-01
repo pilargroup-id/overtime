@@ -2924,6 +2924,33 @@ select {
     0 10px 20px rgba(26, 42, 87, 0.08);
 }
 
+.users-table__detail-indicator-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.users-table__detail-indicator-button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid rgba(26, 42, 87, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  color: #1a2a57;
+  box-shadow: 0 10px 22px rgba(26, 42, 87, 0.08);
+}
+
+.users-table__detail-indicator-button:hover {
+  background: #fff;
+  opacity: 1;
+}
+
+.users-table__detail-indicator-content {
+  min-width: 0;
+}
+
 .users-table__detail-icon {
   flex-shrink: 0;
   transition: transform 0.2s ease;
@@ -3043,6 +3070,50 @@ select {
 
 .user-permission-action-button + .user-permission-action-button {
   margin-left: 0.75rem;
+}
+
+.req-overtime-action-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(26, 42, 87, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(26, 42, 87, 0.08);
+}
+
+.req-overtime-action-button:hover {
+  background: #fff;
+  opacity: 1;
+}
+
+.req-overtime-action-button:focus-visible {
+  border-radius: 12px;
+}
+
+.approval-overtime-action-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(26, 42, 87, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(26, 42, 87, 0.08);
+}
+
+.approval-overtime-action-button:hover {
+  background: #fff;
+  opacity: 1;
+}
+
+.approval-overtime-action-button:focus-visible {
+  border-radius: 12px;
+}
+
+.approval-overtime-action-button--approve {
+  color: #18786e;
+}
+
+.approval-overtime-action-button--reject {
+  color: #b42318;
 }
 
 .users-table__apps {
