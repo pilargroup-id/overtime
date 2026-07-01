@@ -23,6 +23,45 @@ const getStoredAuthToken = () => {
   return window.localStorage.getItem(authTokenStorageKey);
 };
 
+const getTokenFromUrl = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const readToken = (params) =>
+    params.get('token') || params.get('access_token') || params.get('auth_token');
+
+  const searchToken = readToken(new URLSearchParams(window.location.search));
+
+  if (searchToken) {
+    return searchToken;
+  }
+
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, ''));
+
+  return readToken(hashParams);
+};
+
+const removeTokenFromUrl = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  let hasTokenParam = false;
+
+  ['token', 'access_token', 'auth_token'].forEach((key) => {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      hasTokenParam = true;
+    }
+  });
+
+  if (hasTokenParam) {
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+};
+
 const setStoredAuthToken = (token) => {
   if (!canUseLocalStorage()) {
     return;
@@ -37,6 +76,14 @@ const setStoredAuthToken = (token) => {
 };
 
 const initializeStoredAuthToken = () => {
+  const urlToken = getTokenFromUrl();
+
+  if (urlToken) {
+    setStoredAuthToken(urlToken);
+    removeTokenFromUrl();
+    return urlToken;
+  }
+
   const storedToken = getStoredAuthToken();
 
   if (storedToken) {
