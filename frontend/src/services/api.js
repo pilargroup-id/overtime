@@ -1,6 +1,55 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
+const DEFAULT_API_BASE_URL = '/api';
+const DEFAULT_AUTH_TOKEN_STORAGE_KEY = 'overtime_auth_token';
+
+const authTokenStorageKey =
+  import.meta.env.VITE_AUTH_TOKEN_STORAGE_KEY || DEFAULT_AUTH_TOKEN_STORAGE_KEY;
+const envAuthToken = import.meta.env.VITE_AUTH_TOKEN || '';
 
 const normalizeBaseUrl = (url) => url.replace(/\/+$/, '');
+
+const canUseLocalStorage = () => {
+  try {
+    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+  } catch {
+    return false;
+  }
+};
+
+const getStoredAuthToken = () => {
+  if (!canUseLocalStorage()) {
+    return null;
+  }
+
+  return window.localStorage.getItem(authTokenStorageKey);
+};
+
+const setStoredAuthToken = (token) => {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  if (token) {
+    window.localStorage.setItem(authTokenStorageKey, token);
+    return;
+  }
+
+  window.localStorage.removeItem(authTokenStorageKey);
+};
+
+const initializeStoredAuthToken = () => {
+  const storedToken = getStoredAuthToken();
+
+  if (storedToken) {
+    return storedToken;
+  }
+
+  if (envAuthToken) {
+    setStoredAuthToken(envAuthToken);
+    return envAuthToken;
+  }
+
+  return null;
+};
 
 const buildQueryString = (params = {}) => {
   const searchParams = new URLSearchParams();
@@ -37,8 +86,8 @@ export class ApiError extends Error {
   }
 }
 
-let authToken = null;
-let authTokenGetter = null;
+let authToken = initializeStoredAuthToken();
+let authTokenGetter = getStoredAuthToken;
 
 const resolveToken = (tokenFromRequest) => {
   if (tokenFromRequest) {
@@ -150,10 +199,12 @@ const api = {
 
   setToken(token) {
     authToken = token;
+    setStoredAuthToken(token);
   },
 
   clearToken() {
     authToken = null;
+    setStoredAuthToken(null);
   },
 
   setTokenGetter(getter) {

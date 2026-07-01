@@ -67,7 +67,7 @@ function App() {
         }
 
         setCurrentUser(getUserProfileFromAuthResponse(response))
-      } catch (error) {
+      } catch {
         if (!isMounted) {
           return
         }
