@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
-import { XClose } from '../../template/TemplateIcons.jsx'
+import { ChevronDown, ChevronUp, XClose } from '../../template/TemplateIcons.jsx'
 import Time24HourInput from './Time24HourInput.jsx'
 
 const initialFormValues = {
@@ -107,6 +107,7 @@ function DialogCreateBulkReqOvertime({
   onCreated,
 }) {
   const [formValues, setFormValues] = useState(initialFormValues)
+  const [employeeSearchQuery, setEmployeeSearchQuery] = useState('')
   const [eligibleEmployees, setEligibleEmployees] = useState([])
   const [compensationTypes, setCompensationTypes] = useState([])
   const [isLoadingEligibleEmployees, setIsLoadingEligibleEmployees] = useState(false)
@@ -117,6 +118,7 @@ function DialogCreateBulkReqOvertime({
 
   const resetDialogState = useCallback(() => {
     setFormValues(initialFormValues)
+    setEmployeeSearchQuery('')
     setIsEmployeeDropdownOpen(false)
     setIsSubmitting(false)
     setErrorMessage('')
@@ -237,6 +239,15 @@ function DialogCreateBulkReqOvertime({
     }))
   }
 
+  const handleEmployeeRemove = (employeeId) => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      employee_ids: currentValues.employee_ids.filter(
+        (selectedEmployeeId) => selectedEmployeeId !== employeeId,
+      ),
+    }))
+  }
+
   const buildPayload = () => ({
     employee_ids: formValues.employee_ids,
     day_type: formValues.day_type,
@@ -300,6 +311,22 @@ function DialogCreateBulkReqOvertime({
   const selectedEmployees = eligibleEmployees.filter((employee) =>
     formValues.employee_ids.includes(employee.id),
   )
+  const normalizedEmployeeSearchQuery = employeeSearchQuery.trim().toLowerCase()
+  const filteredEmployees = eligibleEmployees.filter((employee) => {
+    if (!normalizedEmployeeSearchQuery) {
+      return true
+    }
+
+    return [
+      employee?.name,
+      employee?.username,
+      employee?.email,
+      employee?.internal_id,
+      employee?.id,
+    ].some((value) =>
+      String(value ?? '').toLowerCase().includes(normalizedEmployeeSearchQuery),
+    )
+  })
   const employeeDropdownLabel = isLoadingEligibleEmployees
     ? 'Loading eligible employees...'
     : selectedEmployees.length
@@ -351,7 +378,14 @@ function DialogCreateBulkReqOvertime({
                     >
                       Employee
                     </label>
-                    <div className="overtime-create-popup__employee-dropdown">
+                    <div
+                      className="overtime-create-popup__employee-dropdown"
+                      onBlur={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                          setIsEmployeeDropdownOpen(false)
+                        }
+                      }}
+                    >
                       <button
                         id="bulk-req-overtime-employee-dropdown"
                         type="button"
@@ -361,37 +395,70 @@ function DialogCreateBulkReqOvertime({
                         }
                         disabled={isSubmitting || isLoadingEligibleEmployees}
                         aria-expanded={isEmployeeDropdownOpen}
+                        aria-haspopup="listbox"
                       >
                         <span>{employeeDropdownLabel}</span>
-                        <span aria-hidden="true">v</span>
+                        {isEmployeeDropdownOpen ? (
+                          <ChevronUp size={18} aria-hidden="true" />
+                        ) : (
+                          <ChevronDown size={18} aria-hidden="true" />
+                        )}
                       </button>
 
                       {isEmployeeDropdownOpen ? (
                         <div className="overtime-create-popup__employee-menu">
-                          {eligibleEmployees.length > 0 ? (
-                            eligibleEmployees.map((employee) => {
-                              const employeeId = employee.id
+                          <input
+                            type="text"
+                            className="register-user-popup__input overtime-create-popup__employee-search"
+                            value={employeeSearchQuery}
+                            placeholder="Cari nama / username / email / internal id"
+                            onChange={(event) => setEmployeeSearchQuery(event.target.value)}
+                            autoFocus
+                          />
+                          <div
+                            className="overtime-create-popup__employee-options"
+                            role="listbox"
+                            aria-label="Employee"
+                          >
+                            {filteredEmployees.length > 0 ? (
+                              filteredEmployees.map((employee) => {
+                                const employeeId = employee.id
+                                const isSelected = formValues.employee_ids.includes(employeeId)
 
-                              return (
-                                <label
-                                  key={employeeId}
-                                  className="overtime-create-popup__employee-option"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={formValues.employee_ids.includes(employeeId)}
-                                    onChange={() => handleEmployeeToggle(employeeId)}
-                                    disabled={isSubmitting}
-                                  />
-                                  <span>{getEmployeeLabel(employee)}</span>
-                                </label>
-                              )
-                            })
-                          ) : (
-                            <p className="overtime-create-popup__employee-empty">
-                              Tidak ada eligible employee.
-                            </p>
-                          )}
+                                return (
+                                  <div
+                                    key={employeeId}
+                                    className="overtime-create-popup__employee-option"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => handleEmployeeToggle(employeeId)}
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    tabIndex={0}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault()
+                                        handleEmployeeToggle(employeeId)
+                                      }
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => {}}
+                                      disabled={isSubmitting}
+                                      readOnly
+                                      tabIndex={-1}
+                                    />
+                                    <span>{getEmployeeLabel(employee)}</span>
+                                  </div>
+                                )
+                              })
+                            ) : (
+                              <p className="overtime-create-popup__employee-empty">
+                                Tidak ada employee yang sesuai.
+                              </p>
+                            )}
+                          </div>
                         </div>
                       ) : null}
                     </div>
@@ -399,9 +466,20 @@ function DialogCreateBulkReqOvertime({
                       Pilih satu atau lebih employee untuk bulk request.
                     </p>
                     {selectedEmployees.length > 0 ? (
-                      <div className="overtime-create-popup__employee-selected">
+                      <div className="overtime-create-popup__employee-selected" role="list">
                         {selectedEmployees.map((employee) => (
-                          <span key={employee.id}>{getEmployeeLabel(employee)}</span>
+                          <span key={employee.id} role="listitem">
+                            {getEmployeeLabel(employee)}
+                            <button
+                              type="button"
+                              className="overtime-create-popup__employee-tab-close"
+                              aria-label={`Batalkan ${getEmployeeLabel(employee)}`}
+                              onClick={() => handleEmployeeRemove(employee.id)}
+                              disabled={isSubmitting}
+                            >
+                              <XClose size={14} />
+                            </button>
+                          </span>
                         ))}
                       </div>
                     ) : null}

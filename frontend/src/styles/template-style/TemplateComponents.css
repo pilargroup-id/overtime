@@ -4214,6 +4214,12 @@ select {
   font-weight: 700;
 }
 
+.overtime-create-popup__employee-option[aria-selected='true'] {
+  background: rgba(42, 157, 143, 0.1);
+  color: var(--secondary-teal);
+  font-weight: 700;
+}
+
 .overtime-create-popup__employee-option:hover {
   background: rgba(42, 157, 143, 0.08);
 }
@@ -4238,12 +4244,39 @@ select {
 }
 
 .overtime-create-popup__employee-selected span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
   background: rgba(42, 157, 143, 0.1);
   color: var(--secondary-teal);
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.overtime-create-popup__employee-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(42, 157, 143, 0.14);
+  color: var(--secondary-teal);
+  cursor: pointer;
+}
+
+.overtime-create-popup__employee-tab-close:hover {
+  background: rgba(42, 157, 143, 0.22);
+}
+
+.overtime-create-popup__employee-tab-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .register-user-popup--users {
