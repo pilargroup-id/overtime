@@ -78,9 +78,47 @@ async function reject(req, res, next) {
   }
 }
 
+async function bulkApprove(req, res, next) {
+  try {
+    const result = await ApprovalService.bulkApprove(req.body, req.user);
+
+    return R.ok(res, result, 'Overtime requests approved successfully');
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return R.badRequest(res, err.message, err.errors || null);
+    }
+
+    if (err.statusCode === 403) {
+      return R.forbidden(res, err.message);
+    }
+
+    return next(err);
+  }
+}
+
+async function bulkReject(req, res, next) {
+  try {
+    const result = await ApprovalService.bulkReject(req.body, req.user);
+
+    return R.ok(res, result, 'Overtime requests rejected successfully');
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return R.badRequest(res, err.message, err.errors || null);
+    }
+
+    if (err.statusCode === 403) {
+      return R.forbidden(res, err.message);
+    }
+
+    return next(err);
+  }
+}
+
 module.exports = {
   index,
   show,
   approve,
   reject,
+  bulkApprove,
+  bulkReject,
 };

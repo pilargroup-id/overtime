@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
+import Time24HourInput from './Time24HourInput.jsx'
 
 const initialFormValues = {
   employee_ids: [],
@@ -440,15 +441,25 @@ function DialogCreateBulkReqOvertime({
                       >
                         {field.label}
                       </label>
-                      <input
-                        id={`req-overtime-${field.name}`}
-                        name={field.name}
-                        type={field.type}
-                        className="register-user-popup__input"
-                        value={formValues[field.name]}
-                        onChange={handleInputChange}
-                        disabled={isSubmitting}
-                      />
+                      {field.type === 'time' ? (
+                        <Time24HourInput
+                          id={`req-overtime-${field.name}`}
+                          name={field.name}
+                          value={formValues[field.name]}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                        />
+                      ) : (
+                        <input
+                          id={`req-overtime-${field.name}`}
+                          name={field.name}
+                          type={field.type}
+                          className="register-user-popup__input"
+                          value={formValues[field.name]}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                        />
+                      )}
                     </div>
                   ))}
 

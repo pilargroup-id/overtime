@@ -19,6 +19,20 @@ router.get(
 );
 
 router.put(
+  '/bulk/approve',
+  authenticate,
+  requireApp('overtime'),
+  ApprovalController.bulkApprove
+);
+
+router.put(
+  '/bulk/reject',
+  authenticate,
+  requireApp('overtime'),
+  ApprovalController.bulkReject
+);
+
+router.put(
   '/:id/approve',
   authenticate,
   requireApp('overtime'),

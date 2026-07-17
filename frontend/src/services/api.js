@@ -301,6 +301,10 @@ const api = {
       api.put(`/overtime/approvals/${id}/approve`, data, options),
     reject: (id, data = {}, options) =>
       api.put(`/overtime/approvals/${id}/reject`, data, options),
+    bulkApprove: (data = {}, options) =>
+      api.put('/overtime/approvals/bulk/approve', data, options),
+    bulkReject: (data = {}, options) =>
+      api.put('/overtime/approvals/bulk/reject', data, options),
   },
 
   overtimeReports: {

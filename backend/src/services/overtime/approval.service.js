@@ -83,6 +83,29 @@ function assertCanAct(approval, authUser) {
   }
 }
 
+function normalizeBulkIds(payload = {}) {
+  const rawIds = Array.isArray(payload.ids)
+    ? payload.ids
+    : Array.isArray(payload.approval_ids)
+      ? payload.approval_ids
+      : [];
+  const ids = [...new Set(rawIds.map((id) => String(id ?? '').trim()).filter(Boolean))];
+
+  if (ids.length === 0) {
+    throw createValidationError({
+      ids: 'At least one approval id is required',
+    });
+  }
+
+  if (ids.length > 100) {
+    throw createValidationError({
+      ids: 'Maximum 100 approvals can be processed at once',
+    });
+  }
+
+  return ids;
+}
+
 async function approve(id, payload, authUser) {
   const approval = await ApprovalModel.findById(id);
 
@@ -169,9 +192,83 @@ async function reject(id, payload, authUser) {
   }
 }
 
+async function bulkAct(payload, authUser, action) {
+  const ids = normalizeBulkIds(payload);
+  const note = payload?.note || null;
+  const approvals = [];
+
+  for (const id of ids) {
+    const approval = await ApprovalModel.findById(id);
+
+    if (!approval) {
+      throw createValidationError({
+        ids: `Overtime approval ${id} not found`,
+      });
+    }
+
+    assertCanAct(approval, authUser);
+    approvals.push(approval);
+  }
+
+  const conn = await db.getConnection();
+  const isApprove = action === 'approve';
+  const nextStatus = isApprove ? 'APPROVED' : 'REJECTED';
+
+  try {
+    await conn.beginTransaction();
+
+    for (const approval of approvals) {
+      if (isApprove) {
+        await ApprovalModel.approve(approval.id, note, conn);
+        await RequestModel.markApproved(approval.request_id, conn);
+      } else {
+        await ApprovalModel.reject(approval.id, note, conn);
+        await RequestModel.markRejected(approval.request_id, conn);
+      }
+
+      await LogModel.create(
+        {
+          request_id: approval.request_id,
+          actor_id: authUser.id,
+          actor_name_snapshot: authUser.name,
+          action: nextStatus,
+          from_status: approval.request_status,
+          to_status: nextStatus,
+          note,
+        },
+        conn
+      );
+    }
+
+    await conn.commit();
+
+    const data = await Promise.all(ids.map((id) => ApprovalModel.findById(id)));
+
+    return {
+      count: data.filter(Boolean).length,
+      data: data.filter(Boolean),
+    };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+async function bulkApprove(payload, authUser) {
+  return bulkAct(payload, authUser, 'approve');
+}
+
+async function bulkReject(payload, authUser) {
+  return bulkAct(payload, authUser, 'reject');
+}
+
 module.exports = {
   list,
   getById,
   approve,
   reject,
+  bulkApprove,
+  bulkReject,
 };

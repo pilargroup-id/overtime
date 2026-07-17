@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import api from '../../../services/api.js'
 import DataTable, {
@@ -9,6 +9,8 @@ import DataTable, {
 // import-button 
 import ButtonApprove from '../../button/button-approval-overtime/ButtonApprove.jsx'
 import ButtonReject from '../../button/button-approval-overtime/ButtonReject.jsx'
+import ButtonMultiApprove from '../../button/button-approval-overtime/ButtonMultiApprove.jsx'
+import ButtonMultiReject from '../../button/button-approval-overtime/ButtonMultiReject.jsx'
 
 // import-dialog
 import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/DialogValidationApproveRO.jsx'
@@ -173,6 +175,10 @@ function getApprovalId(row) {
   return row?.approval_id ?? row?.id
 }
 
+function getApprovalRowId(row, index) {
+  return row.id ?? row.approval_id ?? row.request_id ?? index
+}
+
 function getApprovalTimeValue(row) {
   return row?.acted_at ?? row?.approved_at ?? row?.rejected_at ?? row?.updated_at ?? null
 }
@@ -215,11 +221,86 @@ function getPaginationSummary(firstItem, lastItem, totalItems) {
   return `${firstItem}-${lastItem} dari ${totalItems} approval`
 }
 
-function createColumns(compensationTypeMap) {
+function DataTableSelectionCheckbox({
+  checked,
+  indeterminate = false,
+  disabled = false,
+  ariaLabel,
+  onChange,
+}) {
+  const checkboxRef = useRef(null)
+
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = indeterminate
+    }
+  }, [indeterminate])
+
+  return (
+    <input
+      ref={checkboxRef}
+      type="checkbox"
+      className="approval-overtime-table__checkbox"
+      checked={checked}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onClick={(event) => event.stopPropagation()}
+      onChange={onChange}
+    />
+  )
+}
+
+function createColumns(
+  compensationTypeMap,
+  {
+    showSelection,
+    selectedApprovalIds,
+    isAllCurrentPageSelected,
+    isSomeCurrentPageSelected,
+    hasCurrentPageRows,
+    onToggleAllCurrentPage,
+    onToggleRow,
+  },
+) {
   return [
+    ...(showSelection
+      ? [
+          {
+            key: 'select',
+            header: (
+              <DataTableSelectionCheckbox
+                checked={isAllCurrentPageSelected}
+                indeterminate={isSomeCurrentPageSelected}
+                disabled={!hasCurrentPageRows}
+                ariaLabel="Pilih semua approval overtime di halaman ini"
+                onChange={(event) => onToggleAllCurrentPage(event.target.checked)}
+              />
+            ),
+            headerClassName: 'approval-overtime-table__select-header',
+            cellClassName: 'approval-overtime-table__select-cell',
+            headerStyle: { width: '30px', minWidth: '30px', textAlign: 'center' },
+            cellStyle: { width: '30px', minWidth: '30px', textAlign: 'center' },
+            render: (row, index) => {
+              const rowId = String(getApprovalRowId(row, index))
+              const isSelectable = isPendingRow(row) && Boolean(getApprovalId(row))
+
+              return (
+                <DataTableSelectionCheckbox
+                  checked={selectedApprovalIds.has(rowId)}
+                  disabled={!isSelectable}
+                  ariaLabel={`Pilih approval overtime ${formatValue(row.request_number)}`}
+                  onChange={(event) => onToggleRow(row, index, event.target.checked)}
+                />
+              )
+            },
+          },
+        ]
+      : []),
     {
       key: 'request',
       header: 'Request',
+      headerClassName: 'approval-overtime-table__request-header',
+      cellClassName: 'approval-overtime-table__request-cell',
       headerStyle: { width: '23%' },
       cellStyle: { width: '23%' },
       render: (row) => (
@@ -297,6 +378,7 @@ function createColumns(compensationTypeMap) {
 
 function DataTableApprovalOvertime({
   searchQuery = '',
+  statusFilter = '',
   tableLabel = 'Approval Overtime table',
   refreshKey = 0,
 }) {
@@ -310,15 +392,47 @@ function DataTableApprovalOvertime({
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [compensationTypeMap, setCompensationTypeMap] = useState(() => new Map())
+  const [selectedApprovalIds, setSelectedApprovalIds] = useState(() => new Set())
   const [approvalDialog, setApprovalDialog] = useState({
     action: 'approve',
     request: null,
+    requests: [],
     errorMessage: '',
   })
+  const showSelection = normalizeStatus(statusFilter) === 'PENDING'
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery])
+    setSelectedApprovalIds(new Set())
+  }, [searchQuery, statusFilter])
+
+  const selectableApprovalRows = useMemo(
+    () =>
+      showSelection
+        ? approvalRows
+            .map((row, index) => ({ row, index, rowId: String(getApprovalRowId(row, index)) }))
+            .filter(({ row }) => isPendingRow(row) && Boolean(getApprovalId(row)))
+        : [],
+    [approvalRows, showSelection],
+  )
+  const currentPageApprovalIds = useMemo(
+    () => selectableApprovalRows.map(({ rowId }) => rowId),
+    [selectableApprovalRows],
+  )
+
+  useEffect(() => {
+    const currentPageIdSet = new Set(currentPageApprovalIds)
+
+    setSelectedApprovalIds((currentSelectedIds) => {
+      const nextSelectedIds = new Set(
+        [...currentSelectedIds].filter((approvalId) => currentPageIdSet.has(approvalId)),
+      )
+
+      return nextSelectedIds.size === currentSelectedIds.size
+        ? currentSelectedIds
+        : nextSelectedIds
+    })
+  }, [currentPageApprovalIds])
 
   useEffect(() => {
     let isMounted = true
@@ -369,6 +483,8 @@ function DataTableApprovalOvertime({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
+          status: statusFilter,
+          request_status: statusFilter === 'PENDING' ? 'SUBMITTED' : '',
         })
 
         if (!isMounted) {
@@ -402,7 +518,7 @@ function DataTableApprovalOvertime({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
+  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery, statusFilter])
 
   const handleOpenApprovalDialog = (row, action) => {
     if (!isPendingRow(row)) {
@@ -421,7 +537,47 @@ function DataTableApprovalOvertime({
     setApprovalDialog({
       action,
       request: row,
+      requests: [],
       errorMessage: '',
+    })
+  }
+
+  const handleOpenBulkApprovalDialog = (action) => {
+    const selectedRows = selectableApprovalRows
+      .filter(({ rowId }) => selectedApprovalIds.has(rowId))
+      .map(({ row }) => row)
+
+    if (selectedRows.length === 0) {
+      setErrorMessage('Pilih minimal satu approval overtime yang masih PENDING.')
+      return
+    }
+
+    setErrorMessage('')
+    setApprovalDialog({
+      action,
+      request: selectedRows[0] ?? null,
+      requests: selectedRows,
+      errorMessage: '',
+    })
+  }
+
+  const handleToggleAllCurrentPage = (checked) => {
+    setSelectedApprovalIds(() => (checked ? new Set(currentPageApprovalIds) : new Set()))
+  }
+
+  const handleToggleApprovalRow = (row, index, checked) => {
+    const rowId = String(getApprovalRowId(row, index))
+
+    setSelectedApprovalIds((currentSelectedIds) => {
+      const nextSelectedIds = new Set(currentSelectedIds)
+
+      if (checked) {
+        nextSelectedIds.add(rowId)
+      } else {
+        nextSelectedIds.delete(rowId)
+      }
+
+      return nextSelectedIds
     })
   }
 
@@ -433,6 +589,7 @@ function DataTableApprovalOvertime({
     setApprovalDialog({
       action: 'approve',
       request: null,
+      requests: [],
       errorMessage: '',
     })
   }
@@ -440,9 +597,11 @@ function DataTableApprovalOvertime({
   const handleConfirmApprovalAction = async (note) => {
     const row = approvalDialog.request
     const action = approvalDialog.action
+    const bulkRows = approvalDialog.requests ?? []
+    const isBulkAction = bulkRows.length > 1
     const approvalId = getApprovalId(row)
 
-    if (!approvalId) {
+    if (!isBulkAction && !approvalId) {
       setApprovalDialog((currentDialog) => ({
         ...currentDialog,
         errorMessage: 'Approval ID untuk request ini tidak ditemukan.',
@@ -457,6 +616,51 @@ function DataTableApprovalOvertime({
         ...currentDialog,
         errorMessage: 'Note wajib diisi sebelum melanjutkan approval.',
       }))
+      return
+    }
+
+    if (isBulkAction) {
+      const approvalIds = bulkRows.map(getApprovalId).filter(Boolean)
+
+      if (approvalIds.length === 0) {
+        setApprovalDialog((currentDialog) => ({
+          ...currentDialog,
+          errorMessage: 'Approval ID untuk request terpilih tidak ditemukan.',
+        }))
+        return
+      }
+
+      setProcessingApprovalAction(`bulk:${action}`)
+      setErrorMessage('')
+      setApprovalDialog((currentDialog) => ({
+        ...currentDialog,
+        errorMessage: '',
+      }))
+
+      try {
+        await (action === 'approve'
+          ? api.overtimeApprovals.bulkApprove({ ids: approvalIds, note: trimmedNote })
+          : api.overtimeApprovals.bulkReject({ ids: approvalIds, note: trimmedNote }))
+
+        setSelectedApprovalIds(new Set())
+        setApprovalDialog({
+          action: 'approve',
+          request: null,
+          requests: [],
+          errorMessage: '',
+        })
+        setReloadKey((key) => key + 1)
+      } catch (error) {
+        setApprovalDialog((currentDialog) => ({
+          ...currentDialog,
+          errorMessage:
+            error?.message ||
+            `Gagal ${action === 'approve' ? 'menyetujui' : 'menolak'} approval overtime.`,
+        }))
+      } finally {
+        setProcessingApprovalAction('')
+      }
+
       return
     }
 
@@ -512,7 +716,14 @@ function DataTableApprovalOvertime({
       setApprovalDialog({
         action: 'approve',
         request: null,
+        requests: [],
         errorMessage: '',
+      })
+      setSelectedApprovalIds((currentSelectedIds) => {
+        const nextSelectedIds = new Set(currentSelectedIds)
+        nextSelectedIds.delete(String(getApprovalRowId(row, 0)))
+        nextSelectedIds.delete(String(approvalId))
+        return nextSelectedIds
       })
       setReloadKey((key) => key + 1)
     } catch (error) {
@@ -559,7 +770,35 @@ function DataTableApprovalOvertime({
     ? 'Memuat data approval overtime...'
     : errorMessage || 'Belum ada approval overtime untuk ditampilkan.'
 
-  const columns = useMemo(() => createColumns(compensationTypeMap), [compensationTypeMap])
+  const selectedCurrentPageCount = currentPageApprovalIds.filter((approvalId) =>
+    selectedApprovalIds.has(approvalId),
+  ).length
+  const hasCurrentPageRows = currentPageApprovalIds.length > 0
+  const isAllCurrentPageSelected =
+    hasCurrentPageRows && selectedCurrentPageCount === currentPageApprovalIds.length
+  const isSomeCurrentPageSelected =
+    selectedCurrentPageCount > 0 && selectedCurrentPageCount < currentPageApprovalIds.length
+
+  const columns = useMemo(
+    () =>
+      createColumns(compensationTypeMap, {
+        showSelection,
+        selectedApprovalIds,
+        isAllCurrentPageSelected,
+        isSomeCurrentPageSelected,
+        hasCurrentPageRows,
+        onToggleAllCurrentPage: handleToggleAllCurrentPage,
+        onToggleRow: handleToggleApprovalRow,
+      }),
+    [
+      compensationTypeMap,
+      hasCurrentPageRows,
+      isAllCurrentPageSelected,
+      isSomeCurrentPageSelected,
+      selectedApprovalIds,
+      showSelection,
+    ],
+  )
 
   return (
     <>
@@ -569,12 +808,36 @@ function DataTableApprovalOvertime({
         </p>
       ) : null}
 
-      <div className="mtickets-table-shell req-overtime-table-shell">
+      <div className="mtickets-table-shell req-overtime-table-shell approval-overtime-table-shell">
+        {showSelection && selectedCurrentPageCount > 0 ? (
+          <div className="approval-overtime-bulk-toolbar" aria-live="polite">
+            <span className="approval-overtime-bulk-toolbar__count">
+              {selectedCurrentPageCount} dipilih
+            </span>
+            <div className="approval-overtime-bulk-toolbar__actions">
+              <ButtonMultiApprove
+                count={selectedCurrentPageCount}
+                disabled={processingApprovalAction === 'bulk:approve'}
+                onClick={() => handleOpenBulkApprovalDialog('approve')}
+              />
+              <ButtonMultiReject
+                count={selectedCurrentPageCount}
+                disabled={processingApprovalAction === 'bulk:reject'}
+                onClick={() => handleOpenBulkApprovalDialog('reject')}
+              />
+            </div>
+          </div>
+        ) : null}
         <DataTable
           className="mtickets-table"
           rows={approvalRows}
           columns={columns}
-          getRowId={(row, index) => row.id ?? row.approval_id ?? row.request_id ?? index}
+          getRowId={getApprovalRowId}
+          getRowClassName={(row, index) =>
+            showSelection && selectedApprovalIds.has(String(getApprovalRowId(row, index)))
+              ? 'approval-overtime-table__row--selected'
+              : ''
+          }
           tableLabel={tableLabel}
           emptyMessage={emptyMessage}
           pagination={pagination}
@@ -653,6 +916,7 @@ function DataTableApprovalOvertime({
         isOpen={Boolean(approvalDialog.request)}
         request={approvalDialog.request}
         action={approvalDialog.action}
+        selectedCount={approvalDialog.requests?.length ?? 0}
         isSubmitting={Boolean(processingApprovalAction)}
         errorMessage={approvalDialog.errorMessage}
         onClose={handleCloseApprovalDialog}

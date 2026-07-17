@@ -13,6 +13,7 @@ function DialogValidationApproveRO({
   isOpen = false,
   request = null,
   action = 'approve',
+  selectedCount = 0,
   isSubmitting = false,
   errorMessage = '',
   onClose,
@@ -21,6 +22,7 @@ function DialogValidationApproveRO({
   const [note, setNote] = useState('')
   const [noteErrorMessage, setNoteErrorMessage] = useState('')
   const isReject = action === 'reject'
+  const isBulkAction = Number(selectedCount) > 1
   const actionLabel = isReject ? 'Reject' : 'Approve'
   const statusLabel = isReject ? 'rejected' : 'approved'
   const dialogTitleId = 'dialog-validation-approval-ro-title'
@@ -72,6 +74,7 @@ function DialogValidationApproveRO({
 
   const requestNumber = formatValue(request?.request_number, 'request ini')
   const employeeName = formatValue(request?.employee_name_snapshot)
+  const targetLabel = isBulkAction ? `${selectedCount} request overtime` : requestNumber
 
   const dialogNode = (
     <div
@@ -108,12 +111,18 @@ function DialogValidationApproveRO({
         <div className="dashboard-popup__body">
           <p className="dashboard-popup__text">
             Apakah Anda yakin ingin {isReject ? 'menolak' : 'menyetujui'}{' '}
-            <strong>{requestNumber}</strong>?
+            <strong>{targetLabel}</strong>?
           </p>
-          <p className="dashboard-popup__text">
-            Request milik <strong>{employeeName}</strong> akan berubah menjadi status{' '}
-            {statusLabel}.
-          </p>
+          {isBulkAction ? (
+            <p className="dashboard-popup__text">
+              Semua request terpilih akan berubah menjadi status {statusLabel}.
+            </p>
+          ) : (
+            <p className="dashboard-popup__text">
+              Request milik <strong>{employeeName}</strong> akan berubah menjadi status{' '}
+              {statusLabel}.
+            </p>
+          )}
           <label className="register-user-popup__field register-user-popup__field--full">
             <span className="register-user-popup__label">Note</span>
             <textarea
