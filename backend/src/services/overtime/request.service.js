@@ -98,8 +98,9 @@ function calculateTotalMinutes(workDate, startTime, endDate, endTime) {
 
 function validateBulkPayload(payload = {}) {
   const errors = {};
+  const hasItems = Array.isArray(payload.items) && payload.items.length > 0;
 
-  if (!Array.isArray(payload.employee_ids) || payload.employee_ids.length === 0) {
+  if (!hasItems && (!Array.isArray(payload.employee_ids) || payload.employee_ids.length === 0)) {
     errors.employee_ids = 'employee_ids must be a non-empty array';
   }
 
@@ -111,9 +112,50 @@ function validateBulkPayload(payload = {}) {
     }
   }
 
+  if (payload.items !== undefined && !Array.isArray(payload.items)) {
+    errors.items = 'items must be an array';
+  }
+
+  if (hasItems) {
+    const invalidItems = payload.items.filter(
+      (item) => !item || !item.employee_id || typeof item.employee_id !== 'string'
+    );
+    const missingDescriptions = payload.items.filter(
+      (item) => !item?.task_description || String(item.task_description).trim() === ''
+    );
+
+    if (invalidItems.length > 0) {
+      errors.items = 'items must contain valid employee_id values';
+    }
+
+    if (missingDescriptions.length > 0) {
+      errors.task_description = 'task_description is required for every item';
+    }
+  }
+
   if (Object.keys(errors).length > 0) {
     throw createValidationError(errors);
   }
+}
+
+function normalizeBulkItems(payload = {}) {
+  if (Array.isArray(payload.items) && payload.items.length > 0) {
+    const itemsByEmployeeId = new Map();
+
+    payload.items.forEach((item) => {
+      if (!itemsByEmployeeId.has(item.employee_id)) {
+        itemsByEmployeeId.set(item.employee_id, item);
+      }
+    });
+
+    return [...itemsByEmployeeId.values()];
+  }
+
+  return [...new Set(payload.employee_ids)].map((employeeId) => ({
+    employee_id: employeeId,
+    task_description: payload.task_description,
+    result_description: payload.result_description,
+  }));
 }
 
 function validatePayload(payload) {
@@ -564,24 +606,26 @@ async function create(payload, authUser) {
 async function bulkCreate(payload = {}, authUser) {
   validateBulkPayload(payload);
 
-  const employeeIds = [...new Set(payload.employee_ids)];
+  const bulkItems = normalizeBulkItems(payload);
 
   const successItems = [];
   const failedItems = [];
 
-  for (const employeeId of employeeIds) {
+  for (const item of bulkItems) {
     try {
       const result = await create(
         {
           ...payload,
-          employee_id: employeeId,
+          ...item,
+          employee_id: item.employee_id,
           employee_ids: undefined,
+          items: undefined,
         },
         authUser
       );
 
       successItems.push({
-        employee_id: employeeId,
+        employee_id: item.employee_id,
         request_id: result.id,
         request_number: result.request_number,
         source_type: result.source_type,
@@ -591,7 +635,7 @@ async function bulkCreate(payload = {}, authUser) {
       });
     } catch (err) {
       failedItems.push({
-        employee_id: employeeId,
+        employee_id: item.employee_id,
         message: err.message || 'Failed to create overtime request',
         errors: err.errors || null,
       });
@@ -599,7 +643,7 @@ async function bulkCreate(payload = {}, authUser) {
   }
 
   return {
-    total: employeeIds.length,
+    total: bulkItems.length,
     success_count: successItems.length,
     failed_count: failedItems.length,
     success_items: successItems,

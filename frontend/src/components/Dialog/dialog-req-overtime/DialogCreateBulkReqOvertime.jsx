@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
 import { ChevronDown, ChevronUp, XClose } from '../../template/TemplateIcons.jsx'
+import TabsUserCreateBulkRO from './tabs/TabsUserCreateBulkRO.jsx'
 import Time24HourInput from './Time24HourInput.jsx'
 
 const initialFormValues = {
@@ -13,6 +14,7 @@ const initialFormValues = {
   end_time: '',
   task_description: '',
   result_description: '',
+  employee_descriptions: {},
   compensation_type_id: '',
 }
 
@@ -115,6 +117,7 @@ function DialogCreateBulkReqOvertime({
   const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [activeTab, setActiveTab] = useState('general')
 
   const resetDialogState = useCallback(() => {
     setFormValues(initialFormValues)
@@ -122,6 +125,7 @@ function DialogCreateBulkReqOvertime({
     setIsEmployeeDropdownOpen(false)
     setIsSubmitting(false)
     setErrorMessage('')
+    setActiveTab('general')
   }, [])
 
   const handleClose = useCallback(() => {
@@ -219,6 +223,15 @@ function DialogCreateBulkReqOvertime({
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (
+      activeTab !== 'general' &&
+      !formValues.employee_ids.includes(activeTab)
+    ) {
+      setActiveTab('general')
+    }
+  }, [activeTab, formValues.employee_ids])
+
   const handleInputChange = (event) => {
     const { name, value } = event.target
 
@@ -229,40 +242,112 @@ function DialogCreateBulkReqOvertime({
   }
 
   const handleEmployeeToggle = (employeeId) => {
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      employee_ids: currentValues.employee_ids.includes(employeeId)
+    setFormValues((currentValues) => {
+      const isSelected = currentValues.employee_ids.includes(employeeId)
+      const nextEmployeeIds = isSelected
         ? currentValues.employee_ids.filter(
             (selectedEmployeeId) => selectedEmployeeId !== employeeId,
           )
-        : [...currentValues.employee_ids, employeeId],
-    }))
+        : [...currentValues.employee_ids, employeeId]
+      const nextDescriptions = { ...currentValues.employee_descriptions }
+
+      if (isSelected) {
+        delete nextDescriptions[employeeId]
+        if (activeTab === employeeId) {
+          setActiveTab('general')
+        }
+      } else if (!nextDescriptions[employeeId]) {
+        nextDescriptions[employeeId] = {
+          task_description: '',
+          result_description: '',
+        }
+      }
+
+      return {
+        ...currentValues,
+        employee_ids: nextEmployeeIds,
+        employee_descriptions: nextDescriptions,
+      }
+    })
   }
 
   const handleEmployeeRemove = (employeeId) => {
+    setFormValues((currentValues) => {
+      const nextDescriptions = { ...currentValues.employee_descriptions }
+      delete nextDescriptions[employeeId]
+
+      return {
+        ...currentValues,
+        employee_ids: currentValues.employee_ids.filter(
+          (selectedEmployeeId) => selectedEmployeeId !== employeeId,
+        ),
+        employee_descriptions: nextDescriptions,
+      }
+    })
+
+    if (activeTab === employeeId) {
+      setActiveTab('general')
+    }
+  }
+
+  const handleEmployeeDescriptionChange = (employeeId, event) => {
+    const { name, value } = event.target
+
     setFormValues((currentValues) => ({
       ...currentValues,
-      employee_ids: currentValues.employee_ids.filter(
-        (selectedEmployeeId) => selectedEmployeeId !== employeeId,
-      ),
+      employee_descriptions: {
+        ...currentValues.employee_descriptions,
+        [employeeId]: {
+          task_description:
+            currentValues.employee_descriptions[employeeId]?.task_description ?? '',
+          result_description:
+            currentValues.employee_descriptions[employeeId]?.result_description ?? '',
+          [name]: value,
+        },
+      },
     }))
   }
 
-  const buildPayload = () => ({
-    employee_ids: formValues.employee_ids,
-    day_type: formValues.day_type,
-    work_date: formValues.work_date,
-    start_time: formValues.start_time,
-    end_time: formValues.end_time,
-    task_description: formValues.task_description.trim(),
-    result_description: formValues.result_description.trim(),
-    compensation_type_id: Number(formValues.compensation_type_id),
-  })
+  const buildEmployeeItems = () =>
+    formValues.employee_ids.map((employeeId) => {
+      const descriptions = formValues.employee_descriptions[employeeId] ?? {}
+      const taskDescription =
+        descriptions.task_description || formValues.task_description
+      const resultDescription =
+        descriptions.result_description || formValues.result_description
+
+      return {
+        employee_id: employeeId,
+        task_description: taskDescription.trim(),
+        result_description: resultDescription.trim(),
+      }
+    })
+
+  const buildPayload = () => {
+    const items = buildEmployeeItems()
+    const firstItem = items[0] ?? {}
+
+    return {
+      employee_ids: formValues.employee_ids,
+      day_type: formValues.day_type,
+      work_date: formValues.work_date,
+      start_time: formValues.start_time,
+      end_time: formValues.end_time,
+      task_description: formValues.task_description.trim() || firstItem.task_description || '',
+      result_description:
+        formValues.result_description.trim() || firstItem.result_description || '',
+      compensation_type_id: Number(formValues.compensation_type_id),
+      items,
+    }
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
     const payload = buildPayload()
+    const hasIncompleteEmployeeDescriptions = payload.items.some(
+      (item) => !item.task_description || !item.result_description,
+    )
 
     if (
       !payload.employee_ids.length ||
@@ -272,9 +357,12 @@ function DialogCreateBulkReqOvertime({
       !payload.end_time ||
       !payload.task_description ||
       !payload.result_description ||
+      hasIncompleteEmployeeDescriptions ||
       !payload.compensation_type_id
     ) {
-      setErrorMessage('Pilih employee dan lengkapi seluruh data request overtime terlebih dahulu.')
+      setErrorMessage(
+        'Pilih employee dan lengkapi data General terlebih dahulu.',
+      )
       return
     }
 
@@ -311,6 +399,7 @@ function DialogCreateBulkReqOvertime({
   const selectedEmployees = eligibleEmployees.filter((employee) =>
     formValues.employee_ids.includes(employee.id),
   )
+
   const normalizedEmployeeSearchQuery = employeeSearchQuery.trim().toLowerCase()
   const filteredEmployees = eligibleEmployees.filter((employee) => {
     if (!normalizedEmployeeSearchQuery) {
@@ -465,130 +554,167 @@ function DialogCreateBulkReqOvertime({
                     <p className="register-user-popup__hint">
                       Pilih satu atau lebih employee untuk bulk request.
                     </p>
-                    {selectedEmployees.length > 0 ? (
-                      <div className="overtime-create-popup__employee-selected" role="list">
-                        {selectedEmployees.map((employee) => (
-                          <span key={employee.id} role="listitem">
-                            {getEmployeeLabel(employee)}
-                            <button
-                              type="button"
-                              className="overtime-create-popup__employee-tab-close"
-                              aria-label={`Batalkan ${getEmployeeLabel(employee)}`}
-                              onClick={() => handleEmployeeRemove(employee.id)}
-                              disabled={isSubmitting}
-                            >
-                              <XClose size={14} />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
                   </div>
 
-                  <div className="register-user-popup__field overtime-create-popup__field--half">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="req-overtime-day-type"
-                    >
-                      Day Type
-                    </label>
-                    <select
-                      id="req-overtime-day-type"
-                      name="day_type"
-                      className="register-user-popup__select"
-                      value={formValues.day_type}
-                      onChange={handleInputChange}
-                      disabled={isSubmitting}
-                    >
-                      {dayTypeOptions.map((dayType) => (
-                        <option key={dayType} value={dayType}>
-                          {dayType}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {reqOvertimeTextFields.map((field) => (
-                    <div
-                      key={field.name}
-                      className={`register-user-popup__field ${field.className}`}
-                    >
-                      <label
-                        className="register-user-popup__label"
-                        htmlFor={`req-overtime-${field.name}`}
-                      >
-                        {field.label}
-                      </label>
-                      {field.type === 'time' ? (
-                        <Time24HourInput
-                          id={`req-overtime-${field.name}`}
-                          name={field.name}
-                          value={formValues[field.name]}
-                          onChange={handleInputChange}
-                          disabled={isSubmitting}
-                        />
-                      ) : (
-                        <input
-                          id={`req-overtime-${field.name}`}
-                          name={field.name}
-                          type={field.type}
-                          className="register-user-popup__input"
-                          value={formValues[field.name]}
-                          onChange={handleInputChange}
-                          disabled={isSubmitting}
-                        />
-                      )}
-                    </div>
-                  ))}
-
-                  <div className="register-user-popup__field overtime-create-popup__field--third">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="req-overtime-compensation-type"
-                    >
-                      Compensation
-                    </label>
-                    <select
-                      id="req-overtime-compensation-type"
-                      name="compensation_type_id"
-                      className="register-user-popup__select"
-                      value={formValues.compensation_type_id}
-                      onChange={handleInputChange}
-                      disabled={isSubmitting || isLoadingCompensationTypes}
-                    >
-                      <option value="">
-                        {isLoadingCompensationTypes ? 'Loading...' : 'Select compensation'}
-                      </option>
-                      {compensationTypes.map((compensationType) => (
-                        <option key={compensationType.id} value={compensationType.id}>
-                          {compensationType.name ?? compensationType.code}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {reqOvertimeTextareaFields.map((field) => (
-                    <div
-                      key={field.name}
-                      className="register-user-popup__field register-user-popup__field--full"
-                    >
-                      <label
-                        className="register-user-popup__label"
-                        htmlFor={`req-overtime-${field.name}`}
-                      >
-                        {field.label}
-                      </label>
-                      <textarea
-                        id={`req-overtime-${field.name}`}
-                        name={field.name}
-                        className="register-user-popup__input master-project-popup__textarea"
-                        value={formValues[field.name]}
-                        placeholder={field.placeholder}
-                        onChange={handleInputChange}
+                  {selectedEmployees.length > 0 ? (
+                    <div className="register-user-popup__field register-user-popup__field--full">
+                      <TabsUserCreateBulkRO
+                        selectedEmployees={selectedEmployees}
+                        value={activeTab}
+                        onChange={setActiveTab}
+                        onRemove={handleEmployeeRemove}
+                        getEmployeeLabel={getEmployeeLabel}
                         disabled={isSubmitting}
                       />
                     </div>
-                  ))}
+                  ) : null}
+
+                  {activeTab === 'general' ? (
+                    <>
+                      <div className="register-user-popup__field overtime-create-popup__field--half">
+                        <label
+                          className="register-user-popup__label"
+                          htmlFor="req-overtime-day-type"
+                        >
+                          Day Type
+                        </label>
+                        <select
+                          id="req-overtime-day-type"
+                          name="day_type"
+                          className="register-user-popup__select"
+                          value={formValues.day_type}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                        >
+                          {dayTypeOptions.map((dayType) => (
+                            <option key={dayType} value={dayType}>
+                              {dayType}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {reqOvertimeTextFields.map((field) => (
+                        <div
+                          key={field.name}
+                          className={`register-user-popup__field ${field.className}`}
+                        >
+                          <label
+                            className="register-user-popup__label"
+                            htmlFor={`req-overtime-${field.name}`}
+                          >
+                            {field.label}
+                          </label>
+                          {field.type === 'time' ? (
+                            <Time24HourInput
+                              id={`req-overtime-${field.name}`}
+                              name={field.name}
+                              value={formValues[field.name]}
+                              onChange={handleInputChange}
+                              disabled={isSubmitting}
+                            />
+                          ) : (
+                            <input
+                              id={`req-overtime-${field.name}`}
+                              name={field.name}
+                              type={field.type}
+                              className="register-user-popup__input"
+                              value={formValues[field.name]}
+                              onChange={handleInputChange}
+                              disabled={isSubmitting}
+                            />
+                          )}
+                        </div>
+                      ))}
+
+                      <div className="register-user-popup__field overtime-create-popup__field--third">
+                        <label
+                          className="register-user-popup__label"
+                          htmlFor="req-overtime-compensation-type"
+                        >
+                          Compensation
+                        </label>
+                        <select
+                          id="req-overtime-compensation-type"
+                          name="compensation_type_id"
+                          className="register-user-popup__select"
+                          value={formValues.compensation_type_id}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting || isLoadingCompensationTypes}
+                        >
+                          <option value="">
+                            {isLoadingCompensationTypes ? 'Loading...' : 'Select compensation'}
+                          </option>
+                          {compensationTypes.map((compensationType) => (
+                            <option key={compensationType.id} value={compensationType.id}>
+                              {compensationType.name ?? compensationType.code}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {reqOvertimeTextareaFields.map((field) => (
+                        <div
+                          key={field.name}
+                          className="register-user-popup__field register-user-popup__field--full"
+                        >
+                          <label
+                            className="register-user-popup__label"
+                            htmlFor={`req-overtime-${field.name}`}
+                          >
+                            {field.label}
+                          </label>
+                          <textarea
+                            id={`req-overtime-${field.name}`}
+                            name={field.name}
+                            className="register-user-popup__input master-project-popup__textarea"
+                            value={formValues[field.name]}
+                            placeholder={field.placeholder}
+                            onChange={handleInputChange}
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  ) : null}
+
+                  {activeTab !== 'general' ? (
+                    <div
+                      className="register-user-popup__field register-user-popup__field--full"
+                    >
+                      <div className="overtime-create-popup__user-panel">
+                        {reqOvertimeTextareaFields.map((field) => {
+                          const descriptions =
+                            formValues.employee_descriptions[activeTab] ?? {}
+
+                          return (
+                            <div
+                              key={`${activeTab}-${field.name}`}
+                              className="register-user-popup__field register-user-popup__field--full"
+                            >
+                              <label
+                                className="register-user-popup__label"
+                                htmlFor={`req-overtime-${activeTab}-${field.name}`}
+                              >
+                                {field.label}
+                              </label>
+                              <textarea
+                                id={`req-overtime-${activeTab}-${field.name}`}
+                                name={field.name}
+                                className="register-user-popup__input master-project-popup__textarea"
+                                value={descriptions[field.name] ?? ''}
+                                placeholder={field.placeholder}
+                                onChange={(event) =>
+                                  handleEmployeeDescriptionChange(activeTab, event)
+                                }
+                                disabled={isSubmitting}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 {errorMessage ? (
                   <p className="register-user-popup__hint" role="alert">
