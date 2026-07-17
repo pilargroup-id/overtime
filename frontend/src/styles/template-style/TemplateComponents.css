@@ -2732,14 +2732,19 @@ select {
 }
 
 .users-table-wrapper {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   margin-top: 22px;
-  overflow-x: auto;
+  overflow: auto;
   border: 1px solid rgba(26, 42, 87, 0.08);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
+  overscroll-behavior: contain;
 }
 
 .users-table {
+  height: 100%;
   width: 100%;
   min-width: 780px;
   border-collapse: separate;

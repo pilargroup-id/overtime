@@ -89,7 +89,15 @@ function App() {
   ]
     .filter(Boolean)
     .join(' ')
-  const isFixedTablePage = activePath === '/RequestOvertime'
+  const fixedTablePaths = [
+    '/RequestOvertime',
+    '/ApprovalOvertime',
+    '/ReportOvertime',
+    '/Master/UserPermissions',
+    '/Master/CompensationType',
+    '/Master/ApprovalRules',
+  ]
+  const isFixedTablePage = fixedTablePaths.includes(activePath)
   const mainClassName = [
     'dashboard-main',
     isFixedTablePage ? 'dashboard-main--table-fixed' : '',

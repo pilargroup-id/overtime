@@ -6,33 +6,33 @@ import { XClose } from '../../template/TemplateIcons.jsx'
 
 const initialFormValues = {
   user_id: '',
-  permission_type: 'REQUEST_CREATE_SCOPED',
+  permission_category: 'REQUEST',
   scope_type: 'COMPANY',
 }
 
-const SCOPED_COMPANY_PERMISSION_TYPE = [
-  'REQUEST_CREATE_SCOPED',
-  'REQUEST_CREATE_ALL',
-  'REPORT_MANAGE',
+const PERMISSION_CATEGORY_OPTIONS = [
+  { label: 'Request', value: 'REQUEST' },
+  { label: 'Report', value: 'REPORT' },
 ]
-const SCOPED_COMPANY_SCOPE_TYPE = ['GLOBAL', 'COMPANY', 'DEPARTMENT']
+const REQUEST_SCOPE_TYPE_OPTIONS = ['GLOBAL', 'COMPANY', 'DEPARTMENT']
+const REPORT_SCOPE_TYPE_OPTIONS = ['GLOBAL']
 
-function normalizeScopeType(permissionType, currentScopeType) {
-  if (permissionType === 'REQUEST_CREATE_SCOPED') {
-    return currentScopeType === 'DEPARTMENT' ? 'DEPARTMENT' : 'COMPANY'
+function normalizeScopeType(permissionCategory, currentScopeType) {
+  if (permissionCategory === 'REPORT') {
+    return 'GLOBAL'
   }
 
-  return 'GLOBAL'
+  return REQUEST_SCOPE_TYPE_OPTIONS.includes(currentScopeType)
+    ? currentScopeType
+    : 'COMPANY'
 }
 
-function normalizePermissionType(currentPermissionType, nextScopeType) {
-  if (nextScopeType === 'GLOBAL') {
-    return currentPermissionType === 'REPORT_MANAGE'
-      ? 'REPORT_MANAGE'
-      : 'REQUEST_CREATE_ALL'
+function getPermissionType(permissionCategory, scopeType) {
+  if (permissionCategory === 'REPORT') {
+    return 'REPORT_MANAGE'
   }
 
-  return 'REQUEST_CREATE_SCOPED'
+  return scopeType === 'GLOBAL' ? 'REQUEST_CREATE_ALL' : 'REQUEST_CREATE_SCOPED'
 }
 
 function getAuthUser(responseData) {
@@ -199,10 +199,10 @@ function DialogCreateUserPermission({
     const { name, value } = event.target
 
     setFormValues((currentValues) => {
-      if (name === 'permission_type') {
+      if (name === 'permission_category') {
         return {
           ...currentValues,
-          permission_type: value,
+          permission_category: value,
           scope_type: normalizeScopeType(value, currentValues.scope_type),
         }
       }
@@ -210,10 +210,6 @@ function DialogCreateUserPermission({
       if (name === 'scope_type') {
         return {
           ...currentValues,
-          permission_type: normalizePermissionType(
-            currentValues.permission_type,
-            value,
-          ),
           scope_type: value,
         }
       }
@@ -236,17 +232,21 @@ function DialogCreateUserPermission({
 
   const buildPayload = () => {
     const normalizedScopeType = normalizeScopeType(
-      formValues.permission_type,
+      formValues.permission_category,
       formValues.scope_type,
     )
-    const isScopedPermission = formValues.permission_type === 'REQUEST_CREATE_SCOPED'
+    const permissionType = getPermissionType(
+      formValues.permission_category,
+      normalizedScopeType,
+    )
+    const isScopedPermission = permissionType === 'REQUEST_CREATE_SCOPED'
     const selectedEmployee = eligibleEmployees.find(
       (employee) => String(employee.id) === String(formValues.user_id),
     )
 
     return {
       user_id: formValues.user_id.trim(),
-      permission_type: formValues.permission_type,
+      permission_type: permissionType,
       scope_type: normalizedScopeType,
       company_id: isScopedPermission ? selectedEmployee?.company_id ?? null : null,
       department_id:
@@ -344,6 +344,10 @@ function DialogCreateUserPermission({
     selectedEmployee?.department_code ||
     selectedEmployee?.department_id ||
     '-'
+  const scopeTypeOptions =
+    formValues.permission_category === 'REPORT'
+      ? REPORT_SCOPE_TYPE_OPTIONS
+      : REQUEST_SCOPE_TYPE_OPTIONS
 
   const dialogNode = (
     <div
@@ -469,15 +473,15 @@ function DialogCreateUserPermission({
                     </label>
                     <select
                       id="create-user-permission-permission-type"
-                      name="permission_type"
+                      name="permission_category"
                       className="register-user-popup__select"
-                      value={formValues.permission_type}
+                      value={formValues.permission_category}
                       onChange={handleInputChange}
                       disabled={isSubmitting || isLoadingAuthUser}
                     >
-                      {SCOPED_COMPANY_PERMISSION_TYPE.map((permissionType) => (
-                        <option key={permissionType} value={permissionType}>
-                          {permissionType}
+                      {PERMISSION_CATEGORY_OPTIONS.map((permissionType) => (
+                        <option key={permissionType.value} value={permissionType.value}>
+                          {permissionType.label}
                         </option>
                       ))}
                     </select>
@@ -498,7 +502,7 @@ function DialogCreateUserPermission({
                       onChange={handleInputChange}
                       disabled={isSubmitting || isLoadingAuthUser}
                     >
-                      {SCOPED_COMPANY_SCOPE_TYPE.map((scopeType) => (
+                      {scopeTypeOptions.map((scopeType) => (
                         <option key={scopeType} value={scopeType}>
                           {scopeType}
                         </option>

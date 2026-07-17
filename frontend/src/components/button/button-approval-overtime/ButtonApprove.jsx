@@ -1,5 +1,5 @@
 import CreateButton from '../CreateButton.jsx'
-import { CheckCircle } from '../../template/TemplateIcons.jsx'
+import { Check } from '../../template/TemplateIcons.jsx'
 
 function ButtonApprove({ className = '', title = 'Approve', ...buttonProps }) {
   return (
@@ -19,7 +19,7 @@ function ButtonApprove({ className = '', title = 'Approve', ...buttonProps }) {
       aria-label={buttonProps['aria-label'] ?? title}
       title={title}
     >
-      <CheckCircle size={24} aria-hidden="true" />
+      <Check size={24} aria-hidden="true" />
     </CreateButton>
   )
 }

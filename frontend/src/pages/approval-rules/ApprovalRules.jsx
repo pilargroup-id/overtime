@@ -11,7 +11,7 @@ function ApprovalRules({ activePage, searchQuery }) {
 
   return (
     <section
-      className="dashboard-panel users-table-card parents-table-card"
+      className="dashboard-panel users-table-card parents-table-card req-overtime-page"
       aria-label={pageTitle}
     >
       <div className="users-table-card__header">

@@ -1,5 +1,5 @@
 import CreateButton from '../CreateButton.jsx'
-import { XCircle } from '../../template/TemplateIcons.jsx'
+import { XClose } from '../../template/TemplateIcons.jsx'
 
 function ButtonReject({ className = '', title = 'Reject', ...buttonProps }) {
   return (
@@ -20,7 +20,7 @@ function ButtonReject({ className = '', title = 'Reject', ...buttonProps }) {
       aria-label={buttonProps['aria-label'] ?? title}
       title={title}
     >
-      <XCircle size={24} aria-hidden="true" />
+      <XClose size={24} aria-hidden="true" />
     </CreateButton>
   )
 }
