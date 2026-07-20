@@ -1,6 +1,5 @@
 import { useState } from 'react'
 
-import ButtonCreateBulkReqOvertime from '../../components/button/button-req-overtime/ButtonCreateBulkReqOvertime.jsx'
 import ButtonCreateReqOvertime from '../../components/button/button-req-overtime/ButtonCreateReqOvertime.jsx'
 import Search from '../../components/search/Search.jsx'
 import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOvertime.jsx'
@@ -30,9 +29,6 @@ function ReqOvertimePages({ activePage, searchQuery }) {
             ariaLabel="Search request overtime"
           />
           <ButtonCreateReqOvertime
-            onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
-          />
-          <ButtonCreateBulkReqOvertime
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
         </div>
