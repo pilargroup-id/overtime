@@ -14,6 +14,7 @@ const initialFormValues = {
   end_time: '',
   task_description: '',
   result_description: '',
+  apply_general_to_all: false,
   employee_descriptions: {},
   compensation_type_id: '',
 }
@@ -235,9 +236,56 @@ function DialogCreateBulkReqOvertime({
   const handleInputChange = (event) => {
     const { name, value } = event.target
 
+    setFormValues((currentValues) => {
+      const nextValues = {
+        ...currentValues,
+        [name]: value,
+      }
+
+      if (
+        currentValues.apply_general_to_all &&
+        (name === 'task_description' || name === 'result_description')
+      ) {
+        nextValues.employee_descriptions = Object.fromEntries(
+          currentValues.employee_ids.map((employeeId) => [
+            employeeId,
+            {
+              task_description:
+                name === 'task_description'
+                  ? value
+                  : currentValues.employee_descriptions[employeeId]?.task_description ??
+                    currentValues.task_description,
+              result_description:
+                name === 'result_description'
+                  ? value
+                  : currentValues.employee_descriptions[employeeId]?.result_description ??
+                    currentValues.result_description,
+            },
+          ]),
+        )
+      }
+
+      return nextValues
+    })
+  }
+
+  const handleApplyGeneralToAllChange = (event) => {
+    const isChecked = event.target.checked
+
     setFormValues((currentValues) => ({
       ...currentValues,
-      [name]: value,
+      apply_general_to_all: isChecked,
+      employee_descriptions: isChecked
+        ? Object.fromEntries(
+            currentValues.employee_ids.map((employeeId) => [
+              employeeId,
+              {
+                task_description: currentValues.task_description,
+                result_description: currentValues.result_description,
+              },
+            ]),
+          )
+        : currentValues.employee_descriptions,
     }))
   }
 
@@ -258,8 +306,12 @@ function DialogCreateBulkReqOvertime({
         }
       } else if (!nextDescriptions[employeeId]) {
         nextDescriptions[employeeId] = {
-          task_description: '',
-          result_description: '',
+          task_description: currentValues.apply_general_to_all
+            ? currentValues.task_description
+            : '',
+          result_description: currentValues.apply_general_to_all
+            ? currentValues.result_description
+            : '',
         }
       }
 
@@ -311,15 +363,17 @@ function DialogCreateBulkReqOvertime({
   const buildEmployeeItems = () =>
     formValues.employee_ids.map((employeeId) => {
       const descriptions = formValues.employee_descriptions[employeeId] ?? {}
-      const taskDescription =
-        descriptions.task_description || formValues.task_description
-      const resultDescription =
-        descriptions.result_description || formValues.result_description
+      const taskDescription = formValues.apply_general_to_all
+        ? formValues.task_description
+        : descriptions.task_description
+      const resultDescription = formValues.apply_general_to_all
+        ? formValues.result_description
+        : descriptions.result_description
 
       return {
         employee_id: employeeId,
-        task_description: taskDescription.trim(),
-        result_description: resultDescription.trim(),
+        task_description: String(taskDescription ?? '').trim(),
+        result_description: String(resultDescription ?? '').trim(),
       }
     })
 
@@ -336,6 +390,7 @@ function DialogCreateBulkReqOvertime({
       task_description: formValues.task_description.trim() || firstItem.task_description || '',
       result_description:
         formValues.result_description.trim() || firstItem.result_description || '',
+      apply_general_to_all: formValues.apply_general_to_all,
       compensation_type_id: Number(formValues.compensation_type_id),
       items,
     }
@@ -361,7 +416,7 @@ function DialogCreateBulkReqOvertime({
       !payload.compensation_type_id
     ) {
       setErrorMessage(
-        'Pilih employee dan lengkapi data General terlebih dahulu.',
+        'Pilih employee, lengkapi data utama, lalu isi Task Description dan Result Description sesuai mode All atau manual.',
       )
       return
     }
@@ -658,12 +713,25 @@ function DialogCreateBulkReqOvertime({
                           key={field.name}
                           className="register-user-popup__field register-user-popup__field--full"
                         >
-                          <label
-                            className="register-user-popup__label"
-                            htmlFor={`req-overtime-${field.name}`}
-                          >
-                            {field.label}
-                          </label>
+                          <div className="overtime-create-popup__label-row">
+                            <label
+                              className="register-user-popup__label"
+                              htmlFor={`req-overtime-${field.name}`}
+                            >
+                              {field.label}
+                            </label>
+                            {field.name === 'task_description' ? (
+                              <label className="overtime-create-popup__apply-all">
+                                <input
+                                  type="checkbox"
+                                  checked={formValues.apply_general_to_all}
+                                  onChange={handleApplyGeneralToAllChange}
+                                  disabled={isSubmitting}
+                                />
+                                <span>All</span>
+                              </label>
+                            ) : null}
+                          </div>
                           <textarea
                             id={`req-overtime-${field.name}`}
                             name={field.name}
@@ -707,7 +775,7 @@ function DialogCreateBulkReqOvertime({
                                 onChange={(event) =>
                                   handleEmployeeDescriptionChange(activeTab, event)
                                 }
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || formValues.apply_general_to_all}
                               />
                             </div>
                           )

@@ -5,6 +5,7 @@ const LogModel = require('../../models/overtime/log.model');
 const UserPermissionModel = require('../../models/master/user-permission.model');
 
 const ALLOWED_TALENTA_STATUS = ['PENDING', 'PROCESSED'];
+const REPORT_STATUSES = ['APPROVED', 'REJECTED'];
 
 function createValidationError(errors) {
   const err = new Error('Validation failed');
@@ -76,6 +77,7 @@ async function list(query, authUser) {
   const filters = {
     search: query.search || null,
     status: query.status || null,
+    statuses: REPORT_STATUSES,
     talenta_status: query.talenta_status || null,
     employment_type_code: query.employment_type_code || null,
     department_id: query.department_id || null,

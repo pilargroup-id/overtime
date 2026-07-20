@@ -3,11 +3,9 @@ import { useState } from 'react'
 // import ButtonCreateBulkReqOvertime from '../../components/button/button-req-overtime/ButtonCreateBulkReqOvertime.jsx'
 // import ButtonCreateApproval from '../../components/button/button-approval-overtime/ButtonCreateApproval.jsx'
 import DataTableApprovalOvertime from '../../components/table/dekstop/DataTableApprovalOvertime.jsx'
-import TabsApprovalOvertime from './TabsApprovalOvertime.jsx'
 
 function ApprovalOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey, setReqOvertimeRefreshKey] = useState(0)
-  const [statusFilter, setStatusFilter] = useState('')
   const pageTitle = activePage?.title ?? 'Request Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
@@ -32,11 +30,8 @@ function ApprovalOvertime({ activePage, searchQuery }) {
         </div> */}
       </div>
 
-      <TabsApprovalOvertime value={statusFilter} onChange={setStatusFilter} />
-
       <DataTableApprovalOvertime
         searchQuery={searchQuery}
-        statusFilter={statusFilter}
         tableLabel={`${pageTitle} table`}
         refreshKey={reqOvertimeRefreshKey}
       />

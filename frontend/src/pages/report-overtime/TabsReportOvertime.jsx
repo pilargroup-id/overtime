@@ -2,15 +2,13 @@ import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 
-const APPROVAL_STATUS_TABS = [
+const REPORT_STATUS_TABS = [
   { label: 'All', value: '' },
-  { label: 'Pending', value: 'PENDING' },
   { label: 'Approved', value: 'APPROVED' },
   { label: 'Rejected', value: 'REJECTED' },
-  { label: 'Canceled', value: 'CANCELED' },
 ]
 
-function TabsApprovalOvertime({ value, onChange }) {
+function TabsReportOvertime({ value, onChange }) {
   return (
     <Box
       sx={{
@@ -23,7 +21,7 @@ function TabsApprovalOvertime({ value, onChange }) {
       <Tabs
         value={value}
         onChange={(_, nextValue) => onChange(nextValue)}
-        aria-label="Filter status approval overtime"
+        aria-label="Filter status report overtime"
         variant="scrollable"
         scrollButtons="auto"
         sx={{
@@ -36,7 +34,7 @@ function TabsApprovalOvertime({ value, onChange }) {
           },
         }}
       >
-        {APPROVAL_STATUS_TABS.map((tab) => (
+        {REPORT_STATUS_TABS.map((tab) => (
           <Tab key={tab.value || 'all'} label={tab.label} value={tab.value} />
         ))}
       </Tabs>
@@ -44,4 +42,4 @@ function TabsApprovalOvertime({ value, onChange }) {
   )
 }
 
-export default TabsApprovalOvertime
+export default TabsReportOvertime

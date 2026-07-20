@@ -1,12 +1,11 @@
 import { useState } from 'react'
-
-import ButtonCreateBulkReqOvertime from '../../components/button/button-req-overtime/ButtonCreateBulkReqOvertime.jsx'
-import ButtonCreateReqOvertime from '../../components/button/button-req-overtime/ButtonCreateReqOvertime.jsx'
-import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOvertime.jsx'
+import DataTableReport from '../../components/table/dekstop/DataTableReport.jsx'
+import TabsReportOvertime from './TabsReportOvertime.jsx'
 
 function ReportOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey, setReqOvertimeRefreshKey] = useState(0)
-  const pageTitle = activePage?.title ?? 'Request Overtime'
+  const [statusFilter, setStatusFilter] = useState('')
+  const pageTitle = activePage?.title ?? 'Report Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
   return (
@@ -21,17 +20,20 @@ function ReportOvertime({ activePage, searchQuery }) {
         </div>
 
         <div className="users-table-card__actions">
-          <ButtonCreateReqOvertime
+          {/* <ButtonCreateReqOvertime
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
           <ButtonCreateBulkReqOvertime
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
-          />
+          /> */}
         </div>
       </div>
 
-      <DataTableReqOvertime
+      <TabsReportOvertime value={statusFilter} onChange={setStatusFilter} />
+
+      <DataTableReport
         searchQuery={searchQuery}
+        statusFilter={statusFilter}
         tableLabel={`${pageTitle} table`}
         refreshKey={reqOvertimeRefreshKey}
       />

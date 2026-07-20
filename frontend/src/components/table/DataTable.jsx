@@ -385,79 +385,92 @@ function DataTable({
 
                       {hasDetail ? (
                         <td className="users-table__detail-cell" style={detail.cellStyle}>
-                          {isDetailButtonHidden ? null : (
-                            <CreateButton
-                              variant="detail"
-                              type="button"
-                              className={
-                                detail?.buttonIconOnly ? 'users-table__detail-button--icon-only' : ''
-                              }
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                handleToggleRow(rowKey)
-                              }}
-                              aria-expanded={isExpanded}
-                              aria-controls={accordionId}
-                              aria-label={detail.buttonLabel ?? detailButtonLabel}
-                              title={detail.buttonLabel ?? detailButtonLabel}
-                            >
-                              {detail?.buttonIconOnly ? null : (
-                                <span>{detail.buttonLabel ?? 'Detail'}</span>
-                              )}
-                              <DetailButtonIcon
-                                size={detail?.buttonIconOnly ? 18 : 16}
-                                aria-hidden="true"
-                                className={`users-table__detail-icon${
-                                  isExpanded ? ' users-table__detail-icon--open' : ''
-                                }`}
-                              />
-                            </CreateButton>
-                          )}
-
-                          {detailActions.map((action) => {
-                            if (action.hidden?.(row, index)) {
-                              return null
-                            }
-
-                            const Icon = action.icon
-                            const buttonLabel = action.label ?? action.key ?? 'Action'
-                            const isIconOnlyAction = Boolean(action.iconOnly)
-                            const ActionButton = action.buttonComponent
-
-                            if (ActionButton) {
-                              return (
-                                <ActionButton
-                                  key={action.key ?? buttonLabel}
-                                  disabled={action.disabled?.(row, index) ?? action.disabled}
-                                  aria-label={buttonLabel}
-                                  title={buttonLabel}
+                          {typeof detail.renderCell === 'function' ? (
+                            detail.renderCell(row, index, {
+                              accordionId,
+                              isExpanded,
+                              rowKey,
+                              toggleRow: () => handleToggleRow(rowKey),
+                            })
+                          ) : (
+                            <>
+                              {isDetailButtonHidden ? null : (
+                                <CreateButton
+                                  variant="detail"
+                                  type="button"
+                                  className={
+                                    detail?.buttonIconOnly
+                                      ? 'users-table__detail-button--icon-only'
+                                      : ''
+                                  }
                                   onClick={(event) => {
                                     event.stopPropagation()
-                                    action.onClick?.(row, index, event)
+                                    handleToggleRow(rowKey)
                                   }}
-                                />
-                              )
-                            }
+                                  aria-expanded={isExpanded}
+                                  aria-controls={accordionId}
+                                  aria-label={detail.buttonLabel ?? detailButtonLabel}
+                                  title={detail.buttonLabel ?? detailButtonLabel}
+                                >
+                                  {detail?.buttonIconOnly ? null : (
+                                    <span>{detail.buttonLabel ?? 'Detail'}</span>
+                                  )}
+                                  <DetailButtonIcon
+                                    size={detail?.buttonIconOnly ? 18 : 16}
+                                    aria-hidden="true"
+                                    className={`users-table__detail-icon${
+                                      isExpanded ? ' users-table__detail-icon--open' : ''
+                                    }`}
+                                  />
+                                </CreateButton>
+                              )}
 
-                            return (
-                              <CreateButton
-                                key={action.key ?? buttonLabel}
-                                variant={isIconOnlyAction ? 'bareIcon' : 'accordion'}
-                                tone={action.variant === 'danger' ? 'danger' : 'default'}
-                                type="button"
-                                disabled={action.disabled?.(row, index) ?? action.disabled}
-                                aria-label={buttonLabel}
-                                title={buttonLabel}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  action.onClick?.(row, index, event)
-                                }}
-                              >
-                                {Icon ? <Icon size={16} aria-hidden="true" /> : null}
-                                {!Icon || !isIconOnlyAction ? action.label : null}
-                              </CreateButton>
-                            )
-                          })}
+                              {detailActions.map((action) => {
+                                if (action.hidden?.(row, index)) {
+                                  return null
+                                }
+
+                                const Icon = action.icon
+                                const buttonLabel = action.label ?? action.key ?? 'Action'
+                                const isIconOnlyAction = Boolean(action.iconOnly)
+                                const ActionButton = action.buttonComponent
+
+                                if (ActionButton) {
+                                  return (
+                                    <ActionButton
+                                      key={action.key ?? buttonLabel}
+                                      disabled={action.disabled?.(row, index) ?? action.disabled}
+                                      aria-label={buttonLabel}
+                                      title={buttonLabel}
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        action.onClick?.(row, index, event)
+                                      }}
+                                    />
+                                  )
+                                }
+
+                                return (
+                                  <CreateButton
+                                    key={action.key ?? buttonLabel}
+                                    variant={isIconOnlyAction ? 'bareIcon' : 'accordion'}
+                                    tone={action.variant === 'danger' ? 'danger' : 'default'}
+                                    type="button"
+                                    disabled={action.disabled?.(row, index) ?? action.disabled}
+                                    aria-label={buttonLabel}
+                                    title={buttonLabel}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      action.onClick?.(row, index, event)
+                                    }}
+                                  >
+                                    {Icon ? <Icon size={16} aria-hidden="true" /> : null}
+                                    {!Icon || !isIconOnlyAction ? action.label : null}
+                                  </CreateButton>
+                                )
+                              })}
+                            </>
+                          )}
                         </td>
                       ) : null}
                     </tr>

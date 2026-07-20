@@ -120,16 +120,9 @@ function validateBulkPayload(payload = {}) {
     const invalidItems = payload.items.filter(
       (item) => !item || !item.employee_id || typeof item.employee_id !== 'string'
     );
-    const missingDescriptions = payload.items.filter(
-      (item) => !item?.task_description || String(item.task_description).trim() === ''
-    );
 
     if (invalidItems.length > 0) {
       errors.items = 'items must contain valid employee_id values';
-    }
-
-    if (missingDescriptions.length > 0) {
-      errors.task_description = 'task_description is required for every item';
     }
   }
 
@@ -139,12 +132,22 @@ function validateBulkPayload(payload = {}) {
 }
 
 function normalizeBulkItems(payload = {}) {
+  const useGeneralDescriptions = Boolean(payload.apply_general_to_all);
+
   if (Array.isArray(payload.items) && payload.items.length > 0) {
     const itemsByEmployeeId = new Map();
 
     payload.items.forEach((item) => {
       if (!itemsByEmployeeId.has(item.employee_id)) {
-        itemsByEmployeeId.set(item.employee_id, item);
+        itemsByEmployeeId.set(item.employee_id, {
+          employee_id: item.employee_id,
+          task_description: useGeneralDescriptions
+            ? payload.task_description
+            : item.task_description,
+          result_description: useGeneralDescriptions
+            ? payload.result_description
+            : item.result_description,
+        });
       }
     });
 
@@ -182,6 +185,10 @@ function validatePayload(payload) {
 
   if (!payload.task_description || String(payload.task_description).trim() === '') {
     errors.task_description = 'task_description is required';
+  }
+
+  if (!payload.result_description || String(payload.result_description).trim() === '') {
+    errors.result_description = 'result_description is required';
   }
 
   if (!payload.compensation_type_id) {
@@ -377,7 +384,10 @@ function buildRequestData({
     total_minutes: totalMinutes,
 
     task_description: String(payload.task_description).trim(),
-    result_description: payload.result_description || null,
+    result_description:
+      payload.result_description && String(payload.result_description).trim() !== ''
+        ? String(payload.result_description).trim()
+        : null,
 
     compensation_type_id: payload.compensation_type_id,
 

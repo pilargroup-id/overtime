@@ -22,6 +22,7 @@ function DialogValidationApproveRO({
   const [note, setNote] = useState('')
   const [noteErrorMessage, setNoteErrorMessage] = useState('')
   const isReject = action === 'reject'
+  const requiresNote = isReject
   const isBulkAction = Number(selectedCount) > 1
   const actionLabel = isReject ? 'Reject' : 'Approve'
   const statusLabel = isReject ? 'rejected' : 'approved'
@@ -55,7 +56,7 @@ function DialogValidationApproveRO({
   const handleConfirm = () => {
     const trimmedNote = note.trim()
 
-    if (!trimmedNote) {
+    if (requiresNote && !trimmedNote) {
       setNoteErrorMessage('Note wajib diisi sebelum melanjutkan approval.')
       return
     }
@@ -123,29 +124,29 @@ function DialogValidationApproveRO({
               {statusLabel}.
             </p>
           )}
-          <label className="register-user-popup__field register-user-popup__field--full">
-            <span className="register-user-popup__label">Note</span>
-            <textarea
-              className="register-user-popup__input master-project-popup__textarea"
-              value={note}
-              onChange={(event) => {
-                setNote(event.target.value)
-                setNoteErrorMessage('')
-              }}
-              placeholder={
-                isReject
-                  ? 'Contoh: Lembur ditolak karena jadwal belum sesuai'
-                  : 'Contoh: Lembur disetujui karena pekerjaan urgent'
-              }
-              rows={4}
-              disabled={isSubmitting}
-              required
-            />
-          </label>
-          {noteErrorMessage ? (
-            <p className="register-user-popup__hint" role="alert">
-              {noteErrorMessage}
-            </p>
+          {requiresNote ? (
+            <>
+              <label className="register-user-popup__field register-user-popup__field--full">
+                <span className="register-user-popup__label">Note</span>
+                <textarea
+                  className="register-user-popup__input master-project-popup__textarea"
+                  value={note}
+                  onChange={(event) => {
+                    setNote(event.target.value)
+                    setNoteErrorMessage('')
+                  }}
+                  placeholder="Contoh: Lembur ditolak karena jadwal belum sesuai"
+                  rows={4}
+                  disabled={isSubmitting}
+                  required
+                />
+              </label>
+              {noteErrorMessage ? (
+                <p className="register-user-popup__hint" role="alert">
+                  {noteErrorMessage}
+                </p>
+              ) : null}
+            </>
           ) : null}
           {errorMessage ? (
             <p className="register-user-popup__hint" role="alert">
@@ -165,7 +166,9 @@ function DialogValidationApproveRO({
           </button>
           <button
             type="button"
-            className="dashboard-popup__button dashboard-popup__button--danger"
+            className={`dashboard-popup__button dashboard-popup__button--${
+              isReject ? 'danger' : 'primary'
+            }`}
             onClick={handleConfirm}
             disabled={isSubmitting}
           >

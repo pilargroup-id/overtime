@@ -31,6 +31,11 @@ function buildWhere(filters = {}) {
     params.push(filters.status);
   }
 
+  if (Array.isArray(filters.statuses) && filters.statuses.length > 0) {
+    where.push(`r.status IN (${filters.statuses.map(() => '?').join(', ')})`);
+    params.push(...filters.statuses);
+  }
+
   if (filters.talenta_status) {
     where.push('r.talenta_status = ?');
     params.push(filters.talenta_status);

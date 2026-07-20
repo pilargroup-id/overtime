@@ -17,6 +17,7 @@ import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/Dia
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+const APPROVABLE_REQUEST_STATUS = 'SUBMITTED'
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) {
@@ -213,6 +214,10 @@ function isPendingRow(row) {
   return approvalStatus === 'PENDING' || requestStatus === 'SUBMITTED' || !approvalStatus
 }
 
+function isSubmittedRequestRow(row) {
+  return normalizeStatus(getRequestStatus(row)) === APPROVABLE_REQUEST_STATUS
+}
+
 function getPaginationSummary(firstItem, lastItem, totalItems) {
   if (totalItems === 0) {
     return '0 dari 0 approval'
@@ -378,7 +383,6 @@ function createColumns(
 
 function DataTableApprovalOvertime({
   searchQuery = '',
-  statusFilter = '',
   tableLabel = 'Approval Overtime table',
   refreshKey = 0,
 }) {
@@ -399,12 +403,12 @@ function DataTableApprovalOvertime({
     requests: [],
     errorMessage: '',
   })
-  const showSelection = normalizeStatus(statusFilter) === 'PENDING'
+  const showSelection = true
 
   useEffect(() => {
     setCurrentPage(1)
     setSelectedApprovalIds(new Set())
-  }, [searchQuery, statusFilter])
+  }, [searchQuery])
 
   const selectableApprovalRows = useMemo(
     () =>
@@ -483,8 +487,7 @@ function DataTableApprovalOvertime({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
-          status: statusFilter,
-          request_status: statusFilter === 'PENDING' ? 'SUBMITTED' : '',
+          request_status: APPROVABLE_REQUEST_STATUS,
         })
 
         if (!isMounted) {
@@ -492,11 +495,18 @@ function DataTableApprovalOvertime({
         }
 
         const rows = normalizeResponseRows(response)
-        const meta = normalizeResponseMeta(response, rows.length, pageSize)
+        const submittedRows = rows.filter(isSubmittedRequestRow)
+        const meta = normalizeResponseMeta(response, submittedRows.length, pageSize)
+        const totalSubmittedRows =
+          submittedRows.length === rows.length ? meta.total : submittedRows.length
 
-        setApprovalRows(rows)
-        setTotalItems(meta.total)
-        setTotalPages(meta.totalPages)
+        setApprovalRows(submittedRows)
+        setTotalItems(totalSubmittedRows)
+        setTotalPages(
+          submittedRows.length === rows.length
+            ? meta.totalPages
+            : Math.max(1, Math.ceil(totalSubmittedRows / pageSize)),
+        )
       } catch (error) {
         if (!isMounted) {
           return
@@ -518,7 +528,7 @@ function DataTableApprovalOvertime({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery, statusFilter])
+  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
 
   const handleOpenApprovalDialog = (row, action) => {
     if (!isPendingRow(row)) {
@@ -611,7 +621,7 @@ function DataTableApprovalOvertime({
 
     const trimmedNote = String(note ?? '').trim()
 
-    if (!trimmedNote) {
+    if (action === 'reject' && !trimmedNote) {
       setApprovalDialog((currentDialog) => ({
         ...currentDialog,
         errorMessage: 'Note wajib diisi sebelum melanjutkan approval.',
@@ -639,7 +649,7 @@ function DataTableApprovalOvertime({
 
       try {
         await (action === 'approve'
-          ? api.overtimeApprovals.bulkApprove({ ids: approvalIds, note: trimmedNote })
+          ? api.overtimeApprovals.bulkApprove({ ids: approvalIds })
           : api.overtimeApprovals.bulkReject({ ids: approvalIds, note: trimmedNote }))
 
         setSelectedApprovalIds(new Set())
@@ -674,7 +684,7 @@ function DataTableApprovalOvertime({
     try {
       const response =
         action === 'approve'
-          ? await api.overtimeApprovals.approve(approvalId, { note: trimmedNote })
+          ? await api.overtimeApprovals.approve(approvalId)
           : await api.overtimeApprovals.reject(approvalId, { note: trimmedNote })
 
       const nextRow = response?.data ?? null
@@ -690,7 +700,7 @@ function DataTableApprovalOvertime({
                   approval_id: nextRow.approval_id ?? currentRow.approval_id,
                   status: nextRow.approval_status ?? nextRow.status ?? currentRow.status,
                   request_status: nextRow.request_status ?? currentRow.request_status,
-                  note: trimmedNote,
+                  note: action === 'reject' ? trimmedNote : currentRow.note,
                   acted_at: nextRow.acted_at ?? nextRow.updated_at ?? new Date().toISOString(),
                 }
               : currentRow,
@@ -705,7 +715,7 @@ function DataTableApprovalOvertime({
                   status: action === 'approve' ? 'APPROVED' : 'REJECTED',
                   approval_status: action === 'approve' ? 'APPROVED' : 'REJECTED',
                   request_status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-                  note: trimmedNote,
+                  note: action === 'reject' ? trimmedNote : currentRow.note,
                   acted_at: new Date().toISOString(),
                 }
               : currentRow,

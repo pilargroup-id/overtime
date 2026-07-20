@@ -5,11 +5,11 @@ import DataTable, {
   DataTableIdentity,
   DataTableStatus,
 } from '../DataTable.jsx'
-import { FileText01, XCircle } from '../../template/TemplateIcons.jsx'
-import DialogValidationCancelRO from '../../Dialog/dialog-req-overtime/DialogValidationCancelRO.jsx'
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
+const TALENTA_STATUS_PENDING = 'PENDING'
+const TALENTA_STATUS_PROCESSED = 'PROCESSED'
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) {
@@ -134,8 +134,12 @@ function getStatusVariant(status) {
   return 'app'
 }
 
-function isCanceledStatus(status) {
-  return String(status ?? '').toUpperCase() === 'CANCELED'
+function normalizeTalentaStatus(status) {
+  const normalizedStatus = String(status ?? '').toUpperCase()
+
+  return normalizedStatus === TALENTA_STATUS_PROCESSED
+    ? TALENTA_STATUS_PROCESSED
+    : TALENTA_STATUS_PENDING
 }
 
 function getPaginationSummary(firstItem, lastItem, totalItems) {
@@ -181,22 +185,22 @@ function createColumns(compensationTypeMap) {
   {
     key: 'workDate',
     header: 'Work Date',
-    headerStyle: { width: '15%' },
-    cellStyle: { width: '15%' },
+    headerStyle: { width: '12%' },
+    cellStyle: { width: '12%' },
     render: (request) => formatDate(request.work_date),
   },
   {
     key: 'time',
     header: 'Time',
-    headerStyle: { width: '15%' },
-    cellStyle: { width: '15%' },
+    headerStyle: { width: '12%' },
+    cellStyle: { width: '12%' },
     render: (request) => `${formatTime(request.start_time)} - ${formatTime(request.end_time)}`,
   },
   {
     key: 'duration',
     header: 'Duration',
-    headerStyle: { width: '12%' },
-    cellStyle: { width: '12%' },
+    headerStyle: { width: '9%' },
+    cellStyle: { width: '9%' },
     render: (request) => formatDuration(request.total_minutes),
   },
   {
@@ -219,8 +223,35 @@ function createColumns(compensationTypeMap) {
 ]
 }
 
-function DataTableReqOvertime({
+function TalentaStatusToggle({ status, disabled = false, onChange }) {
+  const normalizedStatus = normalizeTalentaStatus(status)
+  const isProcessed = normalizedStatus === TALENTA_STATUS_PROCESSED
+  const nextStatus = isProcessed ? TALENTA_STATUS_PENDING : TALENTA_STATUS_PROCESSED
+
+  return (
+    <button
+      type="button"
+      className={[
+        'talenta-status-toggle',
+        isProcessed ? 'talenta-status-toggle--active' : '',
+      ].filter(Boolean).join(' ')}
+      role="switch"
+      aria-checked={isProcessed}
+      disabled={disabled}
+      title={`Ubah ke ${nextStatus}`}
+      onClick={onChange}
+    >
+      <span className="talenta-status-toggle__track" aria-hidden="true">
+        <span className="talenta-status-toggle__thumb" />
+      </span>
+      <span className="talenta-status-toggle__label">{normalizedStatus}</span>
+    </button>
+  )
+}
+
+function DataTableReport({
   searchQuery = '',
+  statusFilter = '',
   tableLabel = 'Request Overtime table',
   refreshKey = 0,
 }) {
@@ -230,16 +261,14 @@ function DataTableReqOvertime({
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
-  const [cancelingRequestId, setCancelingRequestId] = useState(null)
-  const [cancelRequest, setCancelRequest] = useState(null)
-  const [cancelErrorMessage, setCancelErrorMessage] = useState('')
+  const [updatingTalentaRequestId, setUpdatingTalentaRequestId] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [compensationTypeMap, setCompensationTypeMap] = useState(() => new Map())
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery])
+  }, [searchQuery, statusFilter])
 
   useEffect(() => {
     let isMounted = true
@@ -286,10 +315,11 @@ function DataTableReqOvertime({
       setErrorMessage('')
 
       try {
-        const response = await api.overtimeRequests.list({
+        const response = await api.overtimeReports.list({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
+          status: statusFilter,
         })
 
         if (!isMounted) {
@@ -323,47 +353,55 @@ function DataTableReqOvertime({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
+  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery, statusFilter])
 
-  const handleCancelRequest = (request) => {
-    setCancelRequest(request)
-    setCancelErrorMessage('')
-  }
-
-  const handleCloseCancelDialog = () => {
-    if (cancelingRequestId) {
-      return
-    }
-
-    setCancelRequest(null)
-    setCancelErrorMessage('')
-  }
-
-  const handleConfirmCancelRequest = async () => {
-    const requestId = cancelRequest?.id
+  const handleToggleTalentaStatus = async (request) => {
+    const requestId = request?.id
 
     if (!requestId) {
-      setCancelErrorMessage('Request overtime tidak memiliki ID untuk dibatalkan.')
+      setErrorMessage('Request overtime tidak memiliki ID untuk update Talenta Status.')
       return
     }
 
-    setCancelingRequestId(requestId)
-    setCancelErrorMessage('')
+    const previousStatus = normalizeTalentaStatus(request.talenta_status)
+    const nextStatus =
+      previousStatus === TALENTA_STATUS_PROCESSED
+        ? TALENTA_STATUS_PENDING
+        : TALENTA_STATUS_PROCESSED
+
+    setUpdatingTalentaRequestId(requestId)
     setErrorMessage('')
+    setRequestRows((rows) =>
+      rows.map((row) =>
+        String(row.id) === String(requestId) ? { ...row, talenta_status: nextStatus } : row,
+      ),
+    )
 
     try {
-      await api.overtimeRequests.cancel(requestId)
+      const response = await api.overtimeReports.updateTalentaStatus(requestId, {
+        talenta_status: nextStatus,
+      })
+      const responseRow = response?.data && !Array.isArray(response.data) ? response.data : response
+
       setRequestRows((rows) =>
         rows.map((row) =>
-          String(row.id) === String(requestId) ? { ...row, status: 'CANCELED' } : row,
+          String(row.id) === String(requestId)
+            ? { ...row, ...responseRow, talenta_status: nextStatus }
+            : row,
         ),
       )
-      setCancelRequest(null)
       setReloadKey((key) => key + 1)
     } catch (error) {
-      setCancelErrorMessage(error?.message || 'Gagal membatalkan request overtime.')
+      setRequestRows((rows) =>
+        rows.map((row) =>
+          String(row.id) === String(requestId)
+            ? { ...row, talenta_status: previousStatus }
+            : row,
+        ),
+      )
+      setErrorMessage(error?.message || 'Gagal update Talenta Status.')
     } finally {
-      setCancelingRequestId(null)
+      setUpdatingTalentaRequestId(null)
     }
   }
 
@@ -406,7 +444,7 @@ function DataTableReqOvertime({
 
   return (
     <>
-      <div className="mtickets-table-shell req-overtime-table-shell">
+      <div className="mtickets-table-shell req-overtime-table-shell report-overtime-table-shell">
         <DataTable
           className="mtickets-table"
           rows={requestRows}
@@ -416,25 +454,22 @@ function DataTableReqOvertime({
           emptyMessage={emptyMessage}
           pagination={pagination}
           detail={{
-            buttonLabel: 'Detail request',
-            buttonIcon: FileText01,
-            buttonIconOnly: true,
-            columnLabel: 'Action',
+            columnLabel: 'Talenta Status',
+            headerStyle: { width: '22%' },
+            cellStyle: { width: '22%' },
             eyebrow: 'Request Overtime',
             title: (request) => formatValue(request.request_number),
             description: (request) => formatValue(request.task_description),
-            actions: [
-              {
-                key: 'cancel',
-                label: 'Cancel request',
-                icon: XCircle,
-                variant: 'danger',
-                iconOnly: true,
-                hidden: (request) => isCanceledStatus(request.status),
-                disabled: (request) => String(cancelingRequestId) === String(request.id),
-                onClick: handleCancelRequest,
-              },
-            ],
+            renderCell: (request) => (
+              <TalentaStatusToggle
+                status={request.talenta_status}
+                disabled={String(updatingTalentaRequestId) === String(request.id)}
+                onChange={(event) => {
+                  event.stopPropagation()
+                  handleToggleTalentaStatus(request)
+                }}
+              />
+            ),
             sections: (request) => [
               {
                 title: 'Employee',
@@ -460,24 +495,15 @@ function DataTableReqOvertime({
                 fields: [
                   { label: 'Task', value: formatValue(request.task_description) },
                   { label: 'Result', value: formatValue(request.result_description) },
-                  { label: 'Talenta Status', value: formatValue(request.talenta_status) },
+                  { label: 'Talenta Status', value: formatValue(request.talenta_status) },  
                 ],
               },
             ],
           }}
         />
       </div>
-
-      <DialogValidationCancelRO
-        isOpen={Boolean(cancelRequest)}
-        request={cancelRequest}
-        isSubmitting={Boolean(cancelingRequestId)}
-        errorMessage={cancelErrorMessage}
-        onClose={handleCloseCancelDialog}
-        onConfirm={handleConfirmCancelRequest}
-      />
     </>
   )
 }
 
-export default DataTableReqOvertime
+export default DataTableReport
