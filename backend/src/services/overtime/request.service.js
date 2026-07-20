@@ -408,6 +408,34 @@ function buildApprovalData(requestId, approver) {
   };
 }
 
+async function attachSubmitterSnapshots(rows = []) {
+  const submitterIds = rows
+    .map((row) => row.submitted_by)
+    .filter((id) => id !== null && id !== undefined && String(id).trim() !== '');
+
+  if (submitterIds.length === 0) {
+    return rows;
+  }
+
+  const submitters = await UserModel.findUsersByIds(submitterIds);
+  const submitterMap = new Map(submitters.map((submitter) => [String(submitter.id), submitter]));
+
+  return rows.map((row) => {
+    const submitter = submitterMap.get(String(row.submitted_by));
+
+    if (!submitter) {
+      return row;
+    }
+
+    return {
+      ...row,
+      submitted_by_name: submitter.name,
+      submitted_by_username: submitter.username,
+      submitted_by_email: submitter.email,
+    };
+  });
+}
+
 async function list(query, authUser) {
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(query.limit, 10) || 10, 1), 100);
@@ -428,9 +456,10 @@ async function list(query, authUser) {
     RequestModel.findAll(filters, authUser),
     RequestModel.countAll(filters, authUser),
   ]);
+  const rows = await attachSubmitterSnapshots(data);
 
   return {
-    data,
+    data: rows,
     meta: {
       page,
       limit,

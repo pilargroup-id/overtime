@@ -14,6 +14,10 @@ import ApprovalRules from './pages/approval-rules/ApprovalRules.jsx'
 const DEFAULT_USER_PROFILE = {
   name: 'Al Fatih',
   role: 'Frontend Developer',
+  permissions: [],
+  jobLevelId: null,
+  jobLevelValue: null,
+  jobLevelName: null,
 }
 
 function getCurrentPath() {
@@ -34,6 +38,10 @@ function getUserProfileFromAuthResponse(response) {
   return {
     name: authUser.name ?? authUser.username ?? DEFAULT_USER_PROFILE.name,
     role: authUser.job_position ?? authUser.department_name ?? DEFAULT_USER_PROFILE.role,
+    permissions: Array.isArray(authUser.permissions) ? authUser.permissions : [],
+    jobLevelId: authUser.job_level_id ?? null,
+    jobLevelValue: authUser.job_level_value ?? null,
+    jobLevelName: authUser.job_level ?? null,
   }
 }
 
@@ -173,6 +181,10 @@ function App() {
         activePath={activePath}
         userName={currentUser.name}
         userRole={currentUser.role}
+        userPermissions={currentUser.permissions}
+        userJobLevelId={currentUser.jobLevelId}
+        userJobLevelValue={currentUser.jobLevelValue}
+        userJobLevelName={currentUser.jobLevelName}
         onToggleCollapse={() => setSidebarCollapsed((currentValue) => !currentValue)}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />

@@ -2,10 +2,12 @@ import { useState } from 'react'
 
 import ButtonCreateBulkReqOvertime from '../../components/button/button-req-overtime/ButtonCreateBulkReqOvertime.jsx'
 import ButtonCreateReqOvertime from '../../components/button/button-req-overtime/ButtonCreateReqOvertime.jsx'
+import Search from '../../components/search/Search.jsx'
 import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOvertime.jsx'
 
 function ReqOvertimePages({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey, setReqOvertimeRefreshKey] = useState(0)
+  const [requestSearchQuery, setRequestSearchQuery] = useState(searchQuery ?? '')
   const pageTitle = activePage?.title ?? 'Request Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
@@ -21,6 +23,12 @@ function ReqOvertimePages({ activePage, searchQuery }) {
         </div>
 
         <div className="users-table-card__actions">
+          <Search
+            value={requestSearchQuery}
+            onChange={setRequestSearchQuery}
+            placeholder="Search request..."
+            ariaLabel="Search request overtime"
+          />
           <ButtonCreateReqOvertime
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
@@ -31,7 +39,7 @@ function ReqOvertimePages({ activePage, searchQuery }) {
       </div>
 
       <DataTableReqOvertime
-        searchQuery={searchQuery}
+        searchQuery={requestSearchQuery}
         tableLabel={`${pageTitle} table`}
         refreshKey={reqOvertimeRefreshKey}
       />

@@ -2,10 +2,12 @@ import { useState } from 'react'
 
 // import ButtonCreateBulkReqOvertime from '../../components/button/button-req-overtime/ButtonCreateBulkReqOvertime.jsx'
 // import ButtonCreateApproval from '../../components/button/button-approval-overtime/ButtonCreateApproval.jsx'
+import Search from '../../components/search/Search.jsx'
 import DataTableApprovalOvertime from '../../components/table/dekstop/DataTableApprovalOvertime.jsx'
 
 function ApprovalOvertime({ activePage, searchQuery }) {
-  const [reqOvertimeRefreshKey, setReqOvertimeRefreshKey] = useState(0)
+  const [reqOvertimeRefreshKey] = useState(0)
+  const [approvalSearchQuery, setApprovalSearchQuery] = useState(searchQuery ?? '')
   const pageTitle = activePage?.title ?? 'Request Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
@@ -20,18 +22,25 @@ function ApprovalOvertime({ activePage, searchQuery }) {
           <h1 className="dashboard-panel__title">{pageTitle}</h1>
         </div>
 
-        {/* <div className="users-table-card__actions">
-          <ButtonCreateApproval
+        <div className="users-table-card__actions">
+          <Search
+            value={approvalSearchQuery}
+            onChange={setApprovalSearchQuery}
+            placeholder="Search approval..."
+            ariaLabel="Search approval overtime"
+          />
+          {/* <ButtonCreateApproval
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
           <ButtonCreateApproval
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
-        </div> */}
+          */}
+        </div>
       </div>
 
       <DataTableApprovalOvertime
-        searchQuery={searchQuery}
+        searchQuery={approvalSearchQuery}
         tableLabel={`${pageTitle} table`}
         refreshKey={reqOvertimeRefreshKey}
       />

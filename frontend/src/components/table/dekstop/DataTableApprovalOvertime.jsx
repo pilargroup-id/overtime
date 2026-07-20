@@ -121,6 +121,46 @@ function getNestedValue(source, path) {
   return path.split('.').reduce((value, key) => value?.[key], source)
 }
 
+function formatSubmittedBy(row) {
+  const submittedByFields = [
+    'submitted_by_name',
+    'submittedBy.name',
+    'submitted_by_username',
+    'submittedBy.username',
+    'submitted_by_email',
+    'submittedBy.email',
+  ]
+
+  for (const field of submittedByFields) {
+    const value = getNestedValue(row, field)
+
+    if (String(value ?? '').trim()) {
+      return formatValue(value)
+    }
+  }
+
+  return '-'
+}
+
+function formatSubmittedByMeta(row) {
+  const submittedByMetaFields = [
+    'submitted_by_email',
+    'submittedBy.email',
+    'submitted_by_username',
+    'submittedBy.username',
+  ]
+
+  for (const field of submittedByMetaFields) {
+    const value = getNestedValue(row, field)
+
+    if (String(value ?? '').trim()) {
+      return formatValue(value)
+    }
+  }
+
+  return ''
+}
+
 function formatCompensation(row, compensationTypeMap) {
   const compensationNameFields = [
     'compensation_name',
@@ -341,18 +381,14 @@ function createColumns(
       render: (row) => formatDate(row.work_date),
     },
     {
-      key: 'time',
-      header: 'Time',
+      key: 'timeDuration',
+      header: 'Time & Duration',
       headerStyle: { width: '15%' },
       cellStyle: { width: '15%' },
-      render: (row) => `${formatTime(row.start_time)} - ${formatTime(row.end_time)}`,
-    },
-    {
-      key: 'duration',
-      header: 'Duration',
-      headerStyle: { width: '12%' },
-      cellStyle: { width: '12%' },
-      render: (row) => formatDuration(row.total_minutes),
+      render: (row) =>
+        `${formatTime(row.start_time)} - ${formatTime(row.end_time)} (${formatDuration(
+          row.total_minutes,
+        )})`,
     },
     {
       key: 'approvalTime',
@@ -366,6 +402,18 @@ function createColumns(
       header: 'Compensation',
       headerStyle: { width: '10%' },
       render: (row) => formatCompensation(row, compensationTypeMap),
+    },
+    {
+      key: 'submittedBy',
+      header: 'Submitted By',
+      headerStyle: { width: '13%' },
+      cellStyle: { width: '13%' },
+      render: (row) => (
+        <DataTableIdentity
+          title={formatSubmittedBy(row)}
+          subtitle={formatSubmittedByMeta(row)}
+        />
+      ),
     },
     {
       key: 'status',

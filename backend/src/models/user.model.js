@@ -1,4 +1,5 @@
 const { centralDb } = require('../config/database.config');
+const UserPermissionModel = require('./master/user-permission.model');
 
 async function findByUsername(username) {
   const [rows] = await centralDb.query(
@@ -182,10 +183,11 @@ async function findFullProfileById(id) {
     return null;
   }
 
-  const [departments, companies, projects] = await Promise.all([
+  const [departments, companies, projects, permissions] = await Promise.all([
     findUserDepartments(id),
     findUserCompanies(id),
     findUserProjects(id),
+    UserPermissionModel.findActiveByUserId(id),
   ]);
 
   const primaryDepartment =
@@ -220,6 +222,7 @@ async function findFullProfileById(id) {
     projects,
 
     apps: projects.map((project) => project.slug),
+    permissions,
 
     department_id: primaryDepartment?.id || null,
     department: primaryDepartment?.name || null,

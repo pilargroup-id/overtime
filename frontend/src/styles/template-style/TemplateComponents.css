@@ -2300,6 +2300,79 @@ select {
   flex-wrap: wrap;
 }
 
+.request-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: clamp(220px, 24vw, 320px);
+}
+
+.request-search__icon {
+  position: absolute;
+  left: 1rem;
+  color: #5a6b88;
+  pointer-events: none;
+}
+
+.request-search__input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 2.75rem 0 2.85rem;
+  border: 1px solid rgba(26, 42, 87, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary-blue);
+  font: inherit;
+  font-size: 0.95rem;
+  box-shadow: 0 10px 22px rgba(26, 42, 87, 0.08);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.request-search__input::placeholder {
+  color: #8291aa;
+}
+
+.request-search__input:focus {
+  outline: none;
+  border-color: rgba(42, 157, 143, 0.45);
+  background: #fff;
+  box-shadow:
+    0 0 0 4px rgba(42, 157, 143, 0.12),
+    0 12px 26px rgba(26, 42, 87, 0.1);
+}
+
+.request-search__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.request-search__clear {
+  position: absolute;
+  right: 0.65rem;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(26, 42, 87, 0.08);
+  color: #5a6b88;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.request-search__clear:hover,
+.request-search__clear:focus-visible {
+  outline: none;
+  background: rgba(42, 157, 143, 0.14);
+  color: var(--accent-teal-dark);
+}
+
 .users-table-card__action {
   min-height: 48px;
   display: inline-flex;
@@ -2961,9 +3034,10 @@ select {
 }
 
 .users-table-wrapper {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  max-height: min(640px, calc(100dvh - 280px));
   margin-top: 22px;
   overflow: auto;
   border: 1px solid rgba(26, 42, 87, 0.08);
@@ -2973,7 +3047,7 @@ select {
 }
 
 .users-table {
-  height: 100%;
+  height: auto;
   width: 100%;
   min-width: 780px;
   border-collapse: separate;
@@ -2993,6 +3067,7 @@ select {
 }
 
 .users-table td {
+  height: 64px;
   padding: 1rem;
   border-bottom: 1px solid rgba(26, 42, 87, 0.08);
   color: #425575;
@@ -5095,6 +5170,7 @@ select {
   }
 
   .users-table-card__actions,
+  .request-search,
   .range-date-button,
   .range-date-button__trigger {
     width: 100%;

@@ -89,6 +89,46 @@ function formatDuration(totalMinutes) {
   return `${remainingMinutes}m`
 }
 
+function formatSubmittedBy(request) {
+  const submittedByFields = [
+    'submitted_by_name',
+    'submittedBy.name',
+    'submitted_by_username',
+    'submittedBy.username',
+    'submitted_by_email',
+    'submittedBy.email',
+  ]
+
+  for (const field of submittedByFields) {
+    const value = getNestedValue(request, field)
+
+    if (String(value ?? '').trim()) {
+      return formatValue(value)
+    }
+  }
+
+  return '-'
+}
+
+function formatSubmittedByMeta(request) {
+  const submittedByMetaFields = [
+    'submitted_by_email',
+    'submittedBy.email',
+    'submitted_by_username',
+    'submittedBy.username',
+  ]
+
+  for (const field of submittedByMetaFields) {
+    const value = getNestedValue(request, field)
+
+    if (String(value ?? '').trim()) {
+      return formatValue(value)
+    }
+  }
+
+  return ''
+}
+
 function getNestedValue(source, path) {
   return path.split('.').reduce((value, key) => value?.[key], source)
 }
@@ -151,8 +191,8 @@ function createColumns(compensationTypeMap) {
   {
     key: 'request',
     header: 'Request',
-    headerStyle: { width: '20%' },
-    cellStyle: { width: '20%' },
+    headerStyle: { width: '18%' },
+    cellStyle: { width: '18%' },
     render: (request) => (
       <DataTableIdentity
         title={formatValue(request.employee_name_snapshot)}
@@ -163,8 +203,8 @@ function createColumns(compensationTypeMap) {
  {
     key: 'department',
     header: 'Department & Company',
-    headerStyle: { width: '15%' },
-    cellStyle: { width: '15%' },
+    headerStyle: { width: '14%' },
+    cellStyle: { width: '14%' },
     render: (request) => (
       <DataTableIdentity
         title={formatValue(request.department_name_snapshot)}
@@ -175,29 +215,25 @@ function createColumns(compensationTypeMap) {
   {
     key: 'dayType',
     header: 'Day Type',
-    headerStyle: { width: '10%'},
+    headerStyle: { width: '9%'},
     render : (request) => formatValue(request.day_type)
   },
   {
     key: 'workDate',
     header: 'Work Date',
-    headerStyle: { width: '15%' },
-    cellStyle: { width: '15%' },
+    headerStyle: { width: '11%' },
+    cellStyle: { width: '11%' },
     render: (request) => formatDate(request.work_date),
   },
   {
-    key: 'time',
-    header: 'Time',
+    key: 'timeDuration',
+    header: 'Time & Duration',
     headerStyle: { width: '15%' },
     cellStyle: { width: '15%' },
-    render: (request) => `${formatTime(request.start_time)} - ${formatTime(request.end_time)}`,
-  },
-  {
-    key: 'duration',
-    header: 'Duration',
-    headerStyle: { width: '10%' },
-    cellStyle: { width: '10%' },
-    render: (request) => formatDuration(request.total_minutes),
+    render: (request) =>
+      `${formatTime(request.start_time)} - ${formatTime(request.end_time)} (${formatDuration(
+        request.total_minutes,
+      )})`,
   },
   {
     key: 'compensation',
@@ -206,10 +242,22 @@ function createColumns(compensationTypeMap) {
     render : (request) => formatCompensation(request, compensationTypeMap)
   },
   {
+    key: 'submittedBy',
+    header: 'Submitted by',
+    headerStyle: { width: '11%' },
+    cellStyle: { width: '11%' },
+    render: (request) => (
+      <DataTableIdentity
+        title={formatSubmittedBy(request)}
+        subtitle={formatSubmittedByMeta(request)}
+      />
+    ),
+  },
+  {
     key: 'status',
     header: 'Status',
-    headerStyle: { width: '22%' },
-    cellStyle: { width: '22%' },
+    headerStyle: { width: '16%' },
+    cellStyle: { width: '16%' },
     render: (request) => (
       <DataTableStatus inline variant={getStatusVariant(request.status)}>
         {formatValue(request.status)}

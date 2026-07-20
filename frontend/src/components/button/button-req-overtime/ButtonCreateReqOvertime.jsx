@@ -5,7 +5,7 @@ import { FileText01 } from '../../template/TemplateIcons.jsx'
 
 function ButtonCreateReqOvertime({
   className = '',
-  children = 'Create Req Overtime',
+  children = 'Req Overtime',
   dialogProps = {},
   iconSize = 18,
   onClick,

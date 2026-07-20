@@ -1,5 +1,6 @@
 const { db } = require('../../config/database.config');
 
+const UserModel = require('../../models/user.model');
 const ApprovalModel = require('../../models/overtime/approval.model');
 const RequestModel = require('../../models/overtime/request.model');
 const LogModel = require('../../models/overtime/log.model');
@@ -15,6 +16,34 @@ function createForbiddenError(message) {
   const err = new Error(message);
   err.statusCode = 403;
   return err;
+}
+
+async function attachSubmitterSnapshots(rows = []) {
+  const submitterIds = rows
+    .map((row) => row.submitted_by)
+    .filter((id) => id !== null && id !== undefined && String(id).trim() !== '');
+
+  if (submitterIds.length === 0) {
+    return rows;
+  }
+
+  const submitters = await UserModel.findUsersByIds(submitterIds);
+  const submitterMap = new Map(submitters.map((submitter) => [String(submitter.id), submitter]));
+
+  return rows.map((row) => {
+    const submitter = submitterMap.get(String(row.submitted_by));
+
+    if (!submitter) {
+      return row;
+    }
+
+    return {
+      ...row,
+      submitted_by_name: submitter.name,
+      submitted_by_username: submitter.username,
+      submitted_by_email: submitter.email,
+    };
+  });
 }
 
 async function list(query, authUser) {
@@ -39,9 +68,10 @@ async function list(query, authUser) {
     ApprovalModel.findAllForApprover(filters, authUser),
     ApprovalModel.countAllForApprover(filters, authUser),
   ]);
+  const rows = await attachSubmitterSnapshots(data);
 
   return {
-    data,
+    data: rows,
     meta: {
       page,
       limit,

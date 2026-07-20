@@ -30,6 +30,102 @@ function getGroupKey(item) {
   return `group:${getItemKey(item)}`
 }
 
+const PERMISSION_REQUIREMENTS_BY_ITEM_ID = {
+  'report-overtime': [
+    { permissionType: 'REPORT_MANAGE', scopeTypes: ['GLOBAL'] },
+  ],
+  master: [
+    { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
+  ],
+  'compensation-type': [
+    { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
+  ],
+  'user-permissions': [
+    { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
+  ],
+  'approval-rules': [
+    { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
+  ],
+}
+
+function hasPermission(userPermissions, requirement) {
+  return userPermissions.some(
+    (permission) =>
+      permission?.permission_type === requirement.permissionType &&
+      requirement.scopeTypes.includes(permission?.scope_type),
+  )
+}
+
+function canShowItem(item, userPermissions) {
+  const requirements = PERMISSION_REQUIREMENTS_BY_ITEM_ID[getItemKey(item)]
+
+  if (!requirements) {
+    return true
+  }
+
+  return requirements.some((requirement) => hasPermission(userPermissions, requirement))
+}
+
+function isStaffLevel(userJobLevelName, userRole) {
+  const levelText = `${userJobLevelName ?? ''} ${userRole ?? ''}`.toLowerCase()
+
+  return levelText.includes('staff')
+}
+
+function canShowByJobLevel(item, userJobLevelId, userJobLevelValue, userJobLevelName, userRole) {
+  if (getItemKey(item) !== 'ApprovalOvertime') {
+    return true
+  }
+
+  const jobLevelValue = Number(userJobLevelValue ?? userJobLevelId)
+
+  return jobLevelValue > 1 && !isStaffLevel(userJobLevelName, userRole)
+}
+
+function filterNavigationItems(
+  items,
+  userPermissions = [],
+  userJobLevelId = null,
+  userJobLevelValue = null,
+  userJobLevelName = null,
+  userRole = null,
+) {
+  return items.reduce((visibleItems, item) => {
+    const visibleChildren = item.children?.length
+      ? filterNavigationItems(
+          item.children,
+          userPermissions,
+          userJobLevelId,
+          userJobLevelValue,
+          userJobLevelName,
+          userRole,
+        )
+      : undefined
+    const hasVisibleChildren = visibleChildren?.length > 0
+
+    if (
+      (!canShowItem(item, userPermissions) ||
+        !canShowByJobLevel(
+          item,
+          userJobLevelId,
+          userJobLevelValue,
+          userJobLevelName,
+          userRole,
+        )) &&
+      !hasVisibleChildren
+    ) {
+      return visibleItems
+    }
+
+    visibleItems.push({
+      ...item,
+      ...(item.children?.length ? { children: visibleChildren } : {}),
+    })
+
+    return visibleItems
+  }, [])
+}
+
 function isItemActive(item, currentPath) {
   if (item.href === currentPath) {
     return true
@@ -162,6 +258,10 @@ function Sidebar({
   activePath = '/dashboard',
   userName = 'Al Fatih',
   userRole = 'Frontend Developer',
+  userPermissions = [],
+  userJobLevelId = null,
+  userJobLevelValue = null,
+  userJobLevelName = null,
   primaryItems = primaryNavigationItems,
   secondaryItems = secondaryNavigationItems,
   onAction,
@@ -170,9 +270,33 @@ function Sidebar({
 }) {
   const [expandedGroups, setExpandedGroups] = useState({})
   const initials = getInitials(userName)
+  const visiblePrimaryItems = useMemo(
+    () =>
+      filterNavigationItems(
+        primaryItems,
+        userPermissions,
+        userJobLevelId,
+        userJobLevelValue,
+        userJobLevelName,
+        userRole,
+      ),
+    [primaryItems, userJobLevelId, userJobLevelName, userJobLevelValue, userPermissions, userRole],
+  )
+  const visibleSecondaryItems = useMemo(
+    () =>
+      filterNavigationItems(
+        secondaryItems,
+        userPermissions,
+        userJobLevelId,
+        userJobLevelValue,
+        userJobLevelName,
+        userRole,
+      ),
+    [secondaryItems, userJobLevelId, userJobLevelName, userJobLevelValue, userPermissions, userRole],
+  )
   const activeExpandedGroups = useMemo(
-    () => getInitiallyExpandedGroups([...primaryItems, ...secondaryItems], activePath),
-    [activePath, primaryItems, secondaryItems],
+    () => getInitiallyExpandedGroups([...visiblePrimaryItems, ...visibleSecondaryItems], activePath),
+    [activePath, visiblePrimaryItems, visibleSecondaryItems],
   )
   const visibleExpandedGroups = useMemo(
     () => ({
@@ -285,7 +409,7 @@ function Sidebar({
       </div>
 
       <nav className="sidebar-nav" aria-label="Main navigation">
-        {primaryItems.map((item) => (
+        {visiblePrimaryItems.map((item) => (
           <SidebarNavItem
             key={getItemKey(item)}
             item={item}
@@ -299,7 +423,7 @@ function Sidebar({
       </nav>
 
       <div className="sidebar-bottom">
-        {secondaryItems.map((item) => (
+        {visibleSecondaryItems.map((item) => (
           <SidebarNavItem
             key={getItemKey(item)}
             item={item}
