@@ -7,10 +7,11 @@ const LogModel = require('../../models/overtime/log.model');
 const UserPermissionModel = require('../../models/master/user-permission.model');
 const ApprovalRuleModel = require('../../models/master/approval-rule.model');
 const CompensationTypeModel = require('../../models/master/compensation-type.model');
+const NationalHolidayModel = require('../../models/master/national-holiday.model');
 
 const NumberSequenceService = require('./number-sequence.service');
 
-const ALLOWED_DAY_TYPES = ['WORKDAY', 'HOLIDAY', 'WEEKEND', 'NATIONAL_HOLIDAY'];
+const ALLOWED_DAY_TYPES = ['WORKDAY', 'HOLIDAY', 'WEEKEND'];
 const MAX_BACKDATE_MONTHS = 2;
 
 function createValidationError(errors) {
@@ -96,6 +97,29 @@ function calculateTotalMinutes(workDate, startTime, endDate, endTime) {
   return Math.round(diffMs / 60000);
 }
 
+
+function calculateCompensationSnapshot(compensationType, multiplier) {
+  const normalizedMultiplier = Number(multiplier);
+  const amount = compensationType.amount === null || compensationType.amount === undefined
+    ? null
+    : Number(compensationType.amount);
+  const leaveDays = compensationType.leave_days === null || compensationType.leave_days === undefined
+    ? null
+    : Number(compensationType.leave_days);
+
+  return {
+    compensation_multiplier: normalizedMultiplier,
+    compensation_amount_snapshot: amount,
+    compensation_leave_days_snapshot: leaveDays,
+    final_compensation_amount: amount === null
+      ? null
+      : Number((amount * normalizedMultiplier).toFixed(2)),
+    final_compensation_leave_days: leaveDays === null
+      ? null
+      : Number((leaveDays * normalizedMultiplier).toFixed(2)),
+  };
+}
+
 function validateBulkPayload(payload = {}) {
   const errors = {};
   const hasItems = Array.isArray(payload.items) && payload.items.length > 0;
@@ -165,7 +189,7 @@ function validatePayload(payload) {
   const errors = {};
 
   if (payload.day_type === undefined || !ALLOWED_DAY_TYPES.includes(payload.day_type)) {
-    errors.day_type = 'day_type must be WORKDAY, HOLIDAY, WEEKEND, or NATIONAL_HOLIDAY';
+    errors.day_type = 'day_type must be WORKDAY, HOLIDAY, or WEEKEND';
   }
 
   if (!payload.work_date || !isValidDateString(payload.work_date)) {
@@ -347,6 +371,8 @@ function buildRequestData({
   numberData,
   totalMinutes,
   endDate,
+  resolvedDayType,
+  compensationSnapshot,
 }) {
   return {
     sequence_year: numberData.sequence_year,
@@ -375,7 +401,7 @@ function buildRequestData({
     department_name_snapshot: employee.department,
     department_class_snapshot: employee.department_class,
 
-    day_type: payload.day_type,
+    day_type: resolvedDayType,
     request_date: new Date().toISOString().slice(0, 10),
     work_date: normalizeDate(payload.work_date),
     start_time: normalizeTime(payload.start_time),
@@ -390,6 +416,7 @@ function buildRequestData({
         : null,
 
     compensation_type_id: payload.compensation_type_id,
+    ...compensationSnapshot,
 
     approval_type: rule.approval_type,
     current_approver_id: approver.id,
@@ -580,6 +607,16 @@ async function create(payload, authUser) {
     });
   }
 
+  const nationalHoliday = await NationalHolidayModel.findActiveByDate(
+    normalizeDate(payload.work_date)
+  );
+  const resolvedDayType = nationalHoliday ? 'NATIONAL_HOLIDAY' : payload.day_type;
+  const multiplier = nationalHoliday ? Number(nationalHoliday.multiplier) : 1;
+  const compensationSnapshot = calculateCompensationSnapshot(
+    compensationType,
+    multiplier
+  );
+
   const sourceType = await assertCanSubmitForEmployee(authUser, employee);
   const rule = await resolveApprovalRule(employee);
   const approver = await resolveApprover(rule, employee);
@@ -609,6 +646,8 @@ async function create(payload, authUser) {
       numberData,
       totalMinutes,
       endDate,
+      resolvedDayType,
+      compensationSnapshot,
     });
 
     const requestId = await RequestModel.create(requestData, conn);
