@@ -9,6 +9,7 @@ function ButtonCreateReqOvertime({
   children = 'Req Overtime',
   bulkChildren = 'Bulk Req Overtime',
   bulkDialogProps = {},
+  canUseBulkRequest = true,
   dialogProps = {},
   disabled = false,
   iconSize = 18,
@@ -22,7 +23,10 @@ function ButtonCreateReqOvertime({
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false)
   const splitButtonRef = useRef(null)
 
-  const buttonClassName = ['request-overtime-split-button', className].filter(Boolean).join(' ')
+  const canShowBulkRequest = Boolean(canUseBulkRequest)
+  const buttonClassName = canShowBulkRequest
+    ? ['request-overtime-split-button', className].filter(Boolean).join(' ')
+    : ['users-table-card__action', className].filter(Boolean).join(' ')
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -88,15 +92,68 @@ function ButtonCreateReqOvertime({
 
   return (
     <>
-      <div
-        ref={splitButtonRef}
-        className={buttonClassName}
-        aria-label="Create request overtime"
-      >
+      {canShowBulkRequest ? (
+        <div
+          ref={splitButtonRef}
+          className={buttonClassName}
+          aria-label="Create request overtime"
+        >
+          <button
+            {...buttonProps}
+            type={type}
+            className="users-table-card__action request-overtime-split-button__main"
+            onClick={handleOpenReqDialog}
+            aria-expanded={isReqDialogOpen}
+            disabled={disabled}
+          >
+            <FileText01 size={iconSize} aria-hidden="true" />
+            <span>{children}</span>
+          </button>
+
+          <button
+            type={type}
+            className="users-table-card__action request-overtime-split-button__toggle"
+            onClick={() => setIsMenuOpen((currentValue) => !currentValue)}
+            aria-label="Choose request overtime type"
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
+            disabled={disabled}
+          >
+            <ChevronDown
+              size={iconSize}
+              className={`request-overtime-split-button__chevron${isMenuOpen ? ' open' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+
+          {isMenuOpen ? (
+            <div className="request-overtime-split-button__menu" role="menu">
+              <button
+                type="button"
+                className="request-overtime-split-button__option"
+                onClick={handleOpenReqDialog}
+                role="menuitem"
+              >
+                <FileText01 size={iconSize} aria-hidden="true" />
+                <span>{children}</span>
+              </button>
+              <button
+                type="button"
+                className="request-overtime-split-button__option"
+                onClick={handleOpenBulkDialog}
+                role="menuitem"
+              >
+                <FileText01 size={iconSize} aria-hidden="true" />
+                <span>{bulkChildren}</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
         <button
           {...buttonProps}
           type={type}
-          className="users-table-card__action request-overtime-split-button__main"
+          className={buttonClassName}
           onClick={handleOpenReqDialog}
           aria-expanded={isReqDialogOpen}
           disabled={disabled}
@@ -104,46 +161,7 @@ function ButtonCreateReqOvertime({
           <FileText01 size={iconSize} aria-hidden="true" />
           <span>{children}</span>
         </button>
-
-        <button
-          type={type}
-          className="users-table-card__action request-overtime-split-button__toggle"
-          onClick={() => setIsMenuOpen((currentValue) => !currentValue)}
-          aria-label="Choose request overtime type"
-          aria-haspopup="menu"
-          aria-expanded={isMenuOpen}
-          disabled={disabled}
-        >
-          <ChevronDown
-            size={iconSize}
-            className={`request-overtime-split-button__chevron${isMenuOpen ? ' open' : ''}`}
-            aria-hidden="true"
-          />
-        </button>
-
-        {isMenuOpen ? (
-          <div className="request-overtime-split-button__menu" role="menu">
-            <button
-              type="button"
-              className="request-overtime-split-button__option"
-              onClick={handleOpenReqDialog}
-              role="menuitem"
-            >
-              <FileText01 size={iconSize} aria-hidden="true" />
-              <span>{children}</span>
-            </button>
-            <button
-              type="button"
-              className="request-overtime-split-button__option"
-              onClick={handleOpenBulkDialog}
-              role="menuitem"
-            >
-              <FileText01 size={iconSize} aria-hidden="true" />
-              <span>{bulkChildren}</span>
-            </button>
-          </div>
-        ) : null}
-      </div>
+      )}
 
       <DialogCreateReqOvertime
         {...dialogProps}
@@ -152,12 +170,14 @@ function ButtonCreateReqOvertime({
         onCreated={handleReqCreated}
       />
 
-      <DialogCreateBulkReqOvertime
-        {...bulkDialogProps}
-        isOpen={isBulkDialogOpen}
-        onClose={handleCloseBulkDialog}
-        onCreated={handleBulkCreated}
-      />
+      {canShowBulkRequest ? (
+        <DialogCreateBulkReqOvertime
+          {...bulkDialogProps}
+          isOpen={isBulkDialogOpen}
+          onClose={handleCloseBulkDialog}
+          onCreated={handleBulkCreated}
+        />
+      ) : null}
     </>
   )
 }

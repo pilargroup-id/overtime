@@ -122,7 +122,7 @@ function App() {
   const renderContent = () => {
     switch (activePath) {
       case '/RequestOvertime':
-        return <RequestOvertime />
+        return <RequestOvertime userPermissions={currentUser.permissions} />
       case '/ApprovalOvertime':
         return <ApprovalOvertime />
       case '/ReportOvertime':

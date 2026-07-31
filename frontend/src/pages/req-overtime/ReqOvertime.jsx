@@ -4,11 +4,20 @@ import ButtonCreateReqOvertime from '../../components/button/button-req-overtime
 import Search from '../../components/search/Search.jsx'
 import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOvertime.jsx'
 
-function ReqOvertimePages({ activePage, searchQuery }) {
+function canUseBulkReqOvertime(userPermissions = []) {
+  return userPermissions.some(
+    (permission) =>
+      permission?.permission_type === 'REQUEST_CREATE_ALL' &&
+      permission?.scope_type === 'GLOBAL',
+  )
+}
+
+function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {
   const [reqOvertimeRefreshKey, setReqOvertimeRefreshKey] = useState(0)
   const [requestSearchQuery, setRequestSearchQuery] = useState(searchQuery ?? '')
   const pageTitle = activePage?.title ?? 'Request Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
+  const hasBulkReqOvertimeAccess = canUseBulkReqOvertime(userPermissions)
 
   return (
     <section
@@ -29,6 +38,7 @@ function ReqOvertimePages({ activePage, searchQuery }) {
             ariaLabel="Search request overtime"
           />
           <ButtonCreateReqOvertime
+            canUseBulkRequest={hasBulkReqOvertimeAccess}
             onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
           />
         </div>
