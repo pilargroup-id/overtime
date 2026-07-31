@@ -318,6 +318,7 @@ const api = {
   compensationTypes: createResource('/master/compensation-types'),
   userPermissions: createResource('/master/user-permissions'),
   approvalRules: createResource('/master/approval-rules'),
+  nationalHolidays: createResource('/master/national-holidays'),
 };
 
 export default api;

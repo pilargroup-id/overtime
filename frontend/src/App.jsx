@@ -10,10 +10,11 @@ import ReportOvertime from './pages/report-overtime/ReportOvertime.jsx'
 import UserPermission from './pages/user-permission/UserPermission.jsx'
 import CompensationType from './pages/compensation-type/CompensationType.jsx'
 import ApprovalRules from './pages/approval-rules/ApprovalRules.jsx'
+import NationalHoliday from './pages/national-holiday/NationalHoliday.jsx'
 
 const DEFAULT_USER_PROFILE = {
-  name: 'Al Fatih',
-  role: 'Frontend Developer',
+  name: 'User',
+  role: 'Role',
   permissions: [],
   jobLevelId: null,
   jobLevelValue: null,
@@ -104,6 +105,7 @@ function App() {
     '/Master/UserPermissions',
     '/Master/CompensationType',
     '/Master/ApprovalRules',
+    '/Master/NationalHoliday',
   ]
   const isFixedTablePage = fixedTablePaths.includes(activePath)
   const mainClassName = [
@@ -133,6 +135,8 @@ function App() {
         return <CompensationType />
       case '/Master/ApprovalRules':
         return <ApprovalRules /> 
+      case '/Master/NationalHoliday':
+        return <NationalHoliday />
       default:
         return (
           <section className="dashboard-grid" aria-label="Not Found">
@@ -166,6 +170,8 @@ function App() {
         return 'Compensation Type'
       case '/Master/ApprovalRules':
         return 'ApprovalRules'
+      case '/Master/NationalHoliday':
+        return 'NationalHoliday'
       default:
         return 'Overtime App'
     }

@@ -16,6 +16,7 @@ export const implementedNavigationPaths = [
   '/Master/CompensationType',
   '/Master/UserPermissions',
   '/Master/ApprovalRules',
+  '/Master/NationalHoliday',
 ]
 
 export const primaryNavigationItems = [
@@ -57,6 +58,11 @@ export const primaryNavigationItems = [
         id: 'approval-rules',
         label: 'Approval Rules',
         href: '/Master/ApprovalRules',
+      },
+      {
+        id: 'national-holiday',
+        label: 'National Holidays',
+        href: '/Master/NationalHoliday',
       },
     ],
   },
