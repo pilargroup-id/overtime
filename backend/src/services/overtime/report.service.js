@@ -241,7 +241,7 @@ async function bulkUpdateTalentaStatus(payload = {}, authUser) {
 
     return {
       updated_ids: ids,
-      talenta_status: totalentaStatus,
+      talenta_status: toTalentaStatus,
       total_updated: ids.length,
     };
   } catch (err) {

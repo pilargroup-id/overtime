@@ -148,6 +148,11 @@ async function findAll(filters = {}) {
        r.task_description,
        r.result_description,
        r.compensation_type_id,
+       r.compensation_multiplier,
+       r.compensation_amount_snapshot,
+       r.compensation_leave_days_snapshot,
+       r.final_compensation_amount,
+       r.final_compensation_leave_days,
        r.status,
        r.approval_type,
        r.current_approver_id,
@@ -164,8 +169,8 @@ async function findAll(filters = {}) {
        ct.code AS compensation_code,
        ct.name AS compensation_name,
        ct.compensation_kind,
-       ct.amount AS compensation_amount,
-       ct.leave_days AS compensation_leave_days,
+       COALESCE(r.compensation_amount_snapshot, ct.amount) AS compensation_amount,
+       COALESCE(r.compensation_leave_days_snapshot, ct.leave_days) AS compensation_leave_days,
 
        ra.id AS approval_id,
        ra.approver_id,
@@ -210,8 +215,8 @@ async function findById(id) {
        ct.code AS compensation_code,
        ct.name AS compensation_name,
        ct.compensation_kind,
-       ct.amount AS compensation_amount,
-       ct.leave_days AS compensation_leave_days,
+       COALESCE(r.compensation_amount_snapshot, ct.amount) AS compensation_amount,
+       COALESCE(r.compensation_leave_days_snapshot, ct.leave_days) AS compensation_leave_days,
 
        ra.id AS approval_id,
        ra.approval_level,
@@ -256,7 +261,7 @@ async function updateTalentaStatus(id, data, conn = null) {
   );
 }
 
-async function bulkUpdaTetalentaStatus(ids, data, conn = null) {
+async function bulkUpdateTalentaStatus(ids, data, conn = null) {
   const executor = getExecutor(conn);
 
   await executor.query(
@@ -300,6 +305,6 @@ module.exports = {
   countAll,
   findById,
   updateTalentaStatus,
-  bulkUpdaTetalentaStatus,
+  bulkUpdateTalentaStatus,
   findStatusesByIds,
 };

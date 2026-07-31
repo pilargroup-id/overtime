@@ -1,297 +1,232 @@
-const { centralDb } = require('../config/database.config');
+const DirectoryService = require('../services/directory.service');
 const UserPermissionModel = require('./master/user-permission.model');
 
-async function findByUsername(username) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       cu.id,
-       cu.internal_id,
-       cu.username,
-       cu.email,
-       cu.phone,
-       cu.name,
-       cu.job_position,
-       cu.employment_type_code,
-       cu.is_active,
-       cu.token_version,
-       jl.name  AS job_level,
-       jl.level AS job_level_value
-     FROM central_users cu
-     LEFT JOIN master_job_levels jl ON jl.id = cu.job_level_id
-     WHERE cu.username = ?
-     LIMIT 1`,
-    [username]
-  );
+function normalizeIds(ids = []) {
+  return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))];
+}
 
-  return rows[0] || null;
+function selectPrimaryRow(rows = []) {
+  return rows.find((row) => Number(row.is_primary) === 1) || rows[0] || null;
+}
+
+function groupUserRows(rows = []) {
+  const grouped = new Map();
+
+  rows.forEach((row) => {
+    const id = String(row.id);
+
+    if (!grouped.has(id)) {
+      grouped.set(id, []);
+    }
+
+    grouped.get(id).push(row);
+  });
+
+  return grouped;
+}
+
+function mapBaseUser(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    internal_id: row.internal_id,
+    username: row.username,
+    email: row.email,
+    phone: row.phone,
+    name: row.name,
+    job_position: row.job_position,
+    job_level_id: row.job_level_id,
+    job_level: row.job_level,
+    job_level_value:
+      row.job_level_value === null || row.job_level_value === undefined
+        ? null
+        : Number(row.job_level_value),
+    employment_type_code: row.employment_type_code,
+    is_active: row.is_active,
+  };
+}
+
+async function getAllUserRows(active = 1) {
+  return DirectoryService.fetchUsers({ active });
+}
+
+async function getCompanyMap(active = 'all') {
+  const companies = await DirectoryService.fetchCompanies({ active });
+  return new Map(companies.map((company) => [String(company.id), company]));
+}
+
+async function findByUsername(username) {
+  if (!username) return null;
+
+  const rows = await DirectoryService.fetchUsers({ active: 'all', search: username });
+  const exactRows = rows.filter((row) => row.username === username);
+  return mapBaseUser(selectPrimaryRow(exactRows));
 }
 
 async function findById(id) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       cu.id,
-       cu.internal_id,
-       cu.username,
-       cu.email,
-       cu.phone,
-       cu.name,
-       cu.job_position,
-       cu.job_level_id,
-       cu.employment_type_code,
-       cu.is_active,
-       cu.token_version,
-       jl.name  AS job_level,
-       jl.level AS job_level_value
-     FROM central_users cu
-     LEFT JOIN master_job_levels jl ON jl.id = cu.job_level_id
-     WHERE cu.id = ?
-     LIMIT 1`,
-    [id]
-  );
+  if (!id) return null;
 
-  return rows[0] || null;
+  const rows = await getAllUserRows('all');
+  const userRows = rows.filter((row) => String(row.id) === String(id));
+  return mapBaseUser(selectPrimaryRow(userRows));
 }
 
 async function findUsersByIds(ids = []) {
-  const normalizedIds = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
+  const normalizedIds = normalizeIds(ids);
 
-  if (normalizedIds.length === 0) {
-    return [];
-  }
+  if (normalizedIds.length === 0) return [];
 
-  const [rows] = await centralDb.query(
-    `SELECT
-       cu.id,
-       cu.internal_id,
-       cu.username,
-       cu.email,
-       cu.name
-     FROM central_users cu
-     WHERE cu.id IN (?)
-     ORDER BY cu.name ASC`,
-    [normalizedIds]
+  const rows = await getAllUserRows('all');
+  const grouped = groupUserRows(
+    rows.filter((row) => normalizedIds.includes(String(row.id)))
   );
 
-  return rows;
+  return normalizedIds
+    .map((id) => mapBaseUser(selectPrimaryRow(grouped.get(id) || [])))
+    .filter(Boolean)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findDepartmentsByIds(ids = []) {
-  const normalizedIds = [...new Set(ids.filter((id) => id !== null && id !== undefined && id !== ''))];
+  const normalizedIds = normalizeIds(ids);
 
-  if (normalizedIds.length === 0) {
-    return [];
-  }
+  if (normalizedIds.length === 0) return [];
 
-  const [rows] = await centralDb.query(
-    `SELECT
-       md.id,
-       md.name,
-       md.code,
-       md.company_id
-     FROM master_departments md
-     WHERE md.id IN (?)
-     ORDER BY md.name ASC`,
-    [normalizedIds]
-  );
+  const departments = await DirectoryService.fetchDepartments({ active: 'all' });
 
-  return rows;
+  return departments
+    .filter((department) => normalizedIds.includes(String(department.id)))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findCompaniesByIds(ids = []) {
-  const normalizedIds = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
+  const normalizedIds = normalizeIds(ids);
 
-  if (normalizedIds.length === 0) {
-    return [];
-  }
+  if (normalizedIds.length === 0) return [];
 
-  const [rows] = await centralDb.query(
-    `SELECT
-       mc.id,
-       mc.code,
-       mc.name
-     FROM master_companies mc
-     WHERE mc.id IN (?)
-     ORDER BY mc.name ASC`,
-    [normalizedIds]
-  );
+  const companies = await DirectoryService.fetchCompanies({ active: 'all' });
 
-  return rows;
+  return companies
+    .filter((company) => normalizedIds.includes(String(company.id)))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findUserDepartments(userId) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       md.id,
-       md.name,
-       md.class,
-       md.code,
-       md.company_id,
-       md.parent_id,
-       cud.is_primary
-     FROM central_user_departments cud
-     INNER JOIN master_departments md ON md.id = cud.department_id
-     WHERE cud.user_id = ?
-       AND md.is_active = 1
-     ORDER BY cud.is_primary DESC, md.name ASC`,
-    [userId]
-  );
+  const rows = await getAllUserRows('all');
 
-  return rows;
+  return rows
+    .filter((row) => String(row.id) === String(userId) && row.department_id !== null)
+    .map((row) => ({
+      id: row.department_id,
+      name: row.department_name,
+      class: row.department_class,
+      code: row.department_code,
+      company_id: row.company_id,
+      parent_id: null,
+      is_primary: row.is_primary,
+    }))
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findUserCompanies(userId) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       mc.id,
-       mc.code,
-       mc.name,
-       cuc.is_primary
-     FROM central_user_companies cuc
-     INNER JOIN master_companies mc ON mc.id = cuc.company_id
-     WHERE cuc.user_id = ?
-       AND mc.is_active = 1
-     ORDER BY cuc.is_primary DESC, mc.name ASC`,
-    [userId]
-  );
+  const departments = await findUserDepartments(userId);
+  const companyIds = normalizeIds(departments.map((department) => department.company_id));
+  const companies = await findCompaniesByIds(companyIds);
+  const primaryDepartment = departments.find((department) => Number(department.is_primary) === 1);
 
-  return rows;
+  return companies.map((company) => ({
+    ...company,
+    is_primary: primaryDepartment && String(primaryDepartment.company_id) === String(company.id) ? 1 : 0,
+  }));
 }
 
-async function findUserProjects(userId) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       mp.id,
-       mp.name,
-       mp.slug,
-       mp.url,
-       mp.description
-     FROM central_user_projects cup
-     INNER JOIN master_projects mp ON mp.id = cup.project_id
-     WHERE cup.user_id = ?
-       AND mp.is_active = 1
-     ORDER BY mp.name ASC`,
-    [userId]
-  );
-
-  return rows;
+async function findUserProjects() {
+  return [];
 }
 
 async function findFullProfileById(id) {
-  const user = await findById(id);
+  const rows = await getAllUserRows('all');
+  const userRows = rows.filter((row) => String(row.id) === String(id));
+  const primaryRow = selectPrimaryRow(userRows);
 
-  if (!user) {
-    return null;
-  }
+  if (!primaryRow) return null;
 
-  const [departments, companies, projects, permissions] = await Promise.all([
-    findUserDepartments(id),
+  const [companies, permissions, companyMap] = await Promise.all([
     findUserCompanies(id),
-    findUserProjects(id),
     UserPermissionModel.findActiveByUserId(id),
+    getCompanyMap('all'),
   ]);
 
-  const primaryDepartment =
-    departments.find((item) => Number(item.is_primary) === 1) ||
-    departments[0] ||
-    null;
+  const departments = userRows
+    .filter((row) => row.department_id !== null)
+    .map((row) => ({
+      id: row.department_id,
+      name: row.department_name,
+      class: row.department_class,
+      code: row.department_code,
+      company_id: row.company_id,
+      parent_id: null,
+      is_primary: row.is_primary,
+    }));
+
+  const primaryDepartment = selectPrimaryRow(
+    departments.map((department) => ({ ...department, id: department.id }))
+  ) || departments[0] || null;
 
   const primaryCompany =
-    companies.find((item) => Number(item.is_primary) === 1) ||
+    companies.find((company) => Number(company.is_primary) === 1) ||
     companies[0] ||
+    companyMap.get(String(primaryRow.company_id)) ||
     null;
 
   return {
-    id: user.id,
-    internal_id: user.internal_id,
-    username: user.username,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    job_position: user.job_position,
-    employment_type_code: user.employment_type_code,
-
-    job_level_id: user.job_level_id,
-    job_level: user.job_level,
-    job_level_value: user.job_level_value,
-
-    is_active: user.is_active,
-    token_version: user.token_version,
-
+    ...mapBaseUser(primaryRow),
+    token_version: null,
     departments,
     companies,
-    projects,
-
-    apps: projects.map((project) => project.slug),
+    projects: [],
+    apps: [],
     permissions,
-
-    department_id: primaryDepartment?.id || null,
-    department: primaryDepartment?.name || null,
-    department_class: primaryDepartment?.class || null,
-    department_code: primaryDepartment?.code || null,
-
-    company_id: primaryCompany?.id || null,
-    company: primaryCompany?.name || null,
-    company_code: primaryCompany?.code || null,
-
-    cv: user.token_version,
+    department_id: primaryRow.department_id ?? primaryDepartment?.id ?? null,
+    department: primaryRow.department_name ?? primaryDepartment?.name ?? null,
+    department_class: primaryRow.department_class ?? primaryDepartment?.class ?? null,
+    department_code: primaryRow.department_code ?? primaryDepartment?.code ?? null,
+    company_id: primaryRow.company_id ?? primaryCompany?.id ?? null,
+    company: primaryCompany?.name ?? null,
+    company_code: primaryCompany?.code ?? null,
+    cv: null,
   };
 }
 
 async function findActiveUsersByJobLevelName(jobLevelName) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       cu.id,
-       cu.internal_id,
-       cu.username,
-       cu.email,
-       cu.phone,
-       cu.name,
-       cu.job_position,
-       cu.job_level_id,
-       cu.employment_type_code,
-       cu.is_active,
-       cu.token_version,
-       jl.name  AS job_level,
-       jl.level AS job_level_value
-     FROM central_users cu
-     INNER JOIN master_job_levels jl ON jl.id = cu.job_level_id
-     WHERE cu.is_active = 1
-       AND jl.name = ?
-     ORDER BY cu.name ASC`,
-    [jobLevelName]
+  const rows = await getAllUserRows(1);
+  const grouped = groupUserRows(
+    rows.filter((row) => row.job_level === jobLevelName)
   );
 
-  return rows;
+  return [...grouped.values()]
+    .map((userRows) => mapBaseUser(selectPrimaryRow(userRows)))
+    .filter(Boolean)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findActiveUsersByDepartmentAndJobLevelName(departmentId, jobLevelName) {
-  const [rows] = await centralDb.query(
-    `SELECT
-       cu.id,
-       cu.internal_id,
-       cu.username,
-       cu.email,
-       cu.phone,
-       cu.name,
-       cu.job_position,
-       cu.job_level_id,
-       cu.employment_type_code,
-       cu.is_active,
-       cu.token_version,
-       jl.name  AS job_level,
-       jl.level AS job_level_value
-     FROM central_users cu
-     INNER JOIN master_job_levels jl ON jl.id = cu.job_level_id
-     INNER JOIN central_user_departments cud ON cud.user_id = cu.id
-     WHERE cu.is_active = 1
-       AND cud.department_id = ?
-       AND jl.name = ?
-     ORDER BY cud.is_primary DESC, cu.name ASC
-     LIMIT 1`,
-    [departmentId, jobLevelName]
+  const rows = await DirectoryService.fetchUsers({
+    active: 1,
+    department_id: departmentId,
+  });
+
+  const grouped = groupUserRows(
+    rows.filter((row) => row.job_level === jobLevelName)
   );
 
-  return rows[0] || null;
+  const candidates = [...grouped.values()]
+    .map((userRows) => selectPrimaryRow(userRows))
+    .filter(Boolean)
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || String(a.name || '').localeCompare(String(b.name || '')));
+
+  return mapBaseUser(candidates[0] || null);
 }
 
 async function findActiveUsersForOvertimeOptions(filters = {}) {
@@ -304,79 +239,68 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
     limit = 20,
   } = filters;
 
-  const where = ['cu.is_active = 1'];
-  const params = [];
+  const rows = await getAllUserRows(1);
+  const companyMap = await getCompanyMap(1);
+  const grouped = groupUserRows(rows);
+  const normalizedUserIds = normalizeIds(userIds);
+  const normalizedDepartmentIds = normalizeIds(departmentIds);
+  const normalizedCompanyIds = normalizeIds(companyIds);
+  const keyword = String(search || '').trim().toLowerCase();
 
-  if (!allUsers) {
-    const scopeConditions = [];
+  const result = [];
 
-    if (userIds.length > 0) {
-      scopeConditions.push('cu.id IN (?)');
-      params.push(userIds);
+  for (const userRows of grouped.values()) {
+    const primaryRow = selectPrimaryRow(userRows);
+    if (!primaryRow) continue;
+
+    if (!allUsers) {
+      const userMatch = normalizedUserIds.includes(String(primaryRow.id));
+      const departmentMatch = userRows.some((row) => normalizedDepartmentIds.includes(String(row.department_id)));
+      const companyMatch = userRows.some((row) => normalizedCompanyIds.includes(String(row.company_id)));
+
+      if (!userMatch && !departmentMatch && !companyMatch) continue;
     }
 
-    if (departmentIds.length > 0) {
-      scopeConditions.push('cud.department_id IN (?)');
-      params.push(departmentIds);
+    if (keyword) {
+      const haystack = [
+        primaryRow.name,
+        primaryRow.username,
+        primaryRow.internal_id,
+        primaryRow.email,
+      ]
+        .map((value) => String(value ?? '').toLowerCase())
+        .join(' ');
+
+      if (!haystack.includes(keyword)) continue;
     }
 
-    if (companyIds.length > 0) {
-      scopeConditions.push('cuc.company_id IN (?)');
-      params.push(companyIds);
-    }
+    const company = companyMap.get(String(primaryRow.company_id));
 
-    if (scopeConditions.length === 0) {
-      where.push('cu.id = ?');
-      params.push('__NO_USER__');
-    } else {
-      where.push(`(${scopeConditions.join(' OR ')})`);
-    }
+    result.push({
+      id: primaryRow.id,
+      internal_id: primaryRow.internal_id,
+      username: primaryRow.username,
+      name: primaryRow.name,
+      email: primaryRow.email,
+      job_position: primaryRow.job_position,
+      employment_type_code: primaryRow.employment_type_code,
+      job_level_name: primaryRow.job_level,
+      job_level_value:
+        primaryRow.job_level_value === null || primaryRow.job_level_value === undefined
+          ? null
+          : Number(primaryRow.job_level_value),
+      department_id: primaryRow.department_id,
+      department_name: primaryRow.department_name,
+      department_code: primaryRow.department_code,
+      company_id: primaryRow.company_id,
+      company_code: company?.code || null,
+      company_name: company?.name || null,
+    });
   }
 
-  if (search) {
-    where.push(`(
-      cu.name LIKE ?
-      OR cu.username LIKE ?
-      OR cu.internal_id LIKE ?
-      OR cu.email LIKE ?
-    )`);
-
-    const keyword = `%${search}%`;
-    params.push(keyword, keyword, keyword, keyword);
-  }
-
-  params.push(Number(limit) || 20);
-
-  const [rows] = await centralDb.query(
-    `SELECT DISTINCT
-       cu.id,
-       cu.internal_id,
-       cu.username,
-       cu.name,
-       cu.email,
-       cu.job_position,
-       cu.employment_type_code,
-       mjl.name AS job_level_name,
-       mjl.level AS job_level_value,
-       md.id AS department_id,
-       md.name AS department_name,
-       md.code AS department_code,
-       mc.id AS company_id,
-       mc.code AS company_code,
-       mc.name AS company_name
-     FROM central_users cu
-     LEFT JOIN master_job_levels mjl ON mjl.id = cu.job_level_id
-     LEFT JOIN central_user_departments cud ON cud.user_id = cu.id AND cud.is_primary = 1
-     LEFT JOIN master_departments md ON md.id = cud.department_id
-     LEFT JOIN central_user_companies cuc ON cuc.user_id = cu.id AND cuc.is_primary = 1
-     LEFT JOIN master_companies mc ON mc.id = cuc.company_id
-     WHERE ${where.join(' AND ')}
-     ORDER BY cu.name ASC
-     LIMIT ?`,
-    params
-  );
-
-  return rows;
+  return result
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+    .slice(0, Number(limit) || 20);
 }
 
 module.exports = {
