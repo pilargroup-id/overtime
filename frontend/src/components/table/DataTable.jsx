@@ -303,7 +303,6 @@ function getDetailSections(detail, row, index) {
   return detail.sections ?? []
 }
 
-<<<<<<< HEAD
 function getDetailActions(detail, row, index) {
   if (!detail) {
     return []
@@ -314,7 +313,8 @@ function getDetailActions(detail, row, index) {
   }
 
   return detail.actions ?? []
-=======
+}
+
 function resolveResponsiveValue(value, row, index) {
   if (typeof value === 'function') {
     return value(row, index)
@@ -631,7 +631,6 @@ function buildMobileCardProps({
     surface: resolveResponsiveValue(mobileCardConfig.surface, row, index) ?? defaultSurface,
     onClick: resolvedOnClick,
   }
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e
 }
 
 export function DataTableStatus({
@@ -707,7 +706,7 @@ function DataTable({
   const [expandedRowKey, setExpandedRowKey] = useState(null)
   const [localPage, setLocalPage] = useState(1)
   const [localPageSize, setLocalPageSize] = useState(
-    getDefaultPaginationConfig(pagination).pageSize ?? 5,
+    getDefaultPaginationConfig(pagination).pageSize ?? 25,
   )
   const [isPageSizeMenuOpen, setIsPageSizeMenuOpen] = useState(false)
   const hasDetail = Boolean(detail)
@@ -746,7 +745,7 @@ function DataTable({
   const colSpan = columns.length + (showDetailColumn ? 1 : 0)
   const currentPageSize = Number(effectivePageSize)
   const pageSizeOptions = normalizePageSizeOptions(
-    paginationConfig.pageSizeOptions ?? [5, 10, 25, 50],
+    paginationConfig.pageSizeOptions ?? [25, 50, 100, 250, 500],
     currentPageSize,
   )
   const canChangePageSize =
@@ -884,17 +883,12 @@ function DataTable({
                 </th>
               ))}
 
-<<<<<<< HEAD
-              {hasDetail ? (
+              {showDetailColumn ? (
                 <th
                   scope="col"
                   className="users-table__detail-header"
                   style={detail.headerStyle}
                 >
-=======
-              {showDetailColumn ? (
-                <th scope="col" className="users-table__detail-header">
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e
                   {detail.columnLabel ?? 'Detail'}
                 </th>
               ) : null}
@@ -939,54 +933,68 @@ function DataTable({
                       aria-expanded={hasDetail ? isExpanded : undefined}
                       aria-controls={hasDetail ? accordionId : undefined}
                     >
-<<<<<<< HEAD
-                      {columns.map((column) => {
-                        const cellValue = renderBasicValue(getColumnValue(column, row, index))
+                      {columns.map((column, columnIndex) => {
+                        const columnKey = getColumnKey(column, columnIndex)
+                        const columnValue = renderColumnValue(column, row, index)
+                        const showInlineToggle = detailToggleInFirstCell && columnIndex === 0
                         const hasDetailIndicator =
-                          hasDetail && detail?.indicatorColumnKey === column.key
+                          hasDetail && detail?.indicatorColumnKey === columnKey
+                        const cellContent = hasDetailIndicator ? (
+                          <div className="users-table__detail-indicator-cell">
+                            <CreateButton
+                              variant="bareIcon"
+                              type="button"
+                              className="users-table__detail-indicator-button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleToggleRow(rowKey)
+                              }}
+                              aria-expanded={isExpanded}
+                              aria-controls={accordionId}
+                              aria-label={detail.buttonLabel ?? detailButtonLabel}
+                              title={detail.buttonLabel ?? detailButtonLabel}
+                            >
+                              <DetailButtonIcon
+                                size={16}
+                                aria-hidden="true"
+                                className={`users-table__detail-icon${
+                                  isExpanded ? ' users-table__detail-icon--open' : ''
+                                }`}
+                              />
+                            </CreateButton>
+
+                            <div className="users-table__detail-indicator-content">
+                              {columnValue}
+                            </div>
+                          </div>
+                        ) : (
+                          columnValue
+                        )
 
                         return (
                           <td
-                            key={column.key}
-                            className={column.cellClassName}
-                            style={column.cellStyle}
+                            key={columnKey}
+                            className={getColumnClassName(column, 'cell')}
+                            style={getColumnStyle(column, 'cell')}
                           >
-                            {hasDetailIndicator ? (
-                              <div className="users-table__detail-indicator-cell">
-                                <CreateButton
-                                  variant="bareIcon"
-                                  type="button"
-                                  className="users-table__detail-indicator-button"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    handleToggleRow(rowKey)
-                                  }}
-                                  aria-expanded={isExpanded}
-                                  aria-controls={accordionId}
-                                  aria-label={detail.buttonLabel ?? detailButtonLabel}
-                                  title={detail.buttonLabel ?? detailButtonLabel}
-                                >
-                                  <DetailButtonIcon
-                                    size={16}
-                                    aria-hidden="true"
-                                    className={`users-table__detail-icon${
-                                      isExpanded ? ' users-table__detail-icon--open' : ''
-                                    }`}
-                                  />
-                                </CreateButton>
-
-                                <div className="users-table__detail-indicator-content">
-                                  {cellValue}
-                                </div>
+                            {showInlineToggle ? (
+                              <div className="users-table__cell-content users-table__cell-content--with-toggle">
+                                {renderDetailToggleButton(
+                                  rowKey,
+                                  isExpanded,
+                                  accordionId,
+                                  'users-table__cell-toggle-button',
+                                )}
+                                <div className="users-table__cell-value">{cellContent}</div>
                               </div>
                             ) : (
-                              cellValue
+                              cellContent
                             )}
                           </td>
                         )
                       })}
 
-                      {hasDetail ? (
+                      {showDetailColumn ? (
                         <td className="users-table__detail-cell" style={detail.cellStyle}>
                           {typeof detail.renderCell === 'function' ? (
                             detail.renderCell(row, index, {
@@ -1029,7 +1037,7 @@ function DataTable({
                               )}
 
                               {detailActions.map((action) => {
-                                if (action.hidden?.(row, index)) {
+                                if (resolveActionFlag(action.hidden, row, index)) {
                                   return null
                                 }
 
@@ -1037,12 +1045,13 @@ function DataTable({
                                 const buttonLabel = action.label ?? action.key ?? 'Action'
                                 const isIconOnlyAction = Boolean(action.iconOnly)
                                 const ActionButton = action.buttonComponent
+                                const isDisabled = resolveActionFlag(action.disabled, row, index)
 
                                 if (ActionButton) {
                                   return (
                                     <ActionButton
                                       key={action.key ?? buttonLabel}
-                                      disabled={action.disabled?.(row, index) ?? action.disabled}
+                                      disabled={isDisabled}
                                       aria-label={buttonLabel}
                                       title={buttonLabel}
                                       onClick={(event) => {
@@ -1059,7 +1068,7 @@ function DataTable({
                                     variant={isIconOnlyAction ? 'bareIcon' : 'accordion'}
                                     tone={action.variant === 'danger' ? 'danger' : 'default'}
                                     type="button"
-                                    disabled={action.disabled?.(row, index) ?? action.disabled}
+                                    disabled={isDisabled}
                                     aria-label={buttonLabel}
                                     title={buttonLabel}
                                     onClick={(event) => {
@@ -1074,38 +1083,6 @@ function DataTable({
                               })}
                             </>
                           )}
-=======
-                      {columns.map((column, columnIndex) => {
-                        const columnValue = renderColumnValue(column, row, index)
-                        const showInlineToggle = detailToggleInFirstCell && columnIndex === 0
-
-                        return (
-                          <td
-                            key={getColumnKey(column, columnIndex)}
-                            className={getColumnClassName(column, 'cell')}
-                            style={getColumnStyle(column, 'cell')}
-                          >
-                            {showInlineToggle ? (
-                              <div className="users-table__cell-content users-table__cell-content--with-toggle">
-                                {renderDetailToggleButton(
-                                  rowKey,
-                                  isExpanded,
-                                  accordionId,
-                                  'users-table__cell-toggle-button',
-                                )}
-                                <div className="users-table__cell-value">{columnValue}</div>
-                              </div>
-                            ) : (
-                              columnValue
-                            )}
-                          </td>
-                        )
-                      })}
-
-                      {showDetailColumn ? (
-                        <td className="users-table__detail-cell">
-                          {renderDetailToggleButton(rowKey, isExpanded, accordionId)}
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e
                         </td>
                       ) : null}
                     </tr>

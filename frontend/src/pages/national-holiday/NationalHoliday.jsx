@@ -1,12 +1,11 @@
-
 import { useState } from 'react';
 
 import ButtonCreateNationalHoliday from '../../components/button/button-national/ButtonCreateNationalHoliday.jsx';
 import DataTableNationalHoliday from '../../components/table/dekstop/DataTableNationalHoliday.jsx'
 
 function NationalHoliday({ activePage, searchQuery }) {
-  const [compensationTypeRefreshKey, setCompensationTypeRefreshKey] = useState(0)
-  const pageTitle = activePage?.title ?? 'Compensation Types'
+  const [nationalHolidayRefreshKey, setNationalHolidayRefreshKey] = useState(0)
+  const pageTitle = activePage?.title ?? 'National Holidays'
   const pageEyebrow = activePage?.eyebrow ?? 'Master Data'
 
   return (
@@ -20,26 +19,19 @@ function NationalHoliday({ activePage, searchQuery }) {
           <h1 className="dashboard-panel__title">{pageTitle}</h1>
         </div>
 
-          <div className="users-table-card__actions">
+        <div className="users-table-card__actions">
           <ButtonCreateNationalHoliday
             onCreated={() =>
-              setCompensationTypeRefreshKey((currentKey) => currentKey + 1)
+              setNationalHolidayRefreshKey((currentKey) => currentKey + 1)
             }
           />
         </div>
       </div>
 
-      <div className="dashboard-stack">
-        <p className="dashboard-stack__text">
-          Halaman compensation types terhubung ke endpoint master compensation types untuk
-          membuat, mengubah, dan mengelola tipe kompensasi overtime.
-        </p>
-      </div>
-
       <DataTableNationalHoliday
         searchQuery={searchQuery}
         tableLabel={`${pageTitle} table`}
-        refreshKey={compensationTypeRefreshKey}
+        refreshKey={nationalHolidayRefreshKey}
       />
 
     </section>

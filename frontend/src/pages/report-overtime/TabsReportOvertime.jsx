@@ -4,8 +4,8 @@ import Tabs from '@mui/material/Tabs'
 
 const REPORT_STATUS_TABS = [
   { label: 'All', value: '' },
-  { label: 'Approved', value: 'APPROVED' },
-  { label: 'Rejected', value: 'REJECTED' },
+  { label: 'Processed', value: 'PROCESSED' },
+  { label: 'Pending', value: 'PENDING' },
 ]
 
 function TabsReportOvertime({ value, onChange }) {
@@ -15,7 +15,6 @@ function TabsReportOvertime({ value, onChange }) {
         borderBottom: 1,
         borderColor: 'divider',
         mb: 0.5,
-        pr: { xs: 0, md: 38 },
       }}
     >
       <Tabs

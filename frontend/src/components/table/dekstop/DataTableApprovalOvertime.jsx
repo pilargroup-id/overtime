@@ -15,8 +15,8 @@ import ButtonMultiReject from '../../button/button-approval-overtime/ButtonMulti
 // import-dialog
 import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/DialogValidationApproveRO.jsx'
 
-const DEFAULT_PAGE_SIZE = 10
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+const DEFAULT_PAGE_SIZE = 25
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const APPROVABLE_REQUEST_STATUS = 'SUBMITTED'
 
 function normalizeResponseRows(responseData) {

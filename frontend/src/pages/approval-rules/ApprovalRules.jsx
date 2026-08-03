@@ -1,12 +1,12 @@
 
 import { useState } from 'react';
 
-import ButtonCreateUserPermission from '../../components/button/button-approval-rules/ButtonCreateApprovalRules.jsx';
+import ButtonCreateApprovalRules from '../../components/button/button-approval-rules/ButtonCreateApprovalRules.jsx';
 import DataTableApprovalRules from '../../components/table/dekstop/DataTableApprovalRules.jsx'
 
 function ApprovalRules({ activePage, searchQuery }) {
-  const [approvalRulesRefreshKey, setapprovalRulesRefreshKey] = useState(0)
-  const pageTitle = activePage?.title ?? 'User Permissions'
+  const [approvalRulesRefreshKey, setApprovalRulesRefreshKey] = useState(0)
+  const pageTitle = activePage?.title ?? 'Approval Rules'
   const pageEyebrow = activePage?.eyebrow ?? 'Master Data'
 
   return (
@@ -20,10 +20,10 @@ function ApprovalRules({ activePage, searchQuery }) {
           <h1 className="dashboard-panel__title">{pageTitle}</h1>
         </div>
 
-          <div className="users-table-card__actions">
-          <ButtonCreateUserPermission
+        <div className="users-table-card__actions">
+          <ButtonCreateApprovalRules
             onCreated={() =>
-              setUserPermissionRefreshKey((currentKey) => currentKey + 1)
+              setApprovalRulesRefreshKey((currentKey) => currentKey + 1)
             }
           />
         </div>
@@ -31,8 +31,7 @@ function ApprovalRules({ activePage, searchQuery }) {
 
       <div className="dashboard-stack">
         <p className="dashboard-stack__text">
-          Halaman user permissions sudah terhubung ke menu dan siap dilanjutkan untuk isi tabel
-          atau form akses user.
+          Halaman approval rules digunakan untuk mengelola aturan persetujuan (approval rules) overtime.
         </p>
       </div>
 

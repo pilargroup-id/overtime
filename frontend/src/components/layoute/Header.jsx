@@ -274,74 +274,7 @@ function Header({
         </div>
       </div>
 
-      <div className="header-breadcrumb">
-        <div className="header-breadcrumb-content">
-          <nav
-            className="breadcrumb-nav"
-            aria-label={departmentFilterProps ? 'Filter divisi' : 'Breadcrumb'}
-            ref={breadcrumbFilterRef}
-          >
-            {renderBreadcrumb()}
-          </nav>
 
-          {hasSearch || hasNotification || onRefresh ? (
-            <div className="header-toolbar">
-              {showMenuButton ? (
-                <button
-                  type="button"
-                  className="header-menu-button header-menu-button--toolbar"
-                  aria-label="Open sidebar"
-                  onClick={onMenuToggle}
-                >
-                  <Menu01 size={20} />
-                </button>
-              ) : null}
-
-              {hasSearch ? (
-                <label
-                  className="header-search header-search--compact"
-                  aria-label={searchProps.ariaLabel ?? 'Search'}
-                >
-                  <SearchMd size={16} className="header-search__icon header-search__icon--compact" />
-                  <input
-                    type="search"
-                    className="header-search__input header-search__input--compact"
-                    value={searchProps.value ?? ''}
-                    placeholder={searchProps.placeholder ?? 'Search...'}
-                    onChange={searchProps.onChange}
-                    aria-label={searchProps.ariaLabel ?? 'Search'}
-                    autoComplete="off"
-                  />
-                </label>
-              ) : null}
-
-              {hasNotification ? (
-                <button
-                  type="button"
-                  className="header-icon-button header-icon-button--compact"
-                  aria-label={notificationProps.ariaLabel ?? 'Open notifications'}
-                  title={notificationProps.ariaLabel ?? 'Open notifications'}
-                  onClick={() => setIsNotificationModalOpen(true)}
-                >
-                  <Bell04 size={16} />
-                </button>
-              ) : null}
-
-              {onRefresh ? (
-                <button
-                  type="button"
-                  className="header-icon-button header-icon-button--compact"
-                  aria-label="Refresh dashboard"
-                  title="Refresh dashboard"
-                  onClick={onRefresh}
-                >
-                  <RefreshCw05 size={16} />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </div>
 
       {hasNotification && isNotificationModalOpen ? (
         <div

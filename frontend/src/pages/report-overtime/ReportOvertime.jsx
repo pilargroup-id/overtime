@@ -6,7 +6,7 @@ import TabsReportOvertime from './TabsReportOvertime.jsx'
 function ReportOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey] = useState(0)
   const [reportSearchQuery, setReportSearchQuery] = useState(searchQuery ?? '')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [talentaStatusFilter, setTalentaStatusFilter] = useState('')
   const pageTitle = activePage?.title ?? 'Report Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
@@ -37,11 +37,11 @@ function ReportOvertime({ activePage, searchQuery }) {
         </div>
       </div>
 
-      <TabsReportOvertime value={statusFilter} onChange={setStatusFilter} />
+      <TabsReportOvertime value={talentaStatusFilter} onChange={setTalentaStatusFilter} />
 
       <DataTableReport
         searchQuery={reportSearchQuery}
-        statusFilter={statusFilter}
+        talentaStatusFilter={talentaStatusFilter}
         tableLabel={`${pageTitle} table`}
         refreshKey={reqOvertimeRefreshKey}
       />

@@ -1,10 +1,9 @@
-<<<<<<< HEAD
 import { useEffect, useState } from 'react'
 import api from './services/api.js'
 
-import BackgroundMain from './components/template/BackgroundMain.jsx'
-import Header from './components/template/Header.jsx'
-import Sidebar from './components/template/Sidebar.jsx'
+import BackgroundMain from './components/layoute/BackgroundMain.jsx'
+import Header from './components/layoute/Header.jsx'
+import Sidebar from './components/layoute/Sidebar.jsx'
 import RequestOvertime from './pages/req-overtime/ReqOvertime.jsx'
 import ApprovalOvertime from './pages/approval-overtime/ApprovalOvertime.jsx'
 import ReportOvertime from './pages/report-overtime/ReportOvertime.jsx'
@@ -135,7 +134,7 @@ function App() {
       case '/Master/CompensationType':
         return <CompensationType />
       case '/Master/ApprovalRules':
-        return <ApprovalRules /> 
+        return <ApprovalRules />
       case '/Master/NationalHoliday':
         return <NationalHoliday />
       default:
@@ -167,12 +166,12 @@ function App() {
         return 'Report Overtime'
       case '/Master/UserPermissions':
         return 'User Permissions'
-      case '/Maste/CompensationType':
+      case '/Master/CompensationType':
         return 'Compensation Type'
       case '/Master/ApprovalRules':
-        return 'ApprovalRules'
+        return 'Approval Rules'
       case '/Master/NationalHoliday':
-        return 'NationalHoliday'
+        return 'National Holiday'
       default:
         return 'Overtime App'
     }
@@ -215,9 +214,7 @@ function App() {
         />
 
         <main className={mainClassName}>
-          <div className={contentClassName}>
-            {renderContent()}
-          </div>
+          <div className={contentClassName}>{renderContent()}</div>
         </main>
       </div>
     </div>
@@ -225,10 +222,3 @@ function App() {
 }
 
 export default App
-=======
-import AppRoutes from './routes';
-
-export default function App() {
-  return <AppRoutes />;
-}
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e

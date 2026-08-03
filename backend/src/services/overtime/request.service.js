@@ -470,7 +470,11 @@ async function list(query, authUser) {
 
   const filters = {
     search: query.search || null,
+    request_id: query.request_id || null,
+    department_id: query.department_id || null,
+    day_type: query.day_type || null,
     status: query.status || null,
+    submitted_by: query.submitted_by || null,
     talenta_status: query.talenta_status || null,
     work_date_from: query.work_date_from || null,
     work_date_to: query.work_date_to || null,

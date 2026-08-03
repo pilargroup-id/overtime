@@ -11,7 +11,7 @@ import DataTableAction from '../components/table/DataTableAction.jsx'
 import { userRows } from '../dummy/dataTable.js'
 import { userTableColumns } from '../dummy/userTableColumns.jsx'
 
-const usersPageSizeOptions = [5, 10, 25, 50]
+const usersPageSizeOptions = [25, 50, 100, 250, 500]
 const defaultUsersPageSize = usersPageSizeOptions[0]
 const defaultActivePage = {
   title: 'Data Table',

@@ -6,7 +6,7 @@ import {
   implementedNavigationPaths,
   primaryNavigationItems,
   secondaryNavigationItems,
-} from '../../services/layoutes/navigation.js'
+} from '../../services/template-services/Navigation.js'
 import '../../styles/template-style/TemplateComponents.css'
 
 function getInitials(name) {
@@ -45,6 +45,9 @@ const PERMISSION_REQUIREMENTS_BY_ITEM_ID = {
   ],
   'approval-rules': [
     { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
+  ],
+  'national-holiday': [
+    { permissionType: 'REPORT_MANAGE', scopeTypes: ['GLOBAL'] },
   ],
 }
 

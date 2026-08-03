@@ -4,7 +4,7 @@ import {
   Table01,
   Chart01,
   TrendingUp,
-} from '../../components/template/TemplateIcons.jsx'
+} from '../../components/layoute/TemplateIcons.jsx'
 
 export const defaultNavigationPath = '/dashboard'
 

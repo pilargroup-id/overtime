@@ -8,7 +8,7 @@ import DataTable, {
 import DialogValidationCancelRO from '../../Dialog/dialog-req-overtime/DialogValidationCancelRO.jsx'
 import ButtonCancelReqOvertime from '../../button/button-req-overtime/ButtonCancelReqOvertime.jsx'
 
-const DEFAULT_PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
 
 function normalizeResponseRows(responseData) {
@@ -269,6 +269,7 @@ function createColumns(compensationTypeMap) {
 
 function DataTableReqOvertime({
   searchQuery = '',
+  filters = {},
   tableLabel = 'Request Overtime table',
   refreshKey = 0,
 }) {
@@ -284,10 +285,6 @@ function DataTableReqOvertime({
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [compensationTypeMap, setCompensationTypeMap] = useState(() => new Map())
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery])
 
   useEffect(() => {
     let isMounted = true
@@ -338,6 +335,11 @@ function DataTableReqOvertime({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
+          request_id: filters.requestId,
+          department_id: filters.departmentId,
+          day_type: filters.dayType,
+          status: filters.status,
+          submitted_by: filters.submittedBy,
         })
 
         if (!isMounted) {
@@ -371,7 +373,7 @@ function DataTableReqOvertime({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
+  }, [currentPage, filters, pageSize, refreshKey, reloadKey, searchQuery])
 
   const handleCancelRequest = (request) => {
     setCancelRequest(request)

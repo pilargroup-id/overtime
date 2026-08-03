@@ -37,6 +37,26 @@ function buildWhere(filters = {}, authUser = null) {
     params.push(filters.status);
   }
 
+  if (filters.request_id) {
+    where.push('id = ?');
+    params.push(filters.request_id);
+  }
+
+  if (filters.department_id) {
+    where.push('department_id = ?');
+    params.push(filters.department_id);
+  }
+
+  if (filters.day_type) {
+    where.push('day_type = ?');
+    params.push(filters.day_type);
+  }
+
+  if (filters.submitted_by) {
+    where.push('submitted_by = ?');
+    params.push(filters.submitted_by);
+  }
+
   if (filters.talenta_status) {
     where.push('talenta_status = ?');
     params.push(filters.talenta_status);

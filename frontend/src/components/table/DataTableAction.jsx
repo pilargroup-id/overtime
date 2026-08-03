@@ -1,10 +1,6 @@
-<<<<<<< HEAD
-import CreateButton from '../ button/CreateButton.jsx'
-=======
 import CreateButton from '../button/ButtonCreate.jsx'
 import ButtonDelete from '../button/ButtonDelete.jsx'
 import ButtonEdit from '../button/ButtonEdit.jsx'
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e
 import DataTable from './DataTable.jsx'
 
 export {

@@ -269,10 +269,6 @@ export function TrendingUp(props) {
   )
 }
 
-<<<<<<< HEAD:src/components/template/TemplateIcons.jsx
-=======
-// ===== ICON-ICON BARU DITAMBAHKAN =====
-
 export function Download(props) {
   return (
     <IconBase {...props}>
@@ -311,23 +307,10 @@ export function EyeOff(props) {
   )
 }
 
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e:src/components/layoute/TemplateIcons.jsx
 export function Check(props) {
   return (
     <IconBase {...props}>
       <polyline points="20 6 9 17 4 12" />
-    </IconBase>
-  )
-<<<<<<< HEAD:src/components/template/TemplateIcons.jsx
-}
-=======
-}
-
-export function CheckCircle(props) {
-  return (
-    <IconBase {...props}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
     </IconBase>
   )
 }
@@ -483,4 +466,3 @@ export function Trash(props) {
 //     </IconBase>
 //   )
 // }
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e:src/components/layoute/TemplateIcons.jsx

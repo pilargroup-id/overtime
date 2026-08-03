@@ -10,13 +10,8 @@ import { enGB } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { useAlert } from '../../hooks/useAlert';
-<<<<<<< HEAD
 import AlertModal from '../Dialog/DialogAlert.jsx';
-import { XClose } from '../template/TemplateIcons.jsx';
-=======
-import AlertModal from '../dialog/DialogAlert.jsx';
 import { XClose } from '../layoute/TemplateIcons.jsx';
->>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e
 
 const formatDateDisplay = (monthDay, year) => {
   const [month, day] = monthDay.split('-');

@@ -9,7 +9,7 @@ import ButtonEditUserPermission from '../../button/button-user-permissions/Butto
 import DialogEditUserPermission from '../../Dialog/dialog-user-permissions/DialogEditUserPermission.jsx'
 import DialogDeleteUserPermission from '../../Dialog/dialog-user-permissions/DialogDeleteUserPermission.jsx'
 
-const DEFAULT_PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
 
 function normalizeResponseRows(responseData) {
