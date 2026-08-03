@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { FileText01, XClose } from '../template/TemplateIcons.jsx'
+import { FileText01, XClose } from '../layoute/TemplateIcons.jsx'
 
 const supportOptions = [
   'Alya Pratama',

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import DialogAction from '../dialog/DialogAction.jsx'
-import { Users01 } from '../template/TemplateIcons.jsx'
+import { Users01 } from '../layoute/TemplateIcons.jsx'
 
 function ButtonMain({ label = 'Tombol' }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
-import { XClose } from '../template/TemplateIcons.jsx'
+import { XClose } from '../layoute/TemplateIcons.jsx'
 
 function DialogEdit({
   isOpen = false,

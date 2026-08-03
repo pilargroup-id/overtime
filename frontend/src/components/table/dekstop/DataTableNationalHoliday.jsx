@@ -45,6 +45,57 @@ function formatValue(value) {
   return displayValue || '-'
 }
 
+function formatDateTime(value) {
+  if (!value) {
+    return '-'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return formatValue(value)
+  }
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '-'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return formatValue(value)
+  }
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
+function formatMultiplier(value) {
+  const multiplier = Number(value)
+
+  if (!Number.isFinite(multiplier)) {
+    return formatValue(value)
+  }
+
+  return `${multiplier.toLocaleString('id-ID', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: multiplier % 1 === 0 ? 0 : 2,
+  })}x`
+}
+
 function getFirstFilledValue(...values) {
   return values.find((value) => String(value ?? '').trim()) ?? null
 }
@@ -55,43 +106,43 @@ function formatStatus(value) {
 
 function getPaginationSummary(firstItem, lastItem, totalItems) {
   if (totalItems === 0) {
-    return '0 dari 0 compensation type'
+    return '0 dari 0 national holiday'
   }
 
-  return `${firstItem}-${lastItem} dari ${totalItems} compensation type`
+  return `${firstItem}-${lastItem} dari ${totalItems} national holiday`
 }
 
 function createColumns({ onDelete, onEdit } = {}) {
   return [
     {
-      key: 'code',
-      header: 'Code',
-      headerStyle: { width: '10%' },
-      render: (request) => formatValue(getFirstFilledValue(request.code)),
+      key: 'id',
+      header: 'ID',
+      headerStyle: { width: '6%' },
+      render: (request) => formatValue(request.id),
     },
     {
-      key: 'nameCompensation',
-      header: 'Compensation',
-      headerStyle: { width: '10%' },
+      key: 'holidayDate',
+      header: 'Holiday Date',
+      headerStyle: { width: '12%' },
+      render: (request) => formatDate(request.holiday_date),
+    },
+    {
+      key: 'name',
+      header: 'Name',
+      headerStyle: { width: '14%' },
       render: (request) => formatValue(request.name),
     },
     {
-      key: 'compensationKind',
-      header: 'Compensation Kind',
+      key: 'multiplier',
+      header: 'Multiplier',
       headerStyle: { width: '10%' },
-      render: (request) => formatValue(request.compensation_kind),
+      render: (request) => formatMultiplier(request.multiplier),
     },
     {
-      key: 'amount',
-      header: 'Amount',
-      headerStyle: { width: '10%' },
-      render: (request) => formatValue(request.amount),
-    },
-    {
-      key: 'leaveDays',
-      header: 'Leave Days',
-      headerStyle: { width: '10%' },
-      render: (request) => formatValue(request.leave_days),
+      key: 'description',
+      header: 'Description',
+      headerStyle: { width: '16%' },
+      render: (request) => formatValue(request.description),
     },
     {
       key: 'status',
@@ -100,20 +151,26 @@ function createColumns({ onDelete, onEdit } = {}) {
       render: (request) => formatStatus(request.is_active),
     },
     {
-      key: 'description',
-      header: 'Description',
-      headerStyle: { width: '18%' },
-      render: (request) => formatValue(request.description),
+      key: 'createdAt',
+      header: 'Created At',
+      headerStyle: { width: '12%' },
+      render: (request) => formatDateTime(request.created_at),
+    },
+    {
+      key: 'updatedAt',
+      header: 'Updated At',
+      headerStyle: { width: '12%' },
+      render: (request) => formatDateTime(request.updated_at),
     },
     {
       key: 'action',
       header: 'Action',
-      headerStyle: { width: '12%' },
-      cellStyle: { width: '12%' },
+      headerStyle: { width: '10%' },
+      cellStyle: { width: '10%' },
       render: (request) => {
         const rowLabel = formatValue(getFirstFilledValue(
           request.name,
-          request.code,
+          request.holiday_date,
           request.id,
         ))
 
@@ -121,7 +178,7 @@ function createColumns({ onDelete, onEdit } = {}) {
           <>
             <ButtonEditCompensation
               title={`Edit ${rowLabel}`}
-              aria-label={`Edit compensation type ${rowLabel}`}
+              aria-label={`Edit national holiday ${rowLabel}`}
               onClick={(event) => {
                 event.stopPropagation()
                 onEdit?.(request)
@@ -130,7 +187,7 @@ function createColumns({ onDelete, onEdit } = {}) {
 
             <ButtonDeleteCompensation
               title={`Delete ${rowLabel}`}
-              aria-label={`Delete compensation type ${rowLabel}`}
+              aria-label={`Delete national holiday ${rowLabel}`}
               onClick={(event) => {
                 event.stopPropagation()
                 onDelete?.(request)
@@ -145,7 +202,7 @@ function createColumns({ onDelete, onEdit } = {}) {
 
 function DataTableNationalHoliday({
   searchQuery = '',
-  tableLabel = 'Compensation Type',
+  tableLabel = 'National Holiday',
   refreshKey = 0,
   onDelete,
   onEdit,
@@ -197,7 +254,7 @@ function DataTableNationalHoliday({
         setRequestRows([])
         setTotalItems(0)
         setTotalPages(1)
-        setErrorMessage(error?.message || 'Gagal memuat data compensation type.')
+        setErrorMessage(error?.message || 'Gagal memuat data national holiday.')
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -253,8 +310,8 @@ function DataTableNationalHoliday({
       pageSizeSuffix: 'baris',
       previousLabel: 'Sebelumnya',
       nextLabel: 'Berikutnya',
-      ariaLabel: 'Compensation type pagination',
-      pageSizeAriaLabel: 'Jumlah compensation type per halaman',
+      ariaLabel: 'National holiday pagination',
+      pageSizeAriaLabel: 'Jumlah national holiday per halaman',
       onPrevious: () => setCurrentPage((page) => Math.max(1, page - 1)),
       onNext: () => setCurrentPage((page) => Math.min(totalPages, page + 1)),
       onSelect: setCurrentPage,
@@ -267,8 +324,8 @@ function DataTableNationalHoliday({
   )
 
   const emptyMessage = isLoading
-    ? 'Memuat data compensation type...'
-    : errorMessage || 'Belum ada compensation type untuk ditampilkan.'
+    ? 'Memuat data national holiday...'
+    : errorMessage || 'Belum ada national holiday untuk ditampilkan.'
 
   const columns = useMemo(
     () => createColumns({

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useState } from 'react'
 import api from './services/api.js'
 
@@ -224,3 +225,10 @@ function App() {
 }
 
 export default App
+=======
+import AppRoutes from './routes';
+
+export default function App() {
+  return <AppRoutes />;
+}
+>>>>>>> ab8e315161646989f5c9421914ea2f3904d7471e

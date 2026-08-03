@@ -19,7 +19,7 @@ const initialFormValues = {
   compensation_type_id: '',
 }
 
-const dayTypeOptions = ['WORKDAY', 'HOLIDAY', 'WEEKEND', 'NATIONAL_HOLIDAY']
+const dayTypeOptions = ['WORKDAY', 'HOLIDAY', 'WEEKEND']
 
 const reqOvertimeTextFields = [
   {
@@ -38,6 +38,12 @@ const reqOvertimeTextFields = [
     name: 'end_time',
     label: 'End Time',
     type: 'time',
+    className: 'overtime-create-popup__field--third',
+  },
+  {
+    name: 'duration',
+    label: 'Duration',
+    type: 'text',
     className: 'overtime-create-popup__field--third',
   },
 ]
@@ -95,11 +101,159 @@ function normalizeEligibleEmployees(responseData) {
   return []
 }
 
+function normalizeNationalHolidays(responseData) {
+  if (Array.isArray(responseData)) {
+    return responseData
+  }
+
+  if (Array.isArray(responseData?.data)) {
+    return responseData.data
+  }
+
+  if (Array.isArray(responseData?.rows)) {
+    return responseData.rows
+  }
+
+  if (Array.isArray(responseData?.results)) {
+    return responseData.results
+  }
+
+  return []
+}
+
+function isActiveNationalHoliday(nationalHoliday) {
+  return Number(nationalHoliday?.is_active ?? 0) === 1
+}
+
+function getNationalHolidayMultiplier(nationalHoliday) {
+  const multiplier = Number(nationalHoliday?.multiplier)
+
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+}
+
 function getEmployeeLabel(employee) {
   const name = employee.name || employee.username || employee.email || employee.id
   const internalId = employee.internal_id ? ` (${employee.internal_id})` : ''
 
   return `${name}${internalId}`
+}
+
+function formatNumber(value) {
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue)) {
+    return null
+  }
+
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 2,
+  }).format(numberValue)
+}
+
+function normalizeDateKey(dateValue) {
+  const rawValue = String(dateValue ?? '').trim()
+
+  if (!rawValue) {
+    return ''
+  }
+
+  const isoDateMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})/)
+
+  if (isoDateMatch) {
+    return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`
+  }
+
+  const slashDateMatch = rawValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+
+  if (slashDateMatch) {
+    const month = slashDateMatch[1].padStart(2, '0')
+    const day = slashDateMatch[2].padStart(2, '0')
+
+    return `${slashDateMatch[3]}-${month}-${day}`
+  }
+
+  return rawValue
+}
+
+function getTimeInMinutes(timeValue) {
+  const [hours, minutes] = String(timeValue).split(':').map(Number)
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null
+  }
+
+  return hours * 60 + minutes
+}
+
+function formatDuration(startTime, endTime) {
+  const startMinutes = getTimeInMinutes(startTime)
+  const endMinutes = getTimeInMinutes(endTime)
+
+  if (startMinutes === null || endMinutes === null) {
+    return ''
+  }
+
+  const durationMinutes =
+    endMinutes >= startMinutes
+      ? endMinutes - startMinutes
+      : endMinutes + 24 * 60 - startMinutes
+  const hours = Math.floor(durationMinutes / 60)
+  const minutes = durationMinutes % 60
+
+  if (hours <= 0) {
+    return `${minutes} menit`
+  }
+
+  if (minutes <= 0) {
+    return `${hours} jam`
+  }
+
+  return `${hours} jam ${minutes} menit`
+}
+
+function getDurationInMinutes(startTime, endTime) {
+  const startMinutes = getTimeInMinutes(startTime)
+  const endMinutes = getTimeInMinutes(endTime)
+
+  if (startMinutes === null || endMinutes === null) {
+    return 0
+  }
+
+  return endMinutes >= startMinutes
+    ? endMinutes - startMinutes
+    : endMinutes + 24 * 60 - startMinutes
+}
+
+function formatCompensationOption(compensationType, multiplier) {
+  const name = compensationType.name ?? compensationType.code
+  const amount = Number(compensationType.amount)
+  const leaveDays = Number(compensationType.leave_days)
+  const details = []
+  const multiplierLabel =
+    Number.isFinite(multiplier) && multiplier > 1
+      ? `${formatNumber(multiplier)}x`
+      : null
+
+  if (Number.isFinite(amount) && amount > 0) {
+    details.push(`Rp${formatNumber(amount * multiplier)}`)
+  }
+
+  if (Number.isFinite(leaveDays) && leaveDays > 0) {
+    details.push(`${formatNumber(leaveDays * multiplier)} hari`)
+  }
+
+  if (multiplierLabel) {
+    details.unshift(`Dikali ${multiplierLabel}`)
+  }
+
+  return details.length ? `${name} (${details.join(' / ')})` : name
 }
 
 function DialogCreateBulkReqOvertime({
@@ -113,6 +267,7 @@ function DialogCreateBulkReqOvertime({
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('')
   const [eligibleEmployees, setEligibleEmployees] = useState([])
   const [compensationTypes, setCompensationTypes] = useState([])
+  const [nationalHolidays, setNationalHolidays] = useState([])
   const [isLoadingEligibleEmployees, setIsLoadingEligibleEmployees] = useState(false)
   const [isLoadingCompensationTypes, setIsLoadingCompensationTypes] = useState(false)
   const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false)
@@ -123,6 +278,7 @@ function DialogCreateBulkReqOvertime({
   const resetDialogState = useCallback(() => {
     setFormValues(initialFormValues)
     setEmployeeSearchQuery('')
+    setNationalHolidays([])
     setIsEmployeeDropdownOpen(false)
     setIsSubmitting(false)
     setErrorMessage('')
@@ -216,8 +372,28 @@ function DialogCreateBulkReqOvertime({
       }
     }
 
+    const loadNationalHolidays = async () => {
+      try {
+        const response = await api.nationalHolidays.list({
+          is_active: 1,
+          limit: 500,
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setNationalHolidays(normalizeNationalHolidays(response))
+      } catch {
+        if (isMounted) {
+          setNationalHolidays([])
+        }
+      }
+    }
+
     loadEligibleEmployees()
     loadCompensationTypes()
+    loadNationalHolidays()
 
     return () => {
       isMounted = false
@@ -240,6 +416,13 @@ function DialogCreateBulkReqOvertime({
       const nextValues = {
         ...currentValues,
         [name]: value,
+      }
+
+      if (
+        (name === 'start_time' || name === 'end_time') &&
+        getDurationInMinutes(nextValues.start_time, nextValues.end_time) < 120
+      ) {
+        nextValues.compensation_type_id = ''
       }
 
       if (
@@ -391,7 +574,10 @@ function DialogCreateBulkReqOvertime({
       result_description:
         formValues.result_description.trim() || firstItem.result_description || '',
       apply_general_to_all: formValues.apply_general_to_all,
-      compensation_type_id: Number(formValues.compensation_type_id),
+      compensation_type_id:
+        getDurationInMinutes(formValues.start_time, formValues.end_time) >= 120
+          ? Number(formValues.compensation_type_id)
+          : null,
       items,
     }
   }
@@ -413,7 +599,7 @@ function DialogCreateBulkReqOvertime({
       !payload.task_description ||
       !payload.result_description ||
       hasIncompleteEmployeeDescriptions ||
-      !payload.compensation_type_id
+      (isCompensationEnabled && !payload.compensation_type_id)
     ) {
       setErrorMessage(
         'Pilih employee, lengkapi data utama, lalu isi Task Description dan Result Description sesuai mode All atau manual.',
@@ -476,6 +662,19 @@ function DialogCreateBulkReqOvertime({
     : selectedEmployees.length
       ? `${selectedEmployees.length} employee selected`
       : 'Select employees'
+  const durationLabel = formatDuration(formValues.start_time, formValues.end_time)
+  const isCompensationEnabled =
+    getDurationInMinutes(formValues.start_time, formValues.end_time) >= 120
+  const workDateKey = normalizeDateKey(formValues.work_date)
+  const selectedNationalHoliday = nationalHolidays.find(
+    (holiday) =>
+      isActiveNationalHoliday(holiday) &&
+      workDateKey === normalizeDateKey(holiday?.holiday_date),
+  )
+  const isSelectedNationalHoliday = Boolean(selectedNationalHoliday)
+  const compensationMultiplier = isSelectedNationalHoliday
+    ? getNationalHolidayMultiplier(selectedNationalHoliday)
+    : 1
 
   const dialogNode = (
     <div
@@ -668,6 +867,17 @@ function DialogCreateBulkReqOvertime({
                               onChange={handleInputChange}
                               disabled={isSubmitting}
                             />
+                          ) : field.name === 'duration' ? (
+                            <input
+                              id="req-overtime-duration"
+                              name="duration"
+                              type="text"
+                              className="register-user-popup__input"
+                              value={durationLabel}
+                              placeholder="0 menit"
+                              readOnly
+                              disabled
+                            />
                           ) : (
                             <input
                               id={`req-overtime-${field.name}`}
@@ -695,17 +905,35 @@ function DialogCreateBulkReqOvertime({
                           className="register-user-popup__select"
                           value={formValues.compensation_type_id}
                           onChange={handleInputChange}
-                          disabled={isSubmitting || isLoadingCompensationTypes}
+                          disabled={
+                            isSubmitting ||
+                            isLoadingCompensationTypes ||
+                            !isCompensationEnabled
+                          }
                         >
                           <option value="">
-                            {isLoadingCompensationTypes ? 'Loading...' : 'Select compensation'}
+                            {isLoadingCompensationTypes
+                              ? 'Loading...'
+                              : isCompensationEnabled
+                                ? 'Select compensation'
+                                : 'Durasi minimal 2 jam'}
                           </option>
                           {compensationTypes.map((compensationType) => (
                             <option key={compensationType.id} value={compensationType.id}>
-                              {compensationType.name ?? compensationType.code}
+                              {formatCompensationOption(
+                                compensationType,
+                                compensationMultiplier,
+                              )}
                             </option>
                           ))}
                         </select>
+                        {isSelectedNationalHoliday ? (
+                          <p className="register-user-popup__hint">
+                            {selectedNationalHoliday.name} multiplier{' '}
+                            {formatNumber(compensationMultiplier)}x diterapkan pada
+                            kompensasi.
+                          </p>
+                        ) : null}
                       </div>
 
                       {reqOvertimeTextareaFields.map((field) => (
