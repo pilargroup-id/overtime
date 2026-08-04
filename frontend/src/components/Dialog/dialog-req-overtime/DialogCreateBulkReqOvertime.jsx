@@ -617,6 +617,7 @@ function DialogCreateBulkReqOvertime({
     event.preventDefault()
 
     const payload = buildPayload()
+    const mustFillGeneralDescriptions = formValues.apply_general_to_all
     const hasIncompleteEmployeeDescriptions = payload.items.some(
       (item) => !item.task_description || !item.result_description,
     )
@@ -627,13 +628,13 @@ function DialogCreateBulkReqOvertime({
       !payload.work_date ||
       !payload.start_time ||
       !payload.end_time ||
-      !payload.task_description ||
-      !payload.result_description ||
+      (mustFillGeneralDescriptions &&
+        (!payload.task_description || !payload.result_description)) ||
       hasIncompleteEmployeeDescriptions ||
       (isCompensationEnabled && !payload.compensation_type_id)
     ) {
       setErrorMessage(
-        'Pilih employee, lengkapi data utama, lalu isi Task Description dan Result Description sesuai mode All atau manual.',
+        'Pilih employee, lengkapi data utama, lalu isi Task Description dan Result Description per employee atau centang All untuk isi sekaligus.',
       )
       return
     }
