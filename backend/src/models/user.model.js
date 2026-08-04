@@ -5,24 +5,82 @@ function normalizeIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))];
 }
 
-function selectPrimaryRow(rows = []) {
-  return rows.find((row) => Number(row.is_primary) === 1) || rows[0] || null;
-}
+function uniqueById(items = []) {
+  const map = new Map();
 
-function groupUserRows(rows = []) {
-  const grouped = new Map();
+  items.forEach((item) => {
+    if (item?.id === null || item?.id === undefined) return;
+    const key = String(item.id);
 
-  rows.forEach((row) => {
-    const id = String(row.id);
-
-    if (!grouped.has(id)) {
-      grouped.set(id, []);
+    if (!map.has(key) || Number(item.is_primary) === 1) {
+      map.set(key, item);
     }
-
-    grouped.get(id).push(row);
   });
 
-  return grouped;
+  return [...map.values()];
+}
+
+function normalizeDepartment(department = {}) {
+  if (department.id === null || department.id === undefined) return null;
+
+  return {
+    id: department.id,
+    name: department.name ?? department.department_name ?? null,
+    class: department.class ?? department.department_class ?? null,
+    code: department.code ?? department.department_code ?? null,
+    company_id: department.company_id ?? null,
+    parent_id: department.parent_id ?? null,
+    is_active: department.is_active ?? 1,
+    is_primary: Number(department.is_primary) === 1 ? 1 : 0,
+  };
+}
+
+function normalizeCompany(company = {}) {
+  if (company.id === null || company.id === undefined) return null;
+
+  return {
+    id: company.id,
+    code: company.code ?? company.company_code ?? null,
+    name: company.name ?? company.company_name ?? null,
+    is_active: company.is_active ?? 1,
+    is_primary: Number(company.is_primary) === 1 ? 1 : 0,
+  };
+}
+
+function getDepartments(row = {}) {
+  if (Array.isArray(row.departments)) {
+    return uniqueById(row.departments.map(normalizeDepartment).filter(Boolean));
+  }
+
+  const legacy = normalizeDepartment({
+    id: row.department_id,
+    name: row.department_name,
+    class: row.department_class,
+    code: row.department_code,
+    company_id: row.company_id,
+    is_primary: row.is_primary,
+  });
+
+  return legacy ? [legacy] : [];
+}
+
+function getCompanies(row = {}) {
+  if (Array.isArray(row.companies)) {
+    return uniqueById(row.companies.map(normalizeCompany).filter(Boolean));
+  }
+
+  const legacy = normalizeCompany({
+    id: row.company_id,
+    code: row.company_code,
+    name: row.company_name,
+    is_primary: row.company_is_primary ?? row.is_primary,
+  });
+
+  return legacy ? [legacy] : [];
+}
+
+function selectPrimary(items = []) {
+  return items.find((item) => Number(item.is_primary) === 1) || items[0] || null;
 }
 
 function mapBaseUser(row) {
@@ -37,7 +95,7 @@ function mapBaseUser(row) {
     name: row.name,
     job_position: row.job_position,
     job_level_id: row.job_level_id,
-    job_level: row.job_level,
+    job_level: row.job_level ?? row.job_level_name ?? null,
     job_level_value:
       row.job_level_value === null || row.job_level_value === undefined
         ? null
@@ -47,8 +105,50 @@ function mapBaseUser(row) {
   };
 }
 
-async function getAllUserRows(active = 1) {
-  return DirectoryService.fetchUsers({ active });
+function consolidateUsers(rows = []) {
+  const grouped = new Map();
+
+  rows.forEach((row) => {
+    if (!row?.id) return;
+    const id = String(row.id);
+
+    if (!grouped.has(id)) {
+      grouped.set(id, {
+        ...row,
+        departments: [],
+        companies: [],
+      });
+    }
+
+    const user = grouped.get(id);
+    user.departments.push(...getDepartments(row));
+    user.companies.push(...getCompanies(row));
+  });
+
+  return [...grouped.values()].map((user) => {
+    const departments = uniqueById(user.departments);
+    const companies = uniqueById(user.companies);
+    const primaryDepartment = selectPrimary(departments);
+    const primaryCompany = selectPrimary(companies);
+
+    return {
+      ...user,
+      departments,
+      companies,
+      department_id: user.department_id ?? primaryDepartment?.id ?? null,
+      department_name: user.department_name ?? primaryDepartment?.name ?? null,
+      department_class: user.department_class ?? primaryDepartment?.class ?? null,
+      department_code: user.department_code ?? primaryDepartment?.code ?? null,
+      company_id: user.company_id ?? primaryCompany?.id ?? primaryDepartment?.company_id ?? null,
+      company_code: user.company_code ?? primaryCompany?.code ?? null,
+      company_name: user.company_name ?? primaryCompany?.name ?? null,
+    };
+  });
+}
+
+async function getAllUsers(active = 1, params = {}) {
+  const rows = await DirectoryService.fetchUsers({ active, ...params });
+  return consolidateUsers(rows);
 }
 
 async function getCompanyMap(active = 'all') {
@@ -59,38 +159,32 @@ async function getCompanyMap(active = 'all') {
 async function findByUsername(username) {
   if (!username) return null;
 
-  const rows = await DirectoryService.fetchUsers({ active: 'all', search: username });
-  const exactRows = rows.filter((row) => row.username === username);
-  return mapBaseUser(selectPrimaryRow(exactRows));
+  const users = await getAllUsers('all', { search: username });
+  const user = users.find((item) => item.username === username);
+  return mapBaseUser(user);
 }
 
 async function findById(id) {
   if (!id) return null;
 
-  const rows = await getAllUserRows('all');
-  const userRows = rows.filter((row) => String(row.id) === String(id));
-  return mapBaseUser(selectPrimaryRow(userRows));
+  const users = await getAllUsers('all');
+  return mapBaseUser(users.find((user) => String(user.id) === String(id)) || null);
 }
 
 async function findUsersByIds(ids = []) {
   const normalizedIds = normalizeIds(ids);
-
   if (normalizedIds.length === 0) return [];
 
-  const rows = await getAllUserRows('all');
-  const grouped = groupUserRows(
-    rows.filter((row) => normalizedIds.includes(String(row.id)))
-  );
+  const users = await getAllUsers('all');
 
-  return normalizedIds
-    .map((id) => mapBaseUser(selectPrimaryRow(grouped.get(id) || [])))
-    .filter(Boolean)
+  return users
+    .filter((user) => normalizedIds.includes(String(user.id)))
+    .map(mapBaseUser)
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findDepartmentsByIds(ids = []) {
   const normalizedIds = normalizeIds(ids);
-
   if (normalizedIds.length === 0) return [];
 
   const departments = await DirectoryService.fetchDepartments({ active: 'all' });
@@ -102,7 +196,6 @@ async function findDepartmentsByIds(ids = []) {
 
 async function findCompaniesByIds(ids = []) {
   const normalizedIds = normalizeIds(ids);
-
   if (normalizedIds.length === 0) return [];
 
   const companies = await DirectoryService.fetchCompanies({ active: 'all' });
@@ -113,31 +206,32 @@ async function findCompaniesByIds(ids = []) {
 }
 
 async function findUserDepartments(userId) {
-  const rows = await getAllUserRows('all');
+  const users = await getAllUsers('all');
+  const user = users.find((item) => String(item.id) === String(userId));
 
-  return rows
-    .filter((row) => String(row.id) === String(userId) && row.department_id !== null)
-    .map((row) => ({
-      id: row.department_id,
-      name: row.department_name,
-      class: row.department_class,
-      code: row.department_code,
-      company_id: row.company_id,
-      parent_id: null,
-      is_primary: row.is_primary,
-    }))
+  return (user?.departments || [])
+    .slice()
     .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findUserCompanies(userId) {
-  const departments = await findUserDepartments(userId);
-  const companyIds = normalizeIds(departments.map((department) => department.company_id));
+  const users = await getAllUsers('all');
+  const user = users.find((item) => String(item.id) === String(userId));
+
+  if (user?.companies?.length) {
+    return user.companies
+      .slice()
+      .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || String(a.name || '').localeCompare(String(b.name || '')));
+  }
+
+  const companyIds = normalizeIds((user?.departments || []).map((department) => department.company_id));
   const companies = await findCompaniesByIds(companyIds);
-  const primaryDepartment = departments.find((department) => Number(department.is_primary) === 1);
+  const primaryDepartment = selectPrimary(user?.departments || []);
 
   return companies.map((company) => ({
     ...company,
-    is_primary: primaryDepartment && String(primaryDepartment.company_id) === String(company.id) ? 1 : 0,
+    is_primary:
+      primaryDepartment && String(primaryDepartment.company_id) === String(company.id) ? 1 : 0,
   }));
 }
 
@@ -146,87 +240,65 @@ async function findUserProjects() {
 }
 
 async function findFullProfileById(id) {
-  const rows = await getAllUserRows('all');
-  const userRows = rows.filter((row) => String(row.id) === String(id));
-  const primaryRow = selectPrimaryRow(userRows);
+  const users = await getAllUsers('all');
+  const user = users.find((item) => String(item.id) === String(id));
+  if (!user) return null;
 
-  if (!primaryRow) return null;
-
-  const [companies, permissions, companyMap] = await Promise.all([
-    findUserCompanies(id),
+  const [permissions, companyMap] = await Promise.all([
     UserPermissionModel.findActiveByUserId(id),
     getCompanyMap('all'),
   ]);
 
-  const departments = userRows
-    .filter((row) => row.department_id !== null)
-    .map((row) => ({
-      id: row.department_id,
-      name: row.department_name,
-      class: row.department_class,
-      code: row.department_code,
-      company_id: row.company_id,
-      parent_id: null,
-      is_primary: row.is_primary,
-    }));
+  const departments = user.departments || [];
+  let companies = user.companies || [];
 
-  const primaryDepartment = selectPrimaryRow(
-    departments.map((department) => ({ ...department, id: department.id }))
-  ) || departments[0] || null;
+  if (companies.length === 0) {
+    const companyIds = normalizeIds(departments.map((department) => department.company_id));
+    companies = companyIds
+      .map((companyId) => companyMap.get(companyId))
+      .filter(Boolean)
+      .map((company) => ({ ...company, is_primary: 0 }));
+  }
 
-  const primaryCompany =
-    companies.find((company) => Number(company.is_primary) === 1) ||
-    companies[0] ||
-    companyMap.get(String(primaryRow.company_id)) ||
-    null;
+  const primaryDepartment = selectPrimary(departments);
+  const primaryCompany = selectPrimary(companies) || companyMap.get(String(user.company_id)) || null;
 
   return {
-    ...mapBaseUser(primaryRow),
+    ...mapBaseUser(user),
     token_version: null,
     departments,
     companies,
     projects: [],
     apps: [],
     permissions,
-    department_id: primaryRow.department_id ?? primaryDepartment?.id ?? null,
-    department: primaryRow.department_name ?? primaryDepartment?.name ?? null,
-    department_class: primaryRow.department_class ?? primaryDepartment?.class ?? null,
-    department_code: primaryRow.department_code ?? primaryDepartment?.code ?? null,
-    company_id: primaryRow.company_id ?? primaryCompany?.id ?? null,
-    company: primaryCompany?.name ?? null,
-    company_code: primaryCompany?.code ?? null,
+    department_id: user.department_id ?? primaryDepartment?.id ?? null,
+    department: user.department_name ?? primaryDepartment?.name ?? null,
+    department_class: user.department_class ?? primaryDepartment?.class ?? null,
+    department_code: user.department_code ?? primaryDepartment?.code ?? null,
+    company_id: user.company_id ?? primaryCompany?.id ?? primaryDepartment?.company_id ?? null,
+    company: user.company_name ?? primaryCompany?.name ?? null,
+    company_code: user.company_code ?? primaryCompany?.code ?? null,
     cv: null,
   };
 }
 
 async function findActiveUsersByJobLevelName(jobLevelName) {
-  const rows = await getAllUserRows(1);
-  const grouped = groupUserRows(
-    rows.filter((row) => row.job_level === jobLevelName)
-  );
+  const users = await getAllUsers(1);
 
-  return [...grouped.values()]
-    .map((userRows) => mapBaseUser(selectPrimaryRow(userRows)))
-    .filter(Boolean)
+  return users
+    .filter((user) => (user.job_level ?? user.job_level_name) === jobLevelName)
+    .map(mapBaseUser)
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findActiveUsersByDepartmentAndJobLevelName(departmentId, jobLevelName) {
-  const rows = await DirectoryService.fetchUsers({
-    active: 1,
-    department_id: departmentId,
-  });
+  const users = await getAllUsers(1, { department_id: departmentId });
 
-  const grouped = groupUserRows(
-    rows.filter((row) => row.job_level === jobLevelName)
-  );
+  const candidate = users
+    .filter((user) => (user.job_level ?? user.job_level_name) === jobLevelName)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))[0];
 
-  const candidates = [...grouped.values()]
-    .map((userRows) => selectPrimaryRow(userRows))
-    .filter(Boolean)
-    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || String(a.name || '').localeCompare(String(b.name || '')));
-
-  return mapBaseUser(candidates[0] || null);
+  return mapBaseUser(candidate || null);
 }
 
 async function findActiveUsersForOvertimeOptions(filters = {}) {
@@ -239,9 +311,8 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
     limit = 20,
   } = filters;
 
-  const rows = await getAllUserRows(1);
+  const users = await getAllUsers(1);
   const companyMap = await getCompanyMap(1);
-  const grouped = groupUserRows(rows);
   const normalizedUserIds = normalizeIds(userIds);
   const normalizedDepartmentIds = normalizeIds(departmentIds);
   const normalizedCompanyIds = normalizeIds(companyIds);
@@ -249,24 +320,42 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
 
   const result = [];
 
-  for (const userRows of grouped.values()) {
-    const primaryRow = selectPrimaryRow(userRows);
-    if (!primaryRow) continue;
+  for (const user of users) {
+    const departments = user.departments || [];
+    let companies = user.companies || [];
+
+    if (companies.length === 0) {
+      companies = uniqueById(
+        departments
+          .map((department) => companyMap.get(String(department.company_id)))
+          .filter(Boolean)
+          .map((company) => ({ ...company, is_primary: 0 }))
+      );
+    }
+
+    const primaryDepartment = selectPrimary(departments);
+    const primaryCompany = selectPrimary(companies) || companyMap.get(String(user.company_id));
 
     if (!allUsers) {
-      const userMatch = normalizedUserIds.includes(String(primaryRow.id));
-      const departmentMatch = userRows.some((row) => normalizedDepartmentIds.includes(String(row.department_id)));
-      const companyMatch = userRows.some((row) => normalizedCompanyIds.includes(String(row.company_id)));
+      const userMatch = normalizedUserIds.includes(String(user.id));
+      const departmentMatch = departments.some((department) =>
+        normalizedDepartmentIds.includes(String(department.id))
+      );
+      const companyMatch = companies.some((company) =>
+        normalizedCompanyIds.includes(String(company.id))
+      );
 
       if (!userMatch && !departmentMatch && !companyMatch) continue;
     }
 
     if (keyword) {
       const haystack = [
-        primaryRow.name,
-        primaryRow.username,
-        primaryRow.internal_id,
-        primaryRow.email,
+        user.name,
+        user.username,
+        user.internal_id,
+        user.email,
+        ...departments.flatMap((department) => [department.name, department.class, department.code]),
+        ...companies.flatMap((company) => [company.name, company.code]),
       ]
         .map((value) => String(value ?? '').toLowerCase())
         .join(' ');
@@ -274,27 +363,31 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
       if (!haystack.includes(keyword)) continue;
     }
 
-    const company = companyMap.get(String(primaryRow.company_id));
-
     result.push({
-      id: primaryRow.id,
-      internal_id: primaryRow.internal_id,
-      username: primaryRow.username,
-      name: primaryRow.name,
-      email: primaryRow.email,
-      job_position: primaryRow.job_position,
-      employment_type_code: primaryRow.employment_type_code,
-      job_level_name: primaryRow.job_level,
+      id: user.id,
+      internal_id: user.internal_id,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      job_position: user.job_position,
+      employment_type_code: user.employment_type_code,
+      job_level_name: user.job_level ?? user.job_level_name ?? null,
       job_level_value:
-        primaryRow.job_level_value === null || primaryRow.job_level_value === undefined
+        user.job_level_value === null || user.job_level_value === undefined
           ? null
-          : Number(primaryRow.job_level_value),
-      department_id: primaryRow.department_id,
-      department_name: primaryRow.department_name,
-      department_code: primaryRow.department_code,
-      company_id: primaryRow.company_id,
-      company_code: company?.code || null,
-      company_name: company?.name || null,
+          : Number(user.job_level_value),
+
+      // Backward-compatible primary organization fields.
+      department_id: user.department_id ?? primaryDepartment?.id ?? null,
+      department_name: user.department_name ?? primaryDepartment?.name ?? null,
+      department_code: user.department_code ?? primaryDepartment?.code ?? null,
+      company_id: user.company_id ?? primaryCompany?.id ?? primaryDepartment?.company_id ?? null,
+      company_code: user.company_code ?? primaryCompany?.code ?? null,
+      company_name: user.company_name ?? primaryCompany?.name ?? null,
+
+      // Complete organization memberships.
+      departments,
+      companies,
     });
   }
 

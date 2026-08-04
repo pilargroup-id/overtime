@@ -262,11 +262,27 @@ function isScopeMatch(permission, employee) {
   }
 
   if (permission.scope_type === 'COMPANY') {
-    return permission.company_id && permission.company_id === employee.company_id;
+    const companyIds = Array.isArray(employee.companies)
+      ? employee.companies.map((company) => String(company.id))
+      : [];
+
+    if (employee.company_id !== null && employee.company_id !== undefined) {
+      companyIds.push(String(employee.company_id));
+    }
+
+    return Boolean(permission.company_id) && companyIds.includes(String(permission.company_id));
   }
 
   if (permission.scope_type === 'DEPARTMENT') {
-    return Number(permission.department_id) === Number(employee.department_id);
+    const departmentIds = Array.isArray(employee.departments)
+      ? employee.departments.map((department) => String(department.id))
+      : [];
+
+    if (employee.department_id !== null && employee.department_id !== undefined) {
+      departmentIds.push(String(employee.department_id));
+    }
+
+    return departmentIds.includes(String(permission.department_id));
   }
 
   return false;
