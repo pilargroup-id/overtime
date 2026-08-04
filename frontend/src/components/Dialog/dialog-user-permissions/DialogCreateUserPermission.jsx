@@ -239,7 +239,6 @@ function DialogCreateUserPermission({
       formValues.permission_category,
       normalizedScopeType,
     )
-    const isScopedPermission = permissionType === 'REQUEST_CREATE_SCOPED'
     const selectedEmployee = eligibleEmployees.find(
       (employee) => String(employee.id) === String(formValues.user_id),
     )
@@ -248,11 +247,8 @@ function DialogCreateUserPermission({
       user_id: formValues.user_id.trim(),
       permission_type: permissionType,
       scope_type: normalizedScopeType,
-      company_id: isScopedPermission ? selectedEmployee?.company_id ?? null : null,
-      department_id:
-        isScopedPermission && normalizedScopeType === 'DEPARTMENT'
-          ? selectedEmployee?.department_id ?? null
-          : null,
+      company_id: selectedEmployee?.company_id ?? null,
+      department_id: selectedEmployee?.department_id ?? null,
       is_active: 1,
       valid_from: null,
       valid_until: null,
@@ -270,12 +266,12 @@ function DialogCreateUserPermission({
       return
     }
 
-    if (payload.permission_type === 'REQUEST_CREATE_SCOPED' && !payload.company_id) {
+    if (formValues.permission_category === 'REQUEST' && !payload.company_id) {
       setErrorMessage('Company user yang dipilih tidak tersedia.')
       return
     }
 
-    if (payload.scope_type === 'DEPARTMENT' && !payload.department_id) {
+    if (formValues.permission_category === 'REQUEST' && !payload.department_id) {
       setErrorMessage('Department user yang dipilih tidak tersedia.')
       return
     }

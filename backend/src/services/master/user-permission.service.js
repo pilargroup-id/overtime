@@ -156,15 +156,6 @@ function buildPayload(payload, authUser = null) {
   let companyId = normalizeNullable(payload.company_id);
   let departmentId = normalizeNullable(payload.department_id);
 
-  if (scopeType === 'GLOBAL') {
-    companyId = null;
-    departmentId = null;
-  }
-
-  if (scopeType === 'COMPANY') {
-    departmentId = null;
-  }
-
   return {
     user_id         : payload.user_id !== undefined ? String(payload.user_id).trim() : undefined,
     permission_type : payload.permission_type,
