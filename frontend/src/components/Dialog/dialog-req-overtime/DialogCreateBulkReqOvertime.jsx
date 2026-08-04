@@ -277,6 +277,25 @@ function formatCompensationOption(compensationType, multiplier) {
   return details.length ? `${name} (${details.join(' / ')})` : name
 }
 
+function formatCompensationAmount(compensationType, multiplier) {
+  if (!compensationType) {
+    return ''
+  }
+
+  const amount = Number(compensationType.amount)
+  const leaveDays = Number(compensationType.leave_days)
+
+  if (Number.isFinite(amount) && amount > 0) {
+    return `Rp${formatNumber(amount * multiplier)}`
+  }
+
+  if (Number.isFinite(leaveDays) && leaveDays > 0) {
+    return `${formatNumber(leaveDays * multiplier)} hari`
+  }
+
+  return ''
+}
+
 function DialogCreateBulkReqOvertime({
   isOpen = false,
   eyebrow = 'Create Bulk Req Overtime',
@@ -687,6 +706,14 @@ function DialogCreateBulkReqOvertime({
   const compensationMultiplier = isSelectedNationalHoliday
     ? getNationalHolidayMultiplier(selectedNationalHoliday)
     : 1
+  const selectedCompensationType = compensationTypes.find(
+    (compensationType) =>
+      String(compensationType.id) === String(formValues.compensation_type_id),
+  )
+  const compensationAmountLabel = formatCompensationAmount(
+    selectedCompensationType,
+    compensationMultiplier,
+  )
 
   const dialogNode = (
     <div
@@ -904,7 +931,7 @@ function DialogCreateBulkReqOvertime({
                         </div>
                       ))}
 
-                      <div className="register-user-popup__field overtime-create-popup__field--full">
+                      <div className="register-user-popup__field overtime-create-popup__field--half">
                         <label
                           className="register-user-popup__label"
                           htmlFor="req-overtime-compensation-type"
@@ -946,6 +973,25 @@ function DialogCreateBulkReqOvertime({
                             kompensasi.
                           </p>
                         ) : null}
+                      </div>
+
+                      <div className="register-user-popup__field overtime-create-popup__field--half">
+                        <label
+                          className="register-user-popup__label"
+                          htmlFor="req-overtime-compensation-amount"
+                        >
+                          Compensation Amount
+                        </label>
+                        <input
+                          id="req-overtime-compensation-amount"
+                          name="compensation_amount"
+                          type="text"
+                          className="register-user-popup__input"
+                          value={compensationAmountLabel}
+                          placeholder="-"
+                          readOnly
+                          disabled
+                        />
                       </div>
 
                       {reqOvertimeTextareaFields.map((field) => (

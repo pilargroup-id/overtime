@@ -1,11 +1,13 @@
+import { CheckCircle, Clock } from '../../components/layoute/TemplateIcons.jsx'
+
 export const APPROVAL_OVERTIME_TABS = {
   APPROVAL: 'approval',
   HISTORY: 'history',
 }
 
 const APPROVAL_TABS = [
-  { label: 'Approval', value: APPROVAL_OVERTIME_TABS.APPROVAL },
-  { label: 'History', value: APPROVAL_OVERTIME_TABS.HISTORY },
+  { label: 'Approval', value: APPROVAL_OVERTIME_TABS.APPROVAL, icon: CheckCircle },
+  { label: 'History', value: APPROVAL_OVERTIME_TABS.HISTORY, icon: Clock },
 ]
 
 function TabsApprovalOvertime({ value, onChange }) {
@@ -25,6 +27,7 @@ function TabsApprovalOvertime({ value, onChange }) {
           aria-selected={value === tab.value}
           onClick={() => onChange(tab.value)}
         >
+          <tab.icon className="approval-overtime-tabs__icon" size={16} />
           {tab.label}
         </button>
       ))}

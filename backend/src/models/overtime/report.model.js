@@ -26,6 +26,11 @@ function buildWhere(filters = {}) {
     );
   }
 
+  if (filters.request_id) {
+    where.push('r.id = ?');
+    params.push(Number(filters.request_id));
+  }
+
   if (filters.status) {
     where.push('r.status = ?');
     params.push(filters.status);

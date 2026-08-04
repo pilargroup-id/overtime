@@ -254,7 +254,10 @@ function createColumns(
       cellStyle: { width: '30px', minWidth: '30px', textAlign: 'center' },
       render: (request, index) => {
         const rowId = String(getRequestRowId(request, index))
-        const isSelectable = isApprovedRequest(request) && Boolean(request?.id)
+        const isSelectable =
+          isApprovedRequest(request) &&
+          Boolean(request?.id) &&
+          normalizeTalentaStatus(request.talenta_status) !== TALENTA_STATUS_PROCESSED
 
         return (
           <DataTableSelectionCheckbox
@@ -343,6 +346,7 @@ function TalentaStatusToggle({ status, disabled = false, onChange }) {
   const normalizedStatus = normalizeTalentaStatus(status)
   const isProcessed = normalizedStatus === TALENTA_STATUS_PROCESSED
   const nextStatus = isProcessed ? TALENTA_STATUS_PENDING : TALENTA_STATUS_PROCESSED
+  const isDisabled = disabled || isProcessed
 
   return (
     <button
@@ -353,8 +357,8 @@ function TalentaStatusToggle({ status, disabled = false, onChange }) {
       ].filter(Boolean).join(' ')}
       role="switch"
       aria-checked={isProcessed}
-      disabled={disabled}
-      title={`Ubah ke ${nextStatus}`}
+      disabled={isDisabled}
+      title={isProcessed ? 'Sudah Processed, tidak bisa dikembalikan ke Pending' : `Ubah ke ${nextStatus}`}
       onClick={onChange}
     >
       <span className="talenta-status-toggle__track" aria-hidden="true">
@@ -368,6 +372,7 @@ function TalentaStatusToggle({ status, disabled = false, onChange }) {
 function DataTableReport({
   searchQuery = '',
   talentaStatusFilter = '',
+  filters = {},
   tableLabel = 'Request Overtime table',
   refreshKey = 0,
 }) {
@@ -388,7 +393,7 @@ function DataTableReport({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1)
     setSelectedRequestIds(new Set())
-  }, [searchQuery, talentaStatusFilter])
+  }, [searchQuery, talentaStatusFilter, filters])
 
   const selectableRequestRows = useMemo(
     () =>
@@ -398,7 +403,12 @@ function DataTableReport({
           index,
           rowId: String(getRequestRowId(request, index)),
         }))
-        .filter(({ request }) => isApprovedRequest(request) && Boolean(request?.id)),
+        .filter(
+          ({ request }) =>
+            isApprovedRequest(request) &&
+            Boolean(request?.id) &&
+            normalizeTalentaStatus(request.talenta_status) !== TALENTA_STATUS_PROCESSED,
+        ),
     [requestRows],
   )
   const currentPageRequestIds = useMemo(
@@ -457,6 +467,11 @@ function DataTableReport({
           search: searchQuery,
           status: APPROVED_REQUEST_STATUS,
           talenta_status: talentaStatusFilter,
+          day_type: filters.dayType,
+          work_date_from: filters.workDateFrom,
+          work_date_to: filters.workDateTo,
+          compensation_type_id: filters.compensationTypeId,
+          submitted_by: filters.submittedBy,
         })
 
         if (!isMounted) {
@@ -490,7 +505,7 @@ function DataTableReport({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery, talentaStatusFilter])
+  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery, talentaStatusFilter, filters])
 
   const handleToggleTalentaStatus = async (request) => {
     const requestId = request?.id
@@ -501,10 +516,13 @@ function DataTableReport({
     }
 
     const previousStatus = normalizeTalentaStatus(request.talenta_status)
-    const nextStatus =
-      previousStatus === TALENTA_STATUS_PROCESSED
-        ? TALENTA_STATUS_PENDING
-        : TALENTA_STATUS_PROCESSED
+
+    if (previousStatus === TALENTA_STATUS_PROCESSED) {
+      setErrorMessage('Request yang sudah Processed tidak bisa dikembalikan ke Pending.')
+      return
+    }
+
+    const nextStatus = TALENTA_STATUS_PROCESSED
 
     setUpdatingTalentaRequestId(requestId)
     setErrorMessage('')
@@ -688,13 +706,6 @@ function DataTableReport({
                 disabled={Boolean(processingBulkTalentaStatus)}
                 isLoading={processingBulkTalentaStatus === TALENTA_STATUS_PROCESSED}
                 onClick={() => handleBulkTalentaStatus(TALENTA_STATUS_PROCESSED)}
-              />
-              <TalentaBulkButton
-                status={TALENTA_STATUS_PENDING}
-                count={selectedCurrentPageCount}
-                disabled={Boolean(processingBulkTalentaStatus)}
-                isLoading={processingBulkTalentaStatus === TALENTA_STATUS_PENDING}
-                onClick={() => handleBulkTalentaStatus(TALENTA_STATUS_PENDING)}
               />
             </div>
           </div>

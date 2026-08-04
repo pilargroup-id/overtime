@@ -199,6 +199,7 @@ function createHistoryColumns(compensationTypeMap) {
 
 function DataTableReportHistory({
   searchQuery = '',
+  filters = {},
   tableLabel = 'History Request Overtime table',
   refreshKey = 0,
 }) {
@@ -214,7 +215,7 @@ function DataTableReportHistory({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1)
-  }, [searchQuery])
+  }, [searchQuery, filters])
 
   useEffect(() => {
     let isMounted = true
@@ -259,6 +260,11 @@ function DataTableReportHistory({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
+          day_type: filters.dayType,
+          work_date_from: filters.workDateFrom,
+          work_date_to: filters.workDateTo,
+          compensation_type_id: filters.compensationTypeId,
+          submitted_by: filters.submittedBy,
         })
 
         if (!isMounted) return
@@ -286,7 +292,7 @@ function DataTableReportHistory({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, searchQuery])
+  }, [currentPage, pageSize, refreshKey, searchQuery, filters])
 
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const firstItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1

@@ -133,7 +133,19 @@ function getNestedValue(source, path) {
   return path.split('.').reduce((value, key) => value?.[key], source)
 }
 
-function formatCompensation(request, compensationTypeMap) {
+function formatNumber(value) {
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue)) {
+    return null
+  }
+
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 2,
+  }).format(numberValue)
+}
+
+function getCompensationName(request, compensationTypeMap) {
   const compensationNameFields = [
     'compensation_type_name',
     'compensation_name',
@@ -154,6 +166,80 @@ function formatCompensation(request, compensationTypeMap) {
   const mappedName = compensationTypeMap.get(String(request.compensation_type_id))
 
   return mappedName ? formatValue(mappedName) : formatValue(request.compensation_type_id)
+}
+
+function getCompensationMultiplier(request) {
+  const multiplier = Number(request?.compensation_multiplier)
+
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+}
+
+function getCompensationBaseAmount(request) {
+  const baseAmount = request?.compensation_amount_snapshot ?? request?.compensation_amount
+
+  const numberValue = Number(baseAmount)
+
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+function getCompensationBaseLeaveDays(request) {
+  const baseLeaveDays =
+    request?.compensation_leave_days_snapshot ?? request?.compensation_leave_days
+
+  const numberValue = Number(baseLeaveDays)
+
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+function getFinalCompensationAmount(request) {
+  const finalAmount = Number(request?.final_compensation_amount)
+
+  if (Number.isFinite(finalAmount)) {
+    return finalAmount
+  }
+
+  const baseAmount = getCompensationBaseAmount(request)
+
+  return baseAmount !== null ? baseAmount * getCompensationMultiplier(request) : null
+}
+
+function getFinalCompensationLeaveDays(request) {
+  const finalLeaveDays = Number(request?.final_compensation_leave_days)
+
+  if (Number.isFinite(finalLeaveDays)) {
+    return finalLeaveDays
+  }
+
+  const baseLeaveDays = getCompensationBaseLeaveDays(request)
+
+  return baseLeaveDays !== null ? baseLeaveDays * getCompensationMultiplier(request) : null
+}
+
+function formatCompensation(request, compensationTypeMap) {
+  const name = getCompensationName(request, compensationTypeMap)
+  const multiplier = getCompensationMultiplier(request)
+  const multiplierLabel = multiplier > 1 ? ` (x${formatNumber(multiplier)})` : ''
+
+  return `${name}${multiplierLabel}`
+}
+
+function formatCompensationAmount(request) {
+  const baseAmount = getCompensationBaseAmount(request)
+  const baseLeaveDays = getCompensationBaseLeaveDays(request)
+
+  if (baseAmount !== null && baseAmount > 0) {
+    const finalAmount = getFinalCompensationAmount(request)
+
+    return finalAmount !== null ? `Rp${formatNumber(finalAmount)}` : '-'
+  }
+
+  if (baseLeaveDays !== null && baseLeaveDays > 0) {
+    const finalLeaveDays = getFinalCompensationLeaveDays(request)
+
+    return finalLeaveDays !== null ? `${formatNumber(finalLeaveDays)} hari` : '-'
+  }
+
+  return '-'
 }
 
 function getStatusVariant(status) {
@@ -240,6 +326,13 @@ function createColumns(compensationTypeMap) {
     header: 'Compensation',
     headerStyle: { width: '10%'},
     render : (request) => formatCompensation(request, compensationTypeMap)
+  },
+  {
+    key: 'compensationAmount',
+    header: 'Compensation Amount',
+    headerStyle: { width: '10%' },
+    cellStyle: { width: '10%' },
+    render: (request) => formatCompensationAmount(request),
   },
   {
     key: 'submittedBy',

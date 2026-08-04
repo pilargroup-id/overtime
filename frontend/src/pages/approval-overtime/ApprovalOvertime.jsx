@@ -15,7 +15,6 @@ function ApprovalOvertime({ activePage, searchQuery }) {
   const [activeTab, setActiveTab] = useState(APPROVAL_OVERTIME_TABS.APPROVAL)
   const [filters, setFilters] = useState(EMPTY_APPROVAL_FILTERS)
   const pageTitle = activePage?.title ?? 'Request Overtime'
-  const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
   return (
     <section
@@ -23,10 +22,7 @@ function ApprovalOvertime({ activePage, searchQuery }) {
       aria-label={pageTitle}
     >
       <div className="users-table-card__header">
-        <div>
-          <p className="dashboard-panel__eyebrow">{pageEyebrow}</p>
-          <h1 className="dashboard-panel__title">{pageTitle}</h1>
-        </div>
+        <TabsApprovalOvertime value={activeTab} onChange={setActiveTab} />
 
         <div className="users-table-card__actions">
           <Search
@@ -46,7 +42,6 @@ function ApprovalOvertime({ activePage, searchQuery }) {
       </div>
 
       <div className="approval-overtime-filters-backdrop">
-        <TabsApprovalOvertime value={activeTab} onChange={setActiveTab} />
         <FilterApprovalOvertime
           filters={filters}
           mode={activeTab}

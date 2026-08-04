@@ -1656,14 +1656,14 @@ select {
 }
 
 .approval-overtime-tabs {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 3px;
-  border: 1px solid rgba(26, 42, 87, 0.1);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
+  padding: 4px;
+  border-radius: 12px;
+  background: #eef1f6;
   width: fit-content;
+  flex-shrink: 0;
 }
 
 .approval-overtime-tabs__tab {
@@ -1671,7 +1671,8 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.38rem 1.1rem;
+  gap: 0.4rem;
+  padding: 0.42rem 1.2rem;
   border: none;
   border-radius: 9px;
   background: transparent;
@@ -1680,24 +1681,77 @@ select {
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition: color 0.18s ease, background 0.18s ease;
   white-space: nowrap;
+}
+
+.approval-overtime-tabs__icon {
+  flex-shrink: 0;
 }
 
 .approval-overtime-tabs__tab:hover:not(.approval-overtime-tabs__tab--active) {
   color: #1a2a57;
-  background: rgba(26, 42, 87, 0.05);
 }
 
 .approval-overtime-tabs__tab:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.18);
+  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.2);
 }
 
 .approval-overtime-tabs__tab--active {
-  background: #fff;
+  background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-teal-dark) 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(42, 157, 143, 0.3);
+}
+
+/* -- Report Overtime Tabs ----------------------------------------- */
+.report-overtime-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #eef1f6;
+  width: fit-content;
+  flex-shrink: 0;
+}
+
+.report-overtime-tabs__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.42rem 1.2rem;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #667085;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+  white-space: nowrap;
+}
+
+.report-overtime-tabs__icon {
+  flex-shrink: 0;
+}
+
+.report-overtime-tabs__tab:hover:not(.report-overtime-tabs__tab--active) {
   color: #1a2a57;
-  box-shadow: 0 1px 4px rgba(26, 42, 87, 0.1), 0 0 0 1px rgba(26, 42, 87, 0.06);
+}
+
+.report-overtime-tabs__tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.2);
+}
+
+.report-overtime-tabs__tab--active {
+  background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-teal-dark) 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(42, 157, 143, 0.3);
 }
 
 .req-overtime-filters {
@@ -1739,7 +1793,9 @@ select {
 }
 
 .approval-overtime-filters .form-dropdown__trigger {
+  height: 42px;
   min-height: 42px;
+  padding: 0 1rem;
   background: #fff;
 }
 
@@ -1751,9 +1807,10 @@ select {
 }
 
 .approval-overtime-filter-date__input {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  height: 42px;
   padding: 0 0.7rem;
   border: 1px solid rgba(26, 42, 87, 0.12);
   border-radius: 10px;
@@ -3548,6 +3605,14 @@ select {
 
 .users-table__row--interactive {
   cursor: pointer;
+}
+
+.users-table tbody tr.users-table__row--odd {
+  background: rgba(26, 42, 87, 0.025);
+}
+
+.users-table tbody tr.users-table__row--odd:hover {
+  background: rgba(24, 43, 88, 0.05);
 }
 
 .users-table__row:focus-visible {

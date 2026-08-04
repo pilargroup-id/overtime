@@ -1,44 +1,34 @@
-import Box from '@mui/material/Box'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
+import { AlertCircle, CheckCircle, Clock, LayoutDashboard } from '../../components/layoute/TemplateIcons.jsx'
 
 const REPORT_STATUS_TABS = [
-  { label: 'All', value: '' },
-  { label: 'Processed', value: 'PROCESSED' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'History', value: 'HISTORY' },
+  { label: 'All', value: '', icon: LayoutDashboard },
+  { label: 'Processed', value: 'PROCESSED', icon: CheckCircle },
+  { label: 'Pending', value: 'PENDING', icon: AlertCircle },
+  { label: 'History', value: 'HISTORY', icon: Clock },
 ]
 
 function TabsReportOvertime({ value, onChange }) {
   return (
-    <Box
-      sx={{
-        borderBottom: 1,
-        borderColor: 'divider',
-        mb: 0.5,
-      }}
-    >
-      <Tabs
-        value={value}
-        onChange={(_, nextValue) => onChange(nextValue)}
-        aria-label="Filter status report overtime"
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{
-          minHeight: 40,
-          '& .MuiTab-root': {
-            minHeight: 40,
-            px: 2,
-            textTransform: 'none',
-            fontWeight: 600,
-          },
-        }}
-      >
-        {REPORT_STATUS_TABS.map((tab) => (
-          <Tab key={tab.value || 'all'} label={tab.label} value={tab.value} />
-        ))}
-      </Tabs>
-    </Box>
+    <div className="report-overtime-tabs" role="tablist" aria-label="Filter status report overtime">
+      {REPORT_STATUS_TABS.map((tab) => (
+        <button
+          key={tab.value || 'all'}
+          role="tab"
+          type="button"
+          className={[
+            'report-overtime-tabs__tab',
+            value === tab.value ? 'report-overtime-tabs__tab--active' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-selected={value === tab.value}
+          onClick={() => onChange(tab.value)}
+        >
+          <tab.icon className="report-overtime-tabs__icon" size={16} />
+          {tab.label}
+        </button>
+      ))}
+    </div>
   )
 }
 

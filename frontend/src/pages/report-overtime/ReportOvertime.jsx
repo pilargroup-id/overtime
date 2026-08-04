@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Search from '../../components/search/Search.jsx'
 import DataTableReport from '../../components/table/dekstop/DataTableReport.jsx'
 import DataTableReportHistory from '../../components/table/dekstop/DataTableReportHistory.jsx'
+import FilterReportOvertime, { EMPTY_REPORT_FILTERS } from './FilterReportOvertime.jsx'
 import TabsReportOvertime from './TabsReportOvertime.jsx'
 
 const HISTORY_TAB_VALUE = 'HISTORY'
@@ -10,8 +11,8 @@ function ReportOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey] = useState(0)
   const [reportSearchQuery, setReportSearchQuery] = useState(searchQuery ?? '')
   const [talentaStatusFilter, setTalentaStatusFilter] = useState('')
+  const [filters, setFilters] = useState(EMPTY_REPORT_FILTERS)
   const pageTitle = activePage?.title ?? 'Report Overtime'
-  const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
   const isHistoryTab = talentaStatusFilter === HISTORY_TAB_VALUE
 
@@ -21,10 +22,7 @@ function ReportOvertime({ activePage, searchQuery }) {
       aria-label={pageTitle}
     >
       <div className="users-table-card__header">
-        <div>
-          <p className="dashboard-panel__eyebrow">{pageEyebrow}</p>
-          <h1 className="dashboard-panel__title">{pageTitle}</h1>
-        </div>
+        <TabsReportOvertime value={talentaStatusFilter} onChange={setTalentaStatusFilter} />
 
         <div className="users-table-card__actions">
           <Search
@@ -36,18 +34,29 @@ function ReportOvertime({ activePage, searchQuery }) {
         </div>
       </div>
 
-      <TabsReportOvertime value={talentaStatusFilter} onChange={setTalentaStatusFilter} />
+      <div className="approval-overtime-filters-backdrop">
+        <FilterReportOvertime
+          filters={filters}
+          isHistory={isHistoryTab}
+          refreshKey={reqOvertimeRefreshKey}
+          onChange={setFilters}
+        />
+      </div>
 
       {isHistoryTab ? (
         <DataTableReportHistory
+          key={`history-${reportSearchQuery}-${Object.values(filters).join('-')}`}
           searchQuery={reportSearchQuery}
+          filters={filters}
           tableLabel={`${pageTitle} - History table`}
           refreshKey={reqOvertimeRefreshKey}
         />
       ) : (
         <DataTableReport
+          key={`report-${talentaStatusFilter}-${reportSearchQuery}-${Object.values(filters).join('-')}`}
           searchQuery={reportSearchQuery}
           talentaStatusFilter={talentaStatusFilter}
+          filters={filters}
           tableLabel={`${pageTitle} table`}
           refreshKey={reqOvertimeRefreshKey}
         />

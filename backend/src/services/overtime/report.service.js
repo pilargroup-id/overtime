@@ -76,6 +76,7 @@ async function list(query, authUser) {
 
   const filters = {
     search: query.search || null,
+    request_id: query.request_id || null,
     status: query.status || null,
     statuses: REPORT_STATUSES,
     talenta_status: query.talenta_status || null,
@@ -123,6 +124,7 @@ async function listHistory(query, authUser) {
   // No statuses filter — semua status ditampilkan
   const filters = {
     search: query.search || null,
+    request_id: query.request_id || null,
     status: query.status || null,
     employment_type_code: query.employment_type_code || null,
     department_id: query.department_id || null,
