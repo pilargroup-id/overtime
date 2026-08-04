@@ -4,10 +4,16 @@ import { useState } from 'react'
 // import ButtonCreateApproval from '../../components/button/button-approval-overtime/ButtonCreateApproval.jsx'
 import Search from '../../components/search/Search.jsx'
 import DataTableApprovalOvertime from '../../components/table/dekstop/DataTableApprovalOvertime.jsx'
+import FilterApprovalOvertime, {
+  EMPTY_APPROVAL_FILTERS,
+} from './FilterApprovalOvertime.jsx'
+import TabsApprovalOvertime, { APPROVAL_OVERTIME_TABS } from './TabsApprovalOvertime.jsx'
 
 function ApprovalOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey] = useState(0)
   const [approvalSearchQuery, setApprovalSearchQuery] = useState(searchQuery ?? '')
+  const [activeTab, setActiveTab] = useState(APPROVAL_OVERTIME_TABS.APPROVAL)
+  const [filters, setFilters] = useState(EMPTY_APPROVAL_FILTERS)
   const pageTitle = activePage?.title ?? 'Request Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
 
@@ -39,8 +45,21 @@ function ApprovalOvertime({ activePage, searchQuery }) {
         </div>
       </div>
 
+      <div className="approval-overtime-filters-backdrop">
+        <TabsApprovalOvertime value={activeTab} onChange={setActiveTab} />
+        <FilterApprovalOvertime
+          filters={filters}
+          mode={activeTab}
+          refreshKey={reqOvertimeRefreshKey}
+          onChange={setFilters}
+        />
+      </div>
+
       <DataTableApprovalOvertime
+        key={`${activeTab}-${approvalSearchQuery}-${Object.values(filters).join('-')}`}
         searchQuery={approvalSearchQuery}
+        filters={filters}
+        mode={activeTab}
         tableLabel={`${pageTitle} table`}
         refreshKey={reqOvertimeRefreshKey}
       />

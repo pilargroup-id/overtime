@@ -10,6 +10,7 @@ import DataTable, {
 
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
+const APPROVED_REQUEST_STATUS = 'APPROVED'
 const TALENTA_STATUS_PENDING = 'PENDING'
 const TALENTA_STATUS_PROCESSED = 'PROCESSED'
 
@@ -149,7 +150,7 @@ function normalizeStatus(status) {
 }
 
 function isApprovedRequest(request) {
-  return normalizeStatus(request?.status) === 'APPROVED'
+  return normalizeStatus(request?.status) === APPROVED_REQUEST_STATUS
 }
 
 function getRequestRowId(request, index) {
@@ -454,6 +455,7 @@ function DataTableReport({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
+          status: APPROVED_REQUEST_STATUS,
           talenta_status: talentaStatusFilter,
         })
 
@@ -461,7 +463,7 @@ function DataTableReport({
           return
         }
 
-        const rows = normalizeResponseRows(response)
+        const rows = normalizeResponseRows(response).filter(isApprovedRequest)
         const meta = normalizeResponseMeta(response, rows.length, pageSize)
 
         setRequestRows(rows)

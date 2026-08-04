@@ -6,6 +6,7 @@ const REPORT_STATUS_TABS = [
   { label: 'All', value: '' },
   { label: 'Processed', value: 'PROCESSED' },
   { label: 'Pending', value: 'PENDING' },
+  { label: 'History', value: 'HISTORY' },
 ]
 
 function TabsReportOvertime({ value, onChange }) {

@@ -18,6 +18,10 @@ import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/Dia
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const APPROVABLE_REQUEST_STATUS = 'SUBMITTED'
+const TABLE_MODES = {
+  APPROVAL: 'approval',
+  HISTORY: 'history',
+}
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) {
@@ -431,6 +435,8 @@ function createColumns(
 
 function DataTableApprovalOvertime({
   searchQuery = '',
+  filters = {},
+  mode = TABLE_MODES.APPROVAL,
   tableLabel = 'Approval Overtime table',
   refreshKey = 0,
 }) {
@@ -451,12 +457,13 @@ function DataTableApprovalOvertime({
     requests: [],
     errorMessage: '',
   })
-  const showSelection = true
+  const isHistoryMode = mode === TABLE_MODES.HISTORY
+  const showSelection = !isHistoryMode
 
   useEffect(() => {
     setCurrentPage(1)
     setSelectedApprovalIds(new Set())
-  }, [searchQuery])
+  }, [mode, searchQuery])
 
   const selectableApprovalRows = useMemo(
     () =>
@@ -535,7 +542,15 @@ function DataTableApprovalOvertime({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
-          request_status: APPROVABLE_REQUEST_STATUS,
+          ...(isHistoryMode
+            ? { status: 'APPROVED' }
+            : { request_status: APPROVABLE_REQUEST_STATUS }),
+          request_id: filters.requestId,
+          day_type: filters.dayType,
+          work_date_from: filters.workDateFrom,
+          work_date_to: filters.workDateTo,
+          compensation_type_id: filters.compensationTypeId,
+          submitted_by: filters.submittedBy,
         })
 
         if (!isMounted) {
@@ -543,17 +558,16 @@ function DataTableApprovalOvertime({
         }
 
         const rows = normalizeResponseRows(response)
-        const submittedRows = rows.filter(isSubmittedRequestRow)
-        const meta = normalizeResponseMeta(response, submittedRows.length, pageSize)
-        const totalSubmittedRows =
-          submittedRows.length === rows.length ? meta.total : submittedRows.length
+        const displayRows = isHistoryMode ? rows : rows.filter(isSubmittedRequestRow)
+        const meta = normalizeResponseMeta(response, displayRows.length, pageSize)
+        const totalDisplayRows = displayRows.length === rows.length ? meta.total : displayRows.length
 
-        setApprovalRows(submittedRows)
-        setTotalItems(totalSubmittedRows)
+        setApprovalRows(displayRows)
+        setTotalItems(totalDisplayRows)
         setTotalPages(
-          submittedRows.length === rows.length
+          displayRows.length === rows.length
             ? meta.totalPages
-            : Math.max(1, Math.ceil(totalSubmittedRows / pageSize)),
+            : Math.max(1, Math.ceil(totalDisplayRows / pageSize)),
         )
       } catch (error) {
         if (!isMounted) {
@@ -576,7 +590,7 @@ function DataTableApprovalOvertime({
     return () => {
       isMounted = false
     }
-  }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
+  }, [currentPage, filters, isHistoryMode, pageSize, refreshKey, reloadKey, searchQuery])
 
   const handleOpenApprovalDialog = (row, action) => {
     if (!isPendingRow(row)) {
@@ -869,9 +883,15 @@ function DataTableApprovalOvertime({
       <div className="mtickets-table-shell req-overtime-table-shell approval-overtime-table-shell">
         {showSelection && selectedCurrentPageCount > 0 ? (
           <div className="approval-overtime-bulk-toolbar" aria-live="polite">
-            <span className="approval-overtime-bulk-toolbar__count">
-              {selectedCurrentPageCount} dipilih
-            </span>
+            <div className="approval-overtime-bulk-toolbar__summary">
+              <span className="approval-overtime-bulk-toolbar__count">
+                {selectedCurrentPageCount}
+              </span>
+              <span className="approval-overtime-bulk-toolbar__copy">
+                <strong>Approval dipilih</strong>
+                <small>Proses approval sekaligus</small>
+              </span>
+            </div>
             <div className="approval-overtime-bulk-toolbar__actions">
               <ButtonMultiApprove
                 count={selectedCurrentPageCount}
@@ -908,25 +928,27 @@ function DataTableApprovalOvertime({
             cellStyle: { width: '18%', minWidth: '204px', textAlign: 'center' },
             eyebrow: 'Approval Overtime',
             title: (row) => formatValue(row.request_number),
-            actions: [
-              {
-                key: 'approve',
-                label: 'Approve',
-                buttonComponent: ButtonApprove,
-                disabled: (row) =>
-                  processingApprovalAction === `approve:${getApprovalId(row)}`,
-                onClick: (row) => handleOpenApprovalDialog(row, 'approve'),
-              },
-              {
-                key: 'reject',
-                label: 'Reject',
-                variant: 'danger',
-                buttonComponent: ButtonReject,
-                disabled: (row) =>
-                  processingApprovalAction === `reject:${getApprovalId(row)}`,
-                onClick: (row) => handleOpenApprovalDialog(row, 'reject'),
-              },
-            ],
+            actions: isHistoryMode
+              ? []
+              : [
+                  {
+                    key: 'approve',
+                    label: 'Approve',
+                    buttonComponent: ButtonApprove,
+                    disabled: (row) =>
+                      processingApprovalAction === `approve:${getApprovalId(row)}`,
+                    onClick: (row) => handleOpenApprovalDialog(row, 'approve'),
+                  },
+                  {
+                    key: 'reject',
+                    label: 'Reject',
+                    variant: 'danger',
+                    buttonComponent: ButtonReject,
+                    disabled: (row) =>
+                      processingApprovalAction === `reject:${getApprovalId(row)}`,
+                    onClick: (row) => handleOpenApprovalDialog(row, 'reject'),
+                  },
+                ],
             sections: (row) => [
               // {
               //   title: 'Employee',

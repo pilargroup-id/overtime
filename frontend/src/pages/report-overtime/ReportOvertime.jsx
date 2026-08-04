@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import Search from '../../components/search/Search.jsx'
 import DataTableReport from '../../components/table/dekstop/DataTableReport.jsx'
+import DataTableReportHistory from '../../components/table/dekstop/DataTableReportHistory.jsx'
 import TabsReportOvertime from './TabsReportOvertime.jsx'
+
+const HISTORY_TAB_VALUE = 'HISTORY'
 
 function ReportOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey] = useState(0)
@@ -9,6 +12,8 @@ function ReportOvertime({ activePage, searchQuery }) {
   const [talentaStatusFilter, setTalentaStatusFilter] = useState('')
   const pageTitle = activePage?.title ?? 'Report Overtime'
   const pageEyebrow = activePage?.eyebrow ?? 'Overtime'
+
+  const isHistoryTab = talentaStatusFilter === HISTORY_TAB_VALUE
 
   return (
     <section
@@ -25,26 +30,28 @@ function ReportOvertime({ activePage, searchQuery }) {
           <Search
             value={reportSearchQuery}
             onChange={setReportSearchQuery}
-            placeholder="Search report..."
-            ariaLabel="Search report overtime"
+            placeholder={isHistoryTab ? 'Search history...' : 'Search report...'}
+            ariaLabel={isHistoryTab ? 'Search history request overtime' : 'Search report overtime'}
           />
-          {/* <ButtonCreateReqOvertime
-            onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
-          />
-          <ButtonCreateBulkReqOvertime
-            onCreated={() => setReqOvertimeRefreshKey((currentKey) => currentKey + 1)}
-          /> */}
         </div>
       </div>
 
       <TabsReportOvertime value={talentaStatusFilter} onChange={setTalentaStatusFilter} />
 
-      <DataTableReport
-        searchQuery={reportSearchQuery}
-        talentaStatusFilter={talentaStatusFilter}
-        tableLabel={`${pageTitle} table`}
-        refreshKey={reqOvertimeRefreshKey}
-      />
+      {isHistoryTab ? (
+        <DataTableReportHistory
+          searchQuery={reportSearchQuery}
+          tableLabel={`${pageTitle} - History table`}
+          refreshKey={reqOvertimeRefreshKey}
+        />
+      ) : (
+        <DataTableReport
+          searchQuery={reportSearchQuery}
+          talentaStatusFilter={talentaStatusFilter}
+          tableLabel={`${pageTitle} table`}
+          refreshKey={reqOvertimeRefreshKey}
+        />
+      )}
     </section>
   )
 }

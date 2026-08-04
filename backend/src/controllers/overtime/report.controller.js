@@ -20,6 +20,25 @@ async function index(req, res, next) {
   }
 }
 
+async function history(req, res, next) {
+  try {
+    const result = await ReportService.listHistory(req.query, req.user);
+
+    return R.paginated(
+      res,
+      result.data,
+      result.meta,
+      'Overtime history fetched successfully'
+    );
+  } catch (err) {
+    if (err.statusCode === 403) {
+      return R.forbidden(res, err.message);
+    }
+
+    return next(err);
+  }
+}
+
 async function show(req, res, next) {
   try {
     const data = await ReportService.getById(req.params.id, req.user);
@@ -84,6 +103,7 @@ async function bulkUpdateTalentaStatus(req, res, next) {
 
 module.exports = {
   index,
+  history,
   show,
   updateTalentaStatus,
   bulkUpdateTalentaStatus,

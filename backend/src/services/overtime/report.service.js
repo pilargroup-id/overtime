@@ -113,6 +113,51 @@ async function list(query, authUser) {
   };
 }
 
+async function listHistory(query, authUser) {
+  await assertCanManageReport(authUser);
+
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 10, 1), 100);
+  const offset = (page - 1) * limit;
+
+  // No statuses filter — semua status ditampilkan
+  const filters = {
+    search: query.search || null,
+    status: query.status || null,
+    employment_type_code: query.employment_type_code || null,
+    department_id: query.department_id || null,
+    company_id: query.company_id || null,
+    day_type: query.day_type || null,
+    compensation_type_id: query.compensation_type_id || null,
+    employee_id: query.employee_id || null,
+    submitted_by: query.submitted_by || null,
+    approver_id: query.approver_id || null,
+    source_type: query.source_type || null,
+    request_date_from: query.request_date_from || null,
+    request_date_to: query.request_date_to || null,
+    work_date_from: query.work_date_from || null,
+    work_date_to: query.work_date_to || null,
+    page,
+    limit,
+    offset,
+  };
+
+  const [data, total] = await Promise.all([
+    ReportModel.findAll(filters),
+    ReportModel.countAll(filters),
+  ]);
+
+  return {
+    data,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+}
+
 async function getById(id, authUser) {
   await assertCanManageReport(authUser);
 
@@ -254,6 +299,7 @@ async function bulkUpdateTalentaStatus(payload = {}, authUser) {
 
 module.exports = {
   list,
+  listHistory,
   getById,
   updateTalentaStatus,
   bulkUpdateTalentaStatus,

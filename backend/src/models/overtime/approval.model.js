@@ -61,14 +61,34 @@ async function findAllForApprover(filters = {}, authUser) {
     params.push(filters.request_status);
   }
 
+  if (filters.request_id) {
+    where.push('r.id = ?');
+    params.push(filters.request_id);
+  }
+
   if (filters.department_id) {
     where.push('r.department_id = ?');
     params.push(Number(filters.department_id));
   }
 
+  if (filters.day_type) {
+    where.push('r.day_type = ?');
+    params.push(filters.day_type);
+  }
+
+  if (filters.compensation_type_id) {
+    where.push('r.compensation_type_id = ?');
+    params.push(Number(filters.compensation_type_id));
+  }
+
   if (filters.employee_id) {
     where.push('r.employee_id = ?');
     params.push(filters.employee_id);
+  }
+
+  if (filters.submitted_by) {
+    where.push('r.submitted_by = ?');
+    params.push(filters.submitted_by);
   }
 
   if (filters.work_date_from) {
@@ -187,14 +207,34 @@ async function countAllForApprover(filters = {}, authUser) {
     params.push(filters.request_status);
   }
 
+  if (filters.request_id) {
+    where.push('r.id = ?');
+    params.push(filters.request_id);
+  }
+
   if (filters.department_id) {
     where.push('r.department_id = ?');
     params.push(Number(filters.department_id));
   }
 
+  if (filters.day_type) {
+    where.push('r.day_type = ?');
+    params.push(filters.day_type);
+  }
+
+  if (filters.compensation_type_id) {
+    where.push('r.compensation_type_id = ?');
+    params.push(Number(filters.compensation_type_id));
+  }
+
   if (filters.employee_id) {
     where.push('r.employee_id = ?');
     params.push(filters.employee_id);
+  }
+
+  if (filters.submitted_by) {
+    where.push('r.submitted_by = ?');
+    params.push(filters.submitted_by);
   }
 
   if (filters.work_date_from) {

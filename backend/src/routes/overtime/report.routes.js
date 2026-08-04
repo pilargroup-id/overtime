@@ -11,6 +11,13 @@ router.get(
   ReportController.index
 );
 
+router.get(
+  '/history',
+  authenticate,
+  requireApp('overtime'),
+  ReportController.history
+);
+
 router.put(
   '/talenta-status/bulk',
   authenticate,

@@ -150,6 +150,14 @@ function formatNumber(value) {
   }).format(numberValue)
 }
 
+function formatDateKey(year, month, day) {
+  return [
+    year,
+    String(month).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-')
+}
+
 function normalizeDateKey(dateValue) {
   const rawValue = String(dateValue ?? '').trim()
 
@@ -157,19 +165,32 @@ function normalizeDateKey(dateValue) {
     return ''
   }
 
-  const isoDateMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/)
 
-  if (isoDateMatch) {
-    return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`
+  if (dateOnlyMatch) {
+    return `${dateOnlyMatch[1]}-${dateOnlyMatch[2]}-${dateOnlyMatch[3]}`
+  }
+
+  const dateTimeMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/)
+
+  if (dateTimeMatch) {
+    const parsedDate = new Date(rawValue)
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return formatDateKey(
+        parsedDate.getFullYear(),
+        parsedDate.getMonth() + 1,
+        parsedDate.getDate(),
+      )
+    }
+
+    return `${dateTimeMatch[1]}-${dateTimeMatch[2]}-${dateTimeMatch[3]}`
   }
 
   const slashDateMatch = rawValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
 
   if (slashDateMatch) {
-    const month = slashDateMatch[1].padStart(2, '0')
-    const day = slashDateMatch[2].padStart(2, '0')
-
-    return `${slashDateMatch[3]}-${month}-${day}`
+    return formatDateKey(slashDateMatch[3], slashDateMatch[1], slashDateMatch[2])
   }
 
   return rawValue
@@ -399,15 +420,6 @@ function DialogCreateBulkReqOvertime({
       isMounted = false
     }
   }, [isOpen])
-
-  useEffect(() => {
-    if (
-      activeTab !== 'general' &&
-      !formValues.employee_ids.includes(activeTab)
-    ) {
-      setActiveTab('general')
-    }
-  }, [activeTab, formValues.employee_ids])
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
@@ -892,7 +904,7 @@ function DialogCreateBulkReqOvertime({
                         </div>
                       ))}
 
-                      <div className="register-user-popup__field overtime-create-popup__field--third">
+                      <div className="register-user-popup__field overtime-create-popup__field--full">
                         <label
                           className="register-user-popup__label"
                           htmlFor="req-overtime-compensation-type"

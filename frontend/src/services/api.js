@@ -309,6 +309,7 @@ const api = {
 
   overtimeReports: {
     ...createReadOnlyResource('/overtime/reports'),
+    history: (params, options) => api.get('/overtime/reports/history', { ...options, params }),
     updateTalentaStatus: (id, data, options) =>
       api.put(`/overtime/reports/${id}/talenta-status`, data, options),
     bulkUpdateTalentaStatus: (data, options) =>
