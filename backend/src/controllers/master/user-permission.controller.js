@@ -61,9 +61,25 @@ async function update(req, res, next) {
   }
 }
 
+
+async function destroy(req, res, next) {
+  try {
+    const result = await UserPermissionService.remove(req.params.id);
+
+    if (!result) {
+      return R.notFound(res, 'User permission not found');
+    }
+
+    return R.ok(res, result, 'User permission deleted successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   index,
   show,
   store,
   update,
+  destroy,
 };

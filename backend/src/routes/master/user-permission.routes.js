@@ -32,4 +32,12 @@ router.put(
   UserPermissionController.update
 );
 
+
+router.delete(
+  '/:id',
+  authenticate,
+  requireApp('overtime'),
+  UserPermissionController.destroy
+);
+
 module.exports = router;

@@ -3,7 +3,7 @@ const NationalHolidayService = require('../../services/master/national-holiday.s
 
 async function index(req, res, next) {
   try {
-    const result = await NationalHolidayService.list(req.query);
+    const result = await NationalHolidayService.list(req.query, req.user);
 
     return R.paginated(
       res,
@@ -12,13 +12,17 @@ async function index(req, res, next) {
       'National holidays fetched successfully'
     );
   } catch (err) {
+    if (err.statusCode === 403) {
+      return R.forbidden(res, err.message);
+    }
+
     return next(err);
   }
 }
 
 async function show(req, res, next) {
   try {
-    const data = await NationalHolidayService.getById(req.params.id);
+    const data = await NationalHolidayService.getById(req.params.id, req.user);
 
     if (!data) {
       return R.notFound(res, 'National holiday not found');
@@ -26,6 +30,10 @@ async function show(req, res, next) {
 
     return R.ok(res, data, 'National holiday fetched successfully');
   } catch (err) {
+    if (err.statusCode === 403) {
+      return R.forbidden(res, err.message);
+    }
+
     return next(err);
   }
 }

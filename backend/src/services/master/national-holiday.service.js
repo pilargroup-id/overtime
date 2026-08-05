@@ -94,7 +94,8 @@ function buildPayload(payload, authUser = null, isUpdate = false) {
   };
 }
 
-async function list(query) {
+async function list(query, authUser) {
+  await assertCanManage(authUser);
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(query.limit, 10) || 10, 1), 100);
   const offset = (page - 1) * limit;
@@ -126,7 +127,8 @@ async function list(query) {
   };
 }
 
-async function getById(id) {
+async function getById(id, authUser) {
+  await assertCanManage(authUser);
   return NationalHolidayModel.findById(id);
 }
 

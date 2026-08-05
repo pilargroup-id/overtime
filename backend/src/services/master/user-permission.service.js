@@ -237,9 +237,22 @@ async function update(id, payload) {
   return UserPermissionModel.findById(id);
 }
 
+
+async function remove(id) {
+  const existing = await UserPermissionModel.findById(id);
+
+  if (!existing) {
+    return null;
+  }
+
+  await UserPermissionModel.destroy(id);
+  return existing;
+}
+
 module.exports = {
   list,
   getById,
   create,
   update,
+  remove,
 };

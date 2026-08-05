@@ -158,6 +158,17 @@ async function update(id, data) {
   );
 }
 
+
+async function destroy(id) {
+  const [result] = await db.query(
+    `DELETE FROM user_permissions
+     WHERE id = ?`,
+    [id]
+  );
+
+  return result.affectedRows > 0;
+}
+
 async function findActiveByUserId(userId) {
   const [rows] = await db.query(
     `SELECT
@@ -207,6 +218,7 @@ module.exports = {
   findById,
   create,
   update,
+  destroy,
   findActiveByUserId,
   hasActivePermission,
 };
