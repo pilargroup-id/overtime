@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
 import api from '../../../services/api.js'
 import DataTable, {
@@ -6,11 +6,9 @@ import DataTable, {
   DataTableStatus,
 } from '../DataTable.jsx'
 
-// import-button 
+// import-button
 import ButtonApprove from '../../button/button-approval-overtime/ButtonApprove.jsx'
 import ButtonReject from '../../button/button-approval-overtime/ButtonReject.jsx'
-import ButtonMultiApprove from '../../button/button-approval-overtime/ButtonMultiApprove.jsx'
-import ButtonMultiReject from '../../button/button-approval-overtime/ButtonMultiReject.jsx'
 
 // import-dialog
 import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/DialogValidationApproveRO.jsx'
@@ -22,6 +20,8 @@ const TABLE_MODES = {
   APPROVAL: 'approval',
   HISTORY: 'history',
 }
+
+function noop() {}
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) {
@@ -433,13 +433,17 @@ function createColumns(
   ]
 }
 
-function DataTableApprovalOvertime({
-  searchQuery = '',
-  filters = {},
-  mode = TABLE_MODES.APPROVAL,
-  tableLabel = 'Approval Overtime table',
-  refreshKey = 0,
-}) {
+const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
+  {
+    searchQuery = '',
+    filters = {},
+    mode = TABLE_MODES.APPROVAL,
+    tableLabel = 'Approval Overtime table',
+    refreshKey = 0,
+    onSelectionChange = noop,
+  },
+  ref,
+) {
   const [approvalRows, setApprovalRows] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
@@ -632,6 +636,11 @@ function DataTableApprovalOvertime({
       errorMessage: '',
     })
   }
+
+  useImperativeHandle(ref, () => ({
+    approveSelected: () => handleOpenBulkApprovalDialog('approve'),
+    rejectSelected: () => handleOpenBulkApprovalDialog('reject'),
+  }))
 
   const handleToggleAllCurrentPage = (checked) => {
     setSelectedApprovalIds(() => (checked ? new Set(currentPageApprovalIds) : new Set()))
@@ -851,6 +860,14 @@ function DataTableApprovalOvertime({
   const isSomeCurrentPageSelected =
     selectedCurrentPageCount > 0 && selectedCurrentPageCount < currentPageApprovalIds.length
 
+  useEffect(() => {
+    onSelectionChange({
+      count: selectedCurrentPageCount,
+      isApproving: processingApprovalAction === 'bulk:approve',
+      isRejecting: processingApprovalAction === 'bulk:reject',
+    })
+  }, [onSelectionChange, processingApprovalAction, selectedCurrentPageCount])
+
   const columns = useMemo(
     () =>
       createColumns(compensationTypeMap, {
@@ -881,31 +898,6 @@ function DataTableApprovalOvertime({
       ) : null}
 
       <div className="mtickets-table-shell req-overtime-table-shell approval-overtime-table-shell">
-        {showSelection && selectedCurrentPageCount > 0 ? (
-          <div className="approval-overtime-bulk-toolbar" aria-live="polite">
-            <div className="approval-overtime-bulk-toolbar__summary">
-              <span className="approval-overtime-bulk-toolbar__count">
-                {selectedCurrentPageCount}
-              </span>
-              <span className="approval-overtime-bulk-toolbar__copy">
-                <strong>Approval dipilih</strong>
-                <small>Proses approval sekaligus</small>
-              </span>
-            </div>
-            <div className="approval-overtime-bulk-toolbar__actions">
-              <ButtonMultiApprove
-                count={selectedCurrentPageCount}
-                disabled={processingApprovalAction === 'bulk:approve'}
-                onClick={() => handleOpenBulkApprovalDialog('approve')}
-              />
-              <ButtonMultiReject
-                count={selectedCurrentPageCount}
-                disabled={processingApprovalAction === 'bulk:reject'}
-                onClick={() => handleOpenBulkApprovalDialog('reject')}
-              />
-            </div>
-          </div>
-        ) : null}
         <DataTable
           className="mtickets-table"
           rows={approvalRows}
@@ -1004,6 +996,6 @@ function DataTableApprovalOvertime({
       />
     </>
   )
-}
+})
 
 export default DataTableApprovalOvertime

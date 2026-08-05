@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
 import api from '../../../services/api.js'
 import CreateButton from '../../button/CreateButton.jsx'
@@ -194,7 +194,9 @@ function DataTableSelectionCheckbox({
   )
 }
 
-function TalentaBulkButton({ status, count, disabled, isLoading, onClick }) {
+function noop() {}
+
+export function TalentaBulkButton({ status, count, disabled, isLoading, onClick }) {
   const isProcessedAction = status === TALENTA_STATUS_PROCESSED
   const statusLabel = isProcessedAction ? 'Processed' : 'Pending'
   const label = `Ubah ${count} request menjadi ${statusLabel}`
@@ -369,13 +371,17 @@ function TalentaStatusToggle({ status, disabled = false, onChange }) {
   )
 }
 
-function DataTableReport({
-  searchQuery = '',
-  talentaStatusFilter = '',
-  filters = {},
-  tableLabel = 'Request Overtime table',
-  refreshKey = 0,
-}) {
+const DataTableReport = forwardRef(function DataTableReport(
+  {
+    searchQuery = '',
+    talentaStatusFilter = '',
+    filters = {},
+    tableLabel = 'Request Overtime table',
+    refreshKey = 0,
+    onSelectionChange = noop,
+  },
+  ref,
+) {
   const [requestRows, setRequestRows] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
@@ -613,6 +619,10 @@ function DataTableReport({
     }
   }
 
+  useImperativeHandle(ref, () => ({
+    markSelectedProcessed: () => handleBulkTalentaStatus(TALENTA_STATUS_PROCESSED),
+  }))
+
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const firstItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1
   const lastItem = totalItems === 0 ? 0 : Math.min(firstItem + requestRows.length - 1, totalItems)
@@ -654,6 +664,13 @@ function DataTableReport({
   const isSomeCurrentPageSelected =
     selectedCurrentPageCount > 0 && selectedCurrentPageCount < currentPageRequestIds.length
 
+  useEffect(() => {
+    onSelectionChange({
+      count: selectedCurrentPageCount,
+      isProcessing: processingBulkTalentaStatus === TALENTA_STATUS_PROCESSED,
+    })
+  }, [onSelectionChange, processingBulkTalentaStatus, selectedCurrentPageCount])
+
   const columns = useMemo(
     () =>
       createColumns(compensationTypeMap, {
@@ -684,32 +701,6 @@ function DataTableReport({
       ) : null}
 
       <div className="mtickets-table-shell req-overtime-table-shell report-overtime-table-shell">
-        {selectedCurrentPageCount > 0 ? (
-          <div
-            className="approval-overtime-bulk-toolbar talenta-status-bulk-toolbar"
-            aria-live="polite"
-            aria-busy={Boolean(processingBulkTalentaStatus)}
-          >
-            <div className="talenta-status-bulk-toolbar__summary">
-              <span className="approval-overtime-bulk-toolbar__count">
-                {selectedCurrentPageCount}
-              </span>
-              <span className="talenta-status-bulk-toolbar__copy">
-                <strong>Request dipilih</strong>
-                <small>Ubah Talenta Status sekaligus</small>
-              </span>
-            </div>
-            <div className="approval-overtime-bulk-toolbar__actions">
-              <TalentaBulkButton
-                status={TALENTA_STATUS_PROCESSED}
-                count={selectedCurrentPageCount}
-                disabled={Boolean(processingBulkTalentaStatus)}
-                isLoading={processingBulkTalentaStatus === TALENTA_STATUS_PROCESSED}
-                onClick={() => handleBulkTalentaStatus(TALENTA_STATUS_PROCESSED)}
-              />
-            </div>
-          </div>
-        ) : null}
         <DataTable
           className="mtickets-table"
           rows={requestRows}
@@ -774,6 +765,6 @@ function DataTableReport({
       </div>
     </>
   )
-}
+})
 
 export default DataTableReport

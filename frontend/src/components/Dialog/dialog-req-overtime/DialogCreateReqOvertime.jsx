@@ -8,6 +8,9 @@ import Time24HourInput from './Time24HourInput.jsx'
 const initialFormValues = {
   day_type: 'WORKDAY',
   work_date: '',
+  department_id: '',
+  department_class: '',
+  company_id: '',
   start_time: '',
   end_time: '',
   task_description: '',
@@ -17,13 +20,14 @@ const initialFormValues = {
 
 const dayTypeOptions = ['WORKDAY', 'HOLIDAY', 'WEEKEND']
 
+const workDateField = {
+  name: 'work_date',
+  label: 'Work Date',
+  type: 'date',
+  className: 'overtime-create-popup__field--half',
+}
+
 const reqOvertimeTextFields = [
-  {
-    name: 'work_date',
-    label: 'Work Date',
-    type: 'date',
-    className: 'overtime-create-popup__field--half',
-  },
   {
     name: 'start_time',
     label: 'Start Time',
@@ -75,6 +79,63 @@ function normalizeCompensationTypes(responseData) {
   }
 
   return []
+}
+
+function normalizeUserProfile(responseData) {
+  const user = responseData?.data || responseData?.user || responseData || {}
+
+  return {
+    departments: Array.isArray(user.departments) ? user.departments : [],
+    companies: Array.isArray(user.companies) ? user.companies : [],
+  }
+}
+
+function dedupeByValue(values) {
+  const seen = new Set()
+  const result = []
+
+  values.forEach((value) => {
+    if (!value || seen.has(value)) {
+      return
+    }
+
+    seen.add(value)
+    result.push(value)
+  })
+
+  return result
+}
+
+function getDepartmentOptions(departments) {
+  return [...departments]
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
+    .map((department) => ({
+      value: String(department.id),
+      label: department.name || department.code || String(department.id),
+      isPrimary: Number(department.is_primary) === 1,
+    }))
+}
+
+function getDepartmentClassOptions(departments, departmentId) {
+  const matchingDepartments = departmentId
+    ? departments.filter((department) => String(department.id) === String(departmentId))
+    : departments
+  const classValues = dedupeByValue(matchingDepartments.map((department) => department.class))
+
+  return classValues.map((classValue) => ({
+    value: classValue,
+    label: classValue,
+  }))
+}
+
+function getCompanyOptions(companies) {
+  return [...companies]
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
+    .map((company) => ({
+      value: String(company.id),
+      label: company.name || company.code || String(company.id),
+      isPrimary: Number(company.is_primary) === 1,
+    }))
 }
 
 function normalizeNationalHolidays(responseData) {
@@ -275,13 +336,16 @@ function DialogCreateReqOvertime({
   const [formValues, setFormValues] = useState(initialFormValues)
   const [compensationTypes, setCompensationTypes] = useState([])
   const [nationalHolidays, setNationalHolidays] = useState([])
+  const [userOrganization, setUserOrganization] = useState({ departments: [], companies: [] })
   const [isLoadingCompensationTypes, setIsLoadingCompensationTypes] = useState(false)
+  const [isLoadingUserOrganization, setIsLoadingUserOrganization] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
   const resetDialogState = useCallback(() => {
     setFormValues(initialFormValues)
     setNationalHolidays([])
+    setUserOrganization({ departments: [], companies: [] })
     setIsSubmitting(false)
     setErrorMessage('')
   }, [])
@@ -385,6 +449,60 @@ function DialogCreateReqOvertime({
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined
+    }
+
+    let isMounted = true
+
+    const loadUserOrganization = async () => {
+      setIsLoadingUserOrganization(true)
+
+      try {
+        const response = await api.auth.me()
+
+        if (!isMounted) {
+          return
+        }
+
+        const profile = normalizeUserProfile(response)
+
+        setUserOrganization(profile)
+
+        const primaryDepartment =
+          profile.departments.find((department) => Number(department.is_primary) === 1) ||
+          profile.departments[0] ||
+          null
+        const primaryCompany =
+          profile.companies.find((company) => Number(company.is_primary) === 1) ||
+          profile.companies[0] ||
+          null
+
+        setFormValues((currentValues) => ({
+          ...currentValues,
+          department_id: currentValues.department_id || String(primaryDepartment?.id ?? ''),
+          department_class: currentValues.department_class || primaryDepartment?.class || '',
+          company_id: currentValues.company_id || String(primaryCompany?.id ?? ''),
+        }))
+      } catch {
+        if (isMounted) {
+          setUserOrganization({ departments: [], companies: [] })
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingUserOrganization(false)
+        }
+      }
+    }
+
+    loadUserOrganization()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen])
+
   const handleInputChange = (event) => {
     const { name, value } = event.target
 
@@ -392,6 +510,13 @@ function DialogCreateReqOvertime({
       const nextValues = {
         ...currentValues,
         [name]: value,
+      }
+
+      if (name === 'department_id') {
+        const selectedDepartment = userOrganization.departments.find(
+          (department) => String(department.id) === value,
+        )
+        nextValues.department_class = selectedDepartment?.class || ''
       }
 
       if (
@@ -480,6 +605,12 @@ function DialogCreateReqOvertime({
   const durationLabel = formatDuration(formValues.start_time, formValues.end_time)
   const isCompensationEnabled =
     getDurationInMinutes(formValues.start_time, formValues.end_time) >= 120
+  const departmentOptions = getDepartmentOptions(userOrganization.departments)
+  const departmentClassOptions = getDepartmentClassOptions(
+    userOrganization.departments,
+    formValues.department_id,
+  )
+  const companyOptions = getCompanyOptions(userOrganization.companies)
 
   const dialogNode = (
     <div
@@ -539,6 +670,125 @@ function DialogCreateReqOvertime({
                           {dayType}
                         </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div
+                    className={`register-user-popup__field ${workDateField.className}`}
+                  >
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor={`req-overtime-${workDateField.name}`}
+                    >
+                      {workDateField.label}
+                    </label>
+                    <input
+                      id={`req-overtime-${workDateField.name}`}
+                      name={workDateField.name}
+                      type={workDateField.type}
+                      className="register-user-popup__input"
+                      value={formValues[workDateField.name]}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--third">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="req-overtime-department-id"
+                    >
+                      Department
+                    </label>
+                    <select
+                      id="req-overtime-department-id"
+                      name="department_id"
+                      className="register-user-popup__select"
+                      value={formValues.department_id}
+                      onChange={handleInputChange}
+                      disabled={
+                        isSubmitting ||
+                        isLoadingUserOrganization ||
+                        departmentOptions.length <= 1
+                      }
+                    >
+                      {departmentOptions.length === 0 ? (
+                        <option value="">
+                          {isLoadingUserOrganization ? 'Loading...' : '-'}
+                        </option>
+                      ) : (
+                        departmentOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--third">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="req-overtime-department-class"
+                    >
+                      Class
+                    </label>
+                    <select
+                      id="req-overtime-department-class"
+                      name="department_class"
+                      className="register-user-popup__select"
+                      value={formValues.department_class}
+                      onChange={handleInputChange}
+                      disabled={
+                        isSubmitting ||
+                        isLoadingUserOrganization ||
+                        departmentClassOptions.length <= 1
+                      }
+                    >
+                      {departmentClassOptions.length === 0 ? (
+                        <option value="">
+                          {isLoadingUserOrganization ? 'Loading...' : '-'}
+                        </option>
+                      ) : (
+                        departmentClassOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--third">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="req-overtime-company-id"
+                    >
+                      Company
+                    </label>
+                    <select
+                      id="req-overtime-company-id"
+                      name="company_id"
+                      className="register-user-popup__select"
+                      value={formValues.company_id}
+                      onChange={handleInputChange}
+                      disabled={
+                        isSubmitting ||
+                        isLoadingUserOrganization ||
+                        companyOptions.length <= 1
+                      }
+                    >
+                      {companyOptions.length === 0 ? (
+                        <option value="">
+                          {isLoadingUserOrganization ? 'Loading...' : '-'}
+                        </option>
+                      ) : (
+                        companyOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
 

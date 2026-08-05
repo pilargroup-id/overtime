@@ -138,6 +138,97 @@ function getEmployeeLabel(employee) {
   return `${name}${internalId}`
 }
 
+function getEmployeeCompanies(employee) {
+  if (Array.isArray(employee?.companies) && employee.companies.length) {
+    return employee.companies
+  }
+
+  if (employee?.company_id) {
+    return [
+      {
+        id: employee.company_id,
+        code: employee.company_code,
+        name: employee.company_name,
+        is_primary: 1,
+      },
+    ]
+  }
+
+  return []
+}
+
+function getEmployeeDepartments(employee) {
+  if (Array.isArray(employee?.departments) && employee.departments.length) {
+    return employee.departments
+  }
+
+  if (employee?.department_id) {
+    return [
+      {
+        id: employee.department_id,
+        code: employee.department_code,
+        name: employee.department_name,
+        class: employee.department_class,
+        company_id: employee.company_id,
+        is_primary: 1,
+      },
+    ]
+  }
+
+  return []
+}
+
+function getPrimaryOrgItem(items) {
+  return items.find((item) => Number(item?.is_primary) === 1) || items[0] || null
+}
+
+function dedupeByValue(values) {
+  const seen = new Set()
+  const result = []
+
+  values.forEach((value) => {
+    if (!value || seen.has(value)) {
+      return
+    }
+
+    seen.add(value)
+    result.push(value)
+  })
+
+  return result
+}
+
+function getDepartmentOptions(departments) {
+  return [...departments]
+    .sort((first, second) => Number(second?.is_primary) - Number(first?.is_primary))
+    .map((department) => ({
+      value: String(department.id),
+      label: department.name || department.code || String(department.id),
+    }))
+}
+
+function getDepartmentClassOptions(departments, departmentId) {
+  const matchingDepartments = departmentId
+    ? departments.filter((department) => String(department.id) === String(departmentId))
+    : departments
+
+  return dedupeByValue(matchingDepartments.map((department) => department.class)).map(
+    (classValue) => ({
+      value: classValue,
+      label: classValue,
+    }),
+  )
+}
+
+function getCompanyOptions(companies) {
+  return [...companies]
+    .sort((first, second) => Number(second?.is_primary) - Number(first?.is_primary))
+    .map((company) => ({
+      value: String(company.id),
+      label: company.name || company.code || String(company.id),
+    }))
+}
+
 function formatNumber(value) {
   const numberValue = Number(value)
 
@@ -464,6 +555,7 @@ function DialogCreateBulkReqOvertime({
           currentValues.employee_ids.map((employeeId) => [
             employeeId,
             {
+              ...currentValues.employee_descriptions[employeeId],
               task_description:
                 name === 'task_description'
                   ? value
@@ -494,6 +586,7 @@ function DialogCreateBulkReqOvertime({
             currentValues.employee_ids.map((employeeId) => [
               employeeId,
               {
+                ...currentValues.employee_descriptions[employeeId],
                 task_description: currentValues.task_description,
                 result_description: currentValues.result_description,
               },
@@ -519,6 +612,10 @@ function DialogCreateBulkReqOvertime({
           setActiveTab('general')
         }
       } else if (!nextDescriptions[employeeId]) {
+        const employee = eligibleEmployees.find((eligibleEmployee) => eligibleEmployee.id === employeeId)
+        const primaryDepartment = getPrimaryOrgItem(getEmployeeDepartments(employee))
+        const primaryCompany = getPrimaryOrgItem(getEmployeeCompanies(employee))
+
         nextDescriptions[employeeId] = {
           task_description: currentValues.apply_general_to_all
             ? currentValues.task_description
@@ -526,6 +623,9 @@ function DialogCreateBulkReqOvertime({
           result_description: currentValues.apply_general_to_all
             ? currentValues.result_description
             : '',
+          department_id: primaryDepartment ? String(primaryDepartment.id) : '',
+          department_class: primaryDepartment?.class || '',
+          company_id: primaryCompany ? String(primaryCompany.id) : '',
         }
       }
 
@@ -559,19 +659,30 @@ function DialogCreateBulkReqOvertime({
   const handleEmployeeDescriptionChange = (employeeId, event) => {
     const { name, value } = event.target
 
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      employee_descriptions: {
-        ...currentValues.employee_descriptions,
-        [employeeId]: {
-          task_description:
-            currentValues.employee_descriptions[employeeId]?.task_description ?? '',
-          result_description:
-            currentValues.employee_descriptions[employeeId]?.result_description ?? '',
-          [name]: value,
+    setFormValues((currentValues) => {
+      const nextDescription = {
+        ...currentValues.employee_descriptions[employeeId],
+        [name]: value,
+      }
+
+      if (name === 'department_id') {
+        const employee = eligibleEmployees.find(
+          (eligibleEmployee) => eligibleEmployee.id === employeeId,
+        )
+        const matchedDepartment = getEmployeeDepartments(employee).find(
+          (department) => String(department.id) === value,
+        )
+        nextDescription.department_class = matchedDepartment?.class || ''
+      }
+
+      return {
+        ...currentValues,
+        employee_descriptions: {
+          ...currentValues.employee_descriptions,
+          [employeeId]: nextDescription,
         },
-      },
-    }))
+      }
+    })
   }
 
   const buildEmployeeItems = () =>
@@ -715,6 +826,20 @@ function DialogCreateBulkReqOvertime({
     selectedCompensationType,
     compensationMultiplier,
   )
+
+  const activeEmployee = eligibleEmployees.find((employee) => employee.id === activeTab)
+  const activeEmployeeDepartmentOptions = activeEmployee
+    ? getDepartmentOptions(getEmployeeDepartments(activeEmployee))
+    : []
+  const activeEmployeeDepartmentClassOptions = activeEmployee
+    ? getDepartmentClassOptions(
+        getEmployeeDepartments(activeEmployee),
+        formValues.employee_descriptions[activeTab]?.department_id,
+      )
+    : []
+  const activeEmployeeCompanyOptions = activeEmployee
+    ? getCompanyOptions(getEmployeeCompanies(activeEmployee))
+    : []
 
   const dialogNode = (
     <div
@@ -1038,6 +1163,89 @@ function DialogCreateBulkReqOvertime({
                       className="register-user-popup__field register-user-popup__field--full"
                     >
                       <div className="overtime-create-popup__user-panel">
+                        <div className="overtime-create-popup__employee-org-fields">
+                          <div className="register-user-popup__field">
+                            <label
+                              className="register-user-popup__label"
+                              htmlFor={`req-overtime-${activeTab}-department-id`}
+                            >
+                              Department
+                            </label>
+                            <select
+                              id={`req-overtime-${activeTab}-department-id`}
+                              name="department_id"
+                              className="register-user-popup__select"
+                              value={formValues.employee_descriptions[activeTab]?.department_id ?? ''}
+                              onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
+                              disabled={isSubmitting || activeEmployeeDepartmentOptions.length <= 1}
+                            >
+                              {activeEmployeeDepartmentOptions.length === 0 ? (
+                                <option value="">-</option>
+                              ) : (
+                                activeEmployeeDepartmentOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+
+                          <div className="register-user-popup__field">
+                            <label
+                              className="register-user-popup__label"
+                              htmlFor={`req-overtime-${activeTab}-department-class`}
+                            >
+                              Class
+                            </label>
+                            <select
+                              id={`req-overtime-${activeTab}-department-class`}
+                              name="department_class"
+                              className="register-user-popup__select"
+                              value={formValues.employee_descriptions[activeTab]?.department_class ?? ''}
+                              onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
+                              disabled={isSubmitting || activeEmployeeDepartmentClassOptions.length <= 1}
+                            >
+                              {activeEmployeeDepartmentClassOptions.length === 0 ? (
+                                <option value="">-</option>
+                              ) : (
+                                activeEmployeeDepartmentClassOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+
+                          <div className="register-user-popup__field">
+                            <label
+                              className="register-user-popup__label"
+                              htmlFor={`req-overtime-${activeTab}-company-id`}
+                            >
+                              Company
+                            </label>
+                            <select
+                              id={`req-overtime-${activeTab}-company-id`}
+                              name="company_id"
+                              className="register-user-popup__select"
+                              value={formValues.employee_descriptions[activeTab]?.company_id ?? ''}
+                              onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
+                              disabled={isSubmitting || activeEmployeeCompanyOptions.length <= 1}
+                            >
+                              {activeEmployeeCompanyOptions.length === 0 ? (
+                                <option value="">-</option>
+                              ) : (
+                                activeEmployeeCompanyOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+                        </div>
+
                         {reqOvertimeTextareaFields.map((field) => {
                           const descriptions =
                             formValues.employee_descriptions[activeTab] ?? {}

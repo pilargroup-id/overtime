@@ -5413,6 +5413,19 @@ select {
   line-height: 1.5;
 }
 
+.overtime-create-popup__employee-org-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+  .overtime-create-popup__employee-org-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .overtime-create-popup__employee-dropdown {
   position: relative;
 }

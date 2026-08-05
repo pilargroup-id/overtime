@@ -83,6 +83,21 @@ function selectPrimary(items = []) {
   return items.find((item) => Number(item.is_primary) === 1) || items[0] || null;
 }
 
+function enrichCompaniesWithMap(companies = [], companyMap) {
+  return companies.map((company) => {
+    if (company.name) return company;
+
+    const mapped = companyMap.get(String(company.id));
+    if (!mapped) return company;
+
+    return {
+      ...company,
+      name: mapped.name ?? company.name,
+      code: company.code ?? mapped.code ?? null,
+    };
+  });
+}
+
 function mapBaseUser(row) {
   if (!row) return null;
 
@@ -260,6 +275,8 @@ async function findFullProfileById(id) {
       .map((company) => ({ ...company, is_primary: 0 }));
   }
 
+  companies = enrichCompaniesWithMap(companies, companyMap);
+
   const primaryDepartment = selectPrimary(departments);
   const primaryCompany = selectPrimary(companies) || companyMap.get(String(user.company_id)) || null;
 
@@ -332,6 +349,8 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
           .map((company) => ({ ...company, is_primary: 0 }))
       );
     }
+
+    companies = enrichCompaniesWithMap(companies, companyMap);
 
     const primaryDepartment = selectPrimary(departments);
     const primaryCompany = selectPrimary(companies) || companyMap.get(String(user.company_id));
