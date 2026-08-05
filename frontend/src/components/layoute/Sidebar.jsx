@@ -22,6 +22,18 @@ function getInitials(name) {
     .join('')
 }
 
+function truncateName(name, maxLength = 18) {
+  if (!name) {
+    return ''
+  }
+
+  if (name.length <= maxLength) {
+    return name
+  }
+
+  return `${name.slice(0, maxLength).trimEnd()}...`
+}
+
 function getItemKey(item) {
   return item.id ?? item.href ?? item.label
 }
@@ -273,6 +285,7 @@ function Sidebar({
 }) {
   const [expandedGroups, setExpandedGroups] = useState({})
   const initials = getInitials(userName)
+  const displayName = truncateName(userName)
   const visiblePrimaryItems = useMemo(
     () =>
       filterNavigationItems(
@@ -396,8 +409,8 @@ function Sidebar({
           </div>
 
           <div className="profile-info">
-            <h3 className="profile-name">{userName}</h3>
-            <p className="profile-role">{userRole}</p>
+            <h3 className="profile-name" title={userName}>{displayName}</h3>
+            <p className="profile-role" title={userRole}>{userRole}</p>
           </div>
         </div>
       </div>

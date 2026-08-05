@@ -49,11 +49,7 @@ function getSubmittedByLabel(request) {
 }
 
 function canUseBulkReqOvertime(userPermissions = []) {
-  return userPermissions.some(
-    (permission) =>
-      permission?.permission_type === 'REQUEST_CREATE_ALL' &&
-      permission?.scope_type === 'GLOBAL',
-  )
+  return userPermissions.length > 0
 }
 
 function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {

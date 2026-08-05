@@ -234,6 +234,8 @@ select {
 }
 
 .profile-info {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   transition: all 0.3s ease;
 }
@@ -246,6 +248,7 @@ select {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .profile-role {
@@ -255,6 +258,7 @@ select {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .sidebar-nav,
