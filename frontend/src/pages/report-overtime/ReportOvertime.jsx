@@ -8,13 +8,14 @@ import FilterReportOvertime, { EMPTY_REPORT_FILTERS } from './FilterReportOverti
 import TabsReportOvertime from './TabsReportOvertime.jsx'
 
 const HISTORY_TAB_VALUE = 'HISTORY'
+const TALENTA_STATUS_PENDING = 'PENDING'
 const TALENTA_STATUS_PROCESSED = 'PROCESSED'
 const EMPTY_SELECTION = { count: 0, isProcessing: false }
 
 function ReportOvertime({ activePage, searchQuery }) {
   const [reqOvertimeRefreshKey] = useState(0)
   const [reportSearchQuery, setReportSearchQuery] = useState(searchQuery ?? '')
-  const [talentaStatusFilter, setTalentaStatusFilter] = useState('')
+  const [talentaStatusFilter, setTalentaStatusFilter] = useState(TALENTA_STATUS_PENDING)
   const [filters, setFilters] = useState(EMPTY_REPORT_FILTERS)
   const [selection, setSelection] = useState(EMPTY_SELECTION)
   const dataTableRef = useRef(null)

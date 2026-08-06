@@ -1,8 +1,6 @@
-import { AlertCircle, CheckCircle, Clock, LayoutDashboard } from '../../components/layoute/TemplateIcons.jsx'
+import { AlertCircle, Clock } from '../../components/layoute/TemplateIcons.jsx'
 
 const REPORT_STATUS_TABS = [
-  { label: 'All', value: '', icon: LayoutDashboard },
-  { label: 'Processed', value: 'PROCESSED', icon: CheckCircle },
   { label: 'Pending', value: 'PENDING', icon: AlertCircle },
   { label: 'History', value: 'HISTORY', icon: Clock },
 ]
