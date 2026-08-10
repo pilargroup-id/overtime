@@ -5,11 +5,11 @@ const RequestModel = require('../../models/overtime/request.model');
 const ApprovalModel = require('../../models/overtime/approval.model');
 const LogModel = require('../../models/overtime/log.model');
 const UserPermissionModel = require('../../models/master/user-permission.model');
-const ApprovalRuleModel = require('../../models/master/approval-rule.model');
 const CompensationTypeModel = require('../../models/master/compensation-type.model');
 const NationalHolidayModel = require('../../models/master/national-holiday.model');
 
 const NumberSequenceService = require('./number-sequence.service');
+const ApprovalResolverService = require('./approval-resolver.service');
 
 const ALLOWED_DAY_TYPES = ['WORKDAY', 'HOLIDAY', 'WEEKEND'];
 const MAX_BACKDATE_MONTHS = 2;
@@ -314,70 +314,13 @@ async function assertCanSubmitForEmployee(authUser, employee) {
   throw createForbiddenError('You are not allowed to submit overtime request for this employee');
 }
 
-async function resolveApprovalRule(employee) {
-  const rule = await ApprovalRuleModel.findMatchingRule({
-    jobLevelValue: employee.job_level_value,
-    departmentId: employee.department_id,
-  });
-
-  if (!rule) {
-    throw createValidationError({
-      approval_rule: 'Approval rule not found for this employee',
-    });
-  }
-
-  return rule;
-}
-
-async function resolveApprovers(rule, employee) {
-  if (rule.approver_scope_type === 'SAME_DEPARTMENT') {
-    const approvers = await UserModel.findActiveUsersByDepartmentAndJobLevelName(
-      employee.department_id,
-      rule.approver_job_level_name
-    );
-
-    if (!approvers.length) {
-      throw createValidationError({
-        approver: `Approver ${rule.approver_job_level_name} not found in employee department`,
-      });
-    }
-
-    return approvers;
-  }
-
-  if (rule.approver_scope_type === 'SPECIFIC_DEPARTMENT') {
-    const approvers = await UserModel.findActiveUsersByDepartmentAndJobLevelName(
-      rule.approver_department_id,
-      rule.approver_job_level_name
-    );
-
-    if (!approvers.length) {
-      throw createValidationError({
-        approver: `Approver ${rule.approver_job_level_name} not found in specific department`,
-      });
-    }
-
-    return approvers;
-  }
-
-  const approvers = await UserModel.findActiveUsersByJobLevelName(rule.approver_job_level_name);
-
-  if (!approvers.length) {
-    throw createValidationError({
-      approver: `Approver ${rule.approver_job_level_name} not found`,
-    });
-  }
-
-  return approvers;
-}
-
 function buildRequestData({
   payload,
   authUser,
   employee,
   sourceType,
   rule,
-  approvers,
+  approver,
   numberData,
   totalMinutes,
   endDate,
@@ -429,7 +372,7 @@ function buildRequestData({
     ...compensationSnapshot,
 
     approval_type: rule.approval_type,
-    current_approver_id: approvers[0]?.id ?? null,
+    current_approver_id: approver.id,
   };
 }
 
@@ -633,8 +576,7 @@ async function create(payload, authUser) {
   );
 
   const sourceType = await assertCanSubmitForEmployee(authUser, employee);
-  const rule = await resolveApprovalRule(employee);
-  const approvers = await resolveApprovers(rule, employee);
+  const { rule, initialApprover } = await ApprovalResolverService.resolveInitialApproval(employee);
 
   const conn = await db.getConnection();
 
@@ -657,7 +599,7 @@ async function create(payload, authUser) {
       employee,
       sourceType,
       rule,
-      approvers,
+      approver: initialApprover,
       numberData,
       totalMinutes,
       endDate,
@@ -667,12 +609,10 @@ async function create(payload, authUser) {
 
     const requestId = await RequestModel.create(requestData, conn);
 
-    for (const approver of approvers) {
-      await ApprovalModel.create(
-        buildApprovalData(requestId, approver),
-        conn
-      );
-    }
+    await ApprovalModel.create(
+      buildApprovalData(requestId, initialApprover),
+      conn
+    );
 
     await LogModel.create(
       {

@@ -353,6 +353,23 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+
+async function findByRequestAndLevel(requestId, approvalLevel, conn = null) {
+  const executor = getExecutor(conn);
+
+  const [rows] = await executor.query(
+    `SELECT *
+     FROM request_approvals
+     WHERE request_id = ?
+       AND approval_level = ?
+     ORDER BY id ASC
+     LIMIT 1`,
+    [requestId, approvalLevel]
+  );
+
+  return rows[0] || null;
+}
+
 async function approve(id, note = null, conn = null) {
   const executor = getExecutor(conn);
 
@@ -394,6 +411,7 @@ module.exports = {
   findAllForApprover,
   countAllForApprover,
   findById,
+  findByRequestAndLevel,
   approve,
   reject,
 };

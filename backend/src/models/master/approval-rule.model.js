@@ -29,6 +29,11 @@ function buildWhere(filters = {}) {
     params.push(filters.approval_type);
   }
 
+  if (filters.use_intermediate_approver !== null && filters.use_intermediate_approver !== undefined && filters.use_intermediate_approver !== '') {
+    where.push('use_intermediate_approver = ?');
+    params.push(Number(filters.use_intermediate_approver));
+  }
+
   if (filters.is_active !== null && filters.is_active !== undefined && filters.is_active !== '') {
     where.push('is_active = ?');
     params.push(Number(filters.is_active));
@@ -55,6 +60,8 @@ async function findAll(filters = {}) {
        approver_department_id,
        approver_job_level_name,
        approval_type,
+       use_intermediate_approver,
+       intermediate_job_level_value,
        priority,
        is_active,
        created_at,
@@ -95,6 +102,8 @@ async function findById(id) {
        approver_department_id,
        approver_job_level_name,
        approval_type,
+       use_intermediate_approver,
+       intermediate_job_level_value,
        priority,
        is_active,
        created_at,
@@ -120,9 +129,11 @@ async function create(data) {
        approver_department_id,
        approver_job_level_name,
        approval_type,
+       use_intermediate_approver,
+       intermediate_job_level_value,
        priority,
        is_active
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.code,
       data.name,
@@ -133,6 +144,8 @@ async function create(data) {
       data.approver_department_id,
       data.approver_job_level_name,
       data.approval_type,
+      data.use_intermediate_approver ?? 0,
+      data.intermediate_job_level_value ?? null,
       data.priority ?? 100,
       data.is_active ?? 1,
     ]
@@ -179,6 +192,8 @@ async function findMatchingRule({ jobLevelValue, departmentId }) {
        approver_department_id,
        approver_job_level_name,
        approval_type,
+       use_intermediate_approver,
+       intermediate_job_level_value,
        priority,
        is_active,
        created_at,
