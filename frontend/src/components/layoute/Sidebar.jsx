@@ -50,7 +50,7 @@ const PERMISSION_REQUIREMENTS_BY_ITEM_ID = {
     { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
   ],
   'compensation-type': [
-    { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
+    { anyPermission: true },
   ],
   'user-permissions': [
     { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
@@ -64,6 +64,10 @@ const PERMISSION_REQUIREMENTS_BY_ITEM_ID = {
 }
 
 function hasPermission(userPermissions, requirement) {
+  if (requirement.anyPermission) {
+    return userPermissions.length > 0
+  }
+
   return userPermissions.some(
     (permission) =>
       permission?.permission_type === requirement.permissionType &&

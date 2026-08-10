@@ -755,8 +755,29 @@ function DialogCreateBulkReqOvertime({
 
     try {
       const createdBulkOvertime = await api.overtimeRequests.bulkCreate(payload)
+      const result = createdBulkOvertime?.data ?? createdBulkOvertime
+      const failedItems = Array.isArray(result?.failed_items) ? result.failed_items : []
 
       onCreated?.(createdBulkOvertime)
+
+      if (failedItems.length > 0) {
+        const failedMessage = failedItems
+          .map((item) => {
+            const employee = eligibleEmployees.find(
+              (eligibleEmployee) => eligibleEmployee.id === item.employee_id,
+            )
+            const employeeLabel = employee ? getEmployeeLabel(employee) : item.employee_id
+
+            return `${employeeLabel}: ${item.message}`
+          })
+          .join('; ')
+
+        setErrorMessage(
+          `${result.success_count} dari ${result.total} request berhasil dibuat. Gagal untuk ${failedItems.length} employee — ${failedMessage}`,
+        )
+        return
+      }
+
       handleClose()
     } catch (error) {
       const failedItems = error?.data?.errors?.failed_items

@@ -156,8 +156,16 @@ async function approve(id, payload, authUser) {
   try {
     await conn.beginTransaction();
 
-    await ApprovalModel.approve(id, note, conn);
+    const wasUpdated = await ApprovalModel.approve(id, note, conn);
+
+    if (!wasUpdated) {
+      throw createValidationError({
+        status: 'Approval ini sudah diproses lebih dulu oleh approver lain',
+      });
+    }
+
     await RequestModel.markApproved(approval.request_id, conn);
+    await ApprovalModel.cancelOtherPendingByRequestId(approval.request_id, id, conn);
 
     await LogModel.create(
       {
@@ -199,8 +207,16 @@ async function reject(id, payload, authUser) {
   try {
     await conn.beginTransaction();
 
-    await ApprovalModel.reject(id, note, conn);
+    const wasUpdated = await ApprovalModel.reject(id, note, conn);
+
+    if (!wasUpdated) {
+      throw createValidationError({
+        status: 'Approval ini sudah diproses lebih dulu oleh approver lain',
+      });
+    }
+
     await RequestModel.markRejected(approval.request_id, conn);
+    await ApprovalModel.cancelOtherPendingByRequestId(approval.request_id, id, conn);
 
     await LogModel.create(
       {
@@ -252,13 +268,23 @@ async function bulkAct(payload, authUser, action) {
     await conn.beginTransaction();
 
     for (const approval of approvals) {
+      const wasUpdated = isApprove
+        ? await ApprovalModel.approve(approval.id, note, conn)
+        : await ApprovalModel.reject(approval.id, note, conn);
+
+      if (!wasUpdated) {
+        throw createValidationError({
+          ids: `Approval ${approval.id} sudah diproses lebih dulu oleh approver lain`,
+        });
+      }
+
       if (isApprove) {
-        await ApprovalModel.approve(approval.id, note, conn);
         await RequestModel.markApproved(approval.request_id, conn);
       } else {
-        await ApprovalModel.reject(approval.id, note, conn);
         await RequestModel.markRejected(approval.request_id, conn);
       }
+
+      await ApprovalModel.cancelOtherPendingByRequestId(approval.request_id, approval.id, conn);
 
       await LogModel.create(
         {

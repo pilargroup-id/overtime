@@ -8,8 +8,14 @@ export const EMPTY_REPORT_FILTERS = {
   workDateFrom: '',
   workDateTo: '',
   compensationTypeId: '',
-  submittedBy: '',
+  requestScope: '',
 }
+
+const REQUEST_SCOPE_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'mine', label: 'My Request' },
+  { value: 'others', label: "Others' Request" },
+]
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) return responseData
@@ -34,15 +40,6 @@ function createUniqueOptions(rows, getValue, getLabel) {
   return [...optionMap.entries()]
     .map(([value, label]) => ({ value, label }))
     .sort((first, second) => first.label.localeCompare(second.label, 'id'))
-}
-
-function getSubmittedByLabel(row) {
-  return (
-    row.submitted_by_name ||
-    row.submitted_by_username ||
-    row.submitted_by_email ||
-    row.submitted_by
-  )
 }
 
 function getCompensationLabel(row) {
@@ -97,11 +94,6 @@ function FilterReportOvertime({ filters, isHistory = false, refreshKey = 0, onCh
         (row) => row.compensation_type_id,
         getCompensationLabel,
       ),
-      submitters: createUniqueOptions(
-        filterRows,
-        (row) => row.submitted_by,
-        getSubmittedByLabel,
-      ),
     }),
     [filterRows],
   )
@@ -151,11 +143,11 @@ function FilterReportOvertime({ filters, isHistory = false, refreshKey = 0, onCh
         onChange={updateFilter('compensationTypeId')}
       />
       <Dropdown
-        id="report-overtime-filter-submitted-by"
-        label="Submitted by"
-        value={filters.submittedBy}
-        options={[{ value: '', label: 'All submitters' }, ...filterOptions.submitters]}
-        onChange={updateFilter('submittedBy')}
+        id="report-overtime-filter-request-scope"
+        label="Request type"
+        value={filters.requestScope}
+        options={REQUEST_SCOPE_OPTIONS}
+        onChange={updateFilter('requestScope')}
       />
     </div>
   )

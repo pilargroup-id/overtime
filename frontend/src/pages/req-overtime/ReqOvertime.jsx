@@ -7,12 +7,18 @@ import DataTableReqOvertime from '../../components/table/dekstop/DataTableReqOve
 import api from '../../services/api.js'
 
 const EMPTY_FILTERS = {
-  requestId: '',
+  requestScope: '',
   departmentId: '',
   dayType: '',
   status: '',
-  submittedBy: '',
+  workDate: '',
 }
+
+const REQUEST_SCOPE_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'mine', label: 'My Request' },
+  { value: 'others', label: "Others' Request" },
+]
 
 function normalizeResponseRows(responseData) {
   if (Array.isArray(responseData)) return responseData
@@ -37,15 +43,6 @@ function createUniqueOptions(rows, getValue, getLabel) {
   return [...optionMap.entries()]
     .map(([value, label]) => ({ value, label }))
     .sort((first, second) => first.label.localeCompare(second.label, 'id'))
-}
-
-function getSubmittedByLabel(request) {
-  return (
-    request.submitted_by_name ||
-    request.submitted_by_username ||
-    request.submitted_by_email ||
-    request.submitted_by
-  )
 }
 
 function canUseBulkReqOvertime(userPermissions = []) {
@@ -95,12 +92,6 @@ function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {
 
   const filterOptions = useMemo(
     () => ({
-      requests: createUniqueOptions(
-        filterRows,
-        (request) => request.id,
-        (request) =>
-          [request.request_number, request.employee_name_snapshot].filter(Boolean).join(' — '),
-      ),
       departments: createUniqueOptions(
         filterRows,
         (request) => request.department_id,
@@ -115,11 +106,6 @@ function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {
         filterRows,
         (request) => request.status,
         (request) => request.status,
-      ),
-      submitters: createUniqueOptions(
-        filterRows,
-        (request) => request.submitted_by,
-        getSubmittedByLabel,
       ),
     }),
     [filterRows],
@@ -156,11 +142,11 @@ function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {
 
       <div className="req-overtime-filters" aria-label="Filter request overtime">
         <Dropdown
-          id="request-overtime-filter-request"
-          label="Request"
-          value={filters.requestId}
-          options={[{ value: '', label: 'All requests' }, ...filterOptions.requests]}
-          onChange={updateFilter('requestId')}
+          id="request-overtime-filter-request-scope"
+          label="Request type"
+          value={filters.requestScope}
+          options={REQUEST_SCOPE_OPTIONS}
+          onChange={updateFilter('requestScope')}
         />
         <Dropdown
           id="request-overtime-filter-department"
@@ -183,13 +169,19 @@ function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {
           options={[{ value: '', label: 'All statuses' }, ...filterOptions.statuses]}
           onChange={updateFilter('status')}
         />
-        <Dropdown
-          id="request-overtime-filter-submitted-by"
-          label="Submitted by"
-          value={filters.submittedBy}
-          options={[{ value: '', label: 'All submitters' }, ...filterOptions.submitters]}
-          onChange={updateFilter('submittedBy')}
-        />
+        <div className="form-dropdown">
+          <label className="form-control__label" htmlFor="request-overtime-filter-work-date">
+            <span>Work date</span>
+          </label>
+          <input
+            id="request-overtime-filter-work-date"
+            className="approval-overtime-filter-date__input"
+            type="date"
+            value={filters.workDate}
+            onChange={(event) => updateFilter('workDate')(event.target.value)}
+            aria-label="Work date"
+          />
+        </div>
       </div>
 
       <DataTableReqOvertime

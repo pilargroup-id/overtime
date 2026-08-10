@@ -311,11 +311,10 @@ async function findActiveUsersByJobLevelName(jobLevelName) {
 async function findActiveUsersByDepartmentAndJobLevelName(departmentId, jobLevelName) {
   const users = await getAllUsers(1, { department_id: departmentId });
 
-  const candidate = users
+  return users
     .filter((user) => (user.job_level ?? user.job_level_name) === jobLevelName)
-    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))[0];
-
-  return mapBaseUser(candidate || null);
+    .map(mapBaseUser)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 async function findActiveUsersForOvertimeOptions(filters = {}) {

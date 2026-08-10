@@ -87,6 +87,7 @@ async function list(query, authUser) {
     compensation_type_id: query.compensation_type_id || null,
     employee_id: query.employee_id || null,
     submitted_by: query.submitted_by || null,
+    request_scope: query.request_scope || null,
     approver_id: query.approver_id || null,
     source_type: query.source_type || null,
     request_date_from: query.request_date_from || null,
@@ -99,8 +100,8 @@ async function list(query, authUser) {
   };
 
   const [data, total] = await Promise.all([
-    ReportModel.findAll(filters),
-    ReportModel.countAll(filters),
+    ReportModel.findAll(filters, authUser),
+    ReportModel.countAll(filters, authUser),
   ]);
 
   return {
@@ -133,6 +134,7 @@ async function listHistory(query, authUser) {
     compensation_type_id: query.compensation_type_id || null,
     employee_id: query.employee_id || null,
     submitted_by: query.submitted_by || null,
+    request_scope: query.request_scope || null,
     approver_id: query.approver_id || null,
     source_type: query.source_type || null,
     request_date_from: query.request_date_from || null,
@@ -145,8 +147,8 @@ async function listHistory(query, authUser) {
   };
 
   const [data, total] = await Promise.all([
-    ReportModel.findAll(filters),
-    ReportModel.countAll(filters),
+    ReportModel.findAll(filters, authUser),
+    ReportModel.countAll(filters, authUser),
   ]);
 
   return {

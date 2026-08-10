@@ -329,35 +329,35 @@ async function resolveApprovalRule(employee) {
   return rule;
 }
 
-async function resolveApprover(rule, employee) {
+async function resolveApprovers(rule, employee) {
   if (rule.approver_scope_type === 'SAME_DEPARTMENT') {
-    const approver = await UserModel.findActiveUsersByDepartmentAndJobLevelName(
+    const approvers = await UserModel.findActiveUsersByDepartmentAndJobLevelName(
       employee.department_id,
       rule.approver_job_level_name
     );
 
-    if (!approver) {
+    if (!approvers.length) {
       throw createValidationError({
         approver: `Approver ${rule.approver_job_level_name} not found in employee department`,
       });
     }
 
-    return approver;
+    return approvers;
   }
 
   if (rule.approver_scope_type === 'SPECIFIC_DEPARTMENT') {
-    const approver = await UserModel.findActiveUsersByDepartmentAndJobLevelName(
+    const approvers = await UserModel.findActiveUsersByDepartmentAndJobLevelName(
       rule.approver_department_id,
       rule.approver_job_level_name
     );
 
-    if (!approver) {
+    if (!approvers.length) {
       throw createValidationError({
         approver: `Approver ${rule.approver_job_level_name} not found in specific department`,
       });
     }
 
-    return approver;
+    return approvers;
   }
 
   const approvers = await UserModel.findActiveUsersByJobLevelName(rule.approver_job_level_name);
@@ -368,13 +368,7 @@ async function resolveApprover(rule, employee) {
     });
   }
 
-  if (approvers.length > 1) {
-    throw createValidationError({
-      approver: `Multiple active users found for job level ${rule.approver_job_level_name}`,
-    });
-  }
-
-  return approvers[0];
+  return approvers;
 }
 
 function buildRequestData({
@@ -383,7 +377,7 @@ function buildRequestData({
   employee,
   sourceType,
   rule,
-  approver,
+  approvers,
   numberData,
   totalMinutes,
   endDate,
@@ -435,7 +429,7 @@ function buildRequestData({
     ...compensationSnapshot,
 
     approval_type: rule.approval_type,
-    current_approver_id: approver.id,
+    current_approver_id: approvers[0]?.id ?? null,
   };
 }
 
@@ -491,6 +485,7 @@ async function list(query, authUser) {
     day_type: query.day_type || null,
     status: query.status || null,
     submitted_by: query.submitted_by || null,
+    request_scope: query.request_scope || null,
     talenta_status: query.talenta_status || null,
     work_date_from: query.work_date_from || null,
     work_date_to: query.work_date_to || null,
@@ -639,7 +634,7 @@ async function create(payload, authUser) {
 
   const sourceType = await assertCanSubmitForEmployee(authUser, employee);
   const rule = await resolveApprovalRule(employee);
-  const approver = await resolveApprover(rule, employee);
+  const approvers = await resolveApprovers(rule, employee);
 
   const conn = await db.getConnection();
 
@@ -662,7 +657,7 @@ async function create(payload, authUser) {
       employee,
       sourceType,
       rule,
-      approver,
+      approvers,
       numberData,
       totalMinutes,
       endDate,
@@ -672,10 +667,12 @@ async function create(payload, authUser) {
 
     const requestId = await RequestModel.create(requestData, conn);
 
-    await ApprovalModel.create(
-      buildApprovalData(requestId, approver),
-      conn
-    );
+    for (const approver of approvers) {
+      await ApprovalModel.create(
+        buildApprovalData(requestId, approver),
+        conn
+      );
+    }
 
     await LogModel.create(
       {

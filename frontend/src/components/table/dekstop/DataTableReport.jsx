@@ -477,7 +477,7 @@ const DataTableReport = forwardRef(function DataTableReport(
           work_date_from: filters.workDateFrom,
           work_date_to: filters.workDateTo,
           compensation_type_id: filters.compensationTypeId,
-          submitted_by: filters.submittedBy,
+          request_scope: filters.requestScope,
         })
 
         if (!isMounted) {

@@ -4,7 +4,7 @@ function getExecutor(conn) {
   return conn || db;
 }
 
-function buildWhere(filters = {}) {
+function buildWhere(filters = {}, authUser = null) {
   const where = [];
   const params = [];
 
@@ -81,6 +81,16 @@ function buildWhere(filters = {}) {
     params.push(filters.submitted_by);
   }
 
+  if (filters.request_scope === 'mine' && authUser?.id) {
+    where.push('r.employee_id = ?');
+    params.push(authUser.id);
+  }
+
+  if (filters.request_scope === 'others' && authUser?.id) {
+    where.push('r.employee_id != ?');
+    params.push(authUser.id);
+  }
+
   if (filters.approver_id) {
     where.push('ra.approver_id = ?');
     params.push(filters.approver_id);
@@ -117,8 +127,8 @@ function buildWhere(filters = {}) {
   };
 }
 
-async function findAll(filters = {}) {
-  const where = buildWhere(filters);
+async function findAll(filters = {}, authUser = null) {
+  const where = buildWhere(filters, authUser);
 
   const [rows] = await db.query(
     `SELECT
@@ -198,8 +208,8 @@ async function findAll(filters = {}) {
   return rows;
 }
 
-async function countAll(filters = {}) {
-  const where = buildWhere(filters);
+async function countAll(filters = {}, authUser = null) {
+  const where = buildWhere(filters, authUser);
 
   const [rows] = await db.query(
     `SELECT COUNT(DISTINCT r.id) AS total

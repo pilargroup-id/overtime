@@ -57,6 +57,16 @@ function buildWhere(filters = {}, authUser = null) {
     params.push(filters.submitted_by);
   }
 
+  if (filters.request_scope === 'mine' && authUser?.id) {
+    where.push('employee_id = ?');
+    params.push(authUser.id);
+  }
+
+  if (filters.request_scope === 'others' && authUser?.id) {
+    where.push('employee_id != ?');
+    params.push(authUser.id);
+  }
+
   if (filters.talenta_status) {
     where.push('talenta_status = ?');
     params.push(filters.talenta_status);

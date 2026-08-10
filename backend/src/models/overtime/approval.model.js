@@ -47,6 +47,21 @@ async function cancelPendingByRequestId(requestId, conn = null) {
   );
 }
 
+async function cancelOtherPendingByRequestId(requestId, actedApprovalId, conn = null) {
+  const executor = getExecutor(conn);
+
+  await executor.query(
+    `UPDATE request_approvals
+     SET status = 'CANCELED',
+         note = 'Auto-canceled: request already decided by another approver',
+         acted_at = CURRENT_TIMESTAMP
+     WHERE request_id = ?
+       AND id != ?
+       AND status = 'PENDING'`,
+    [requestId, actedApprovalId]
+  );
+}
+
 async function findAllForApprover(filters = {}, authUser) {
   const where = ['ra.approver_id = ?'];
   const params = [authUser.id];
@@ -341,7 +356,7 @@ async function findById(id) {
 async function approve(id, note = null, conn = null) {
   const executor = getExecutor(conn);
 
-  await executor.query(
+  const [result] = await executor.query(
     `UPDATE request_approvals
      SET
        status = 'APPROVED',
@@ -351,12 +366,14 @@ async function approve(id, note = null, conn = null) {
        AND status = 'PENDING'`,
     [note, id]
   );
+
+  return result.affectedRows > 0;
 }
 
 async function reject(id, note = null, conn = null) {
   const executor = getExecutor(conn);
 
-  await executor.query(
+  const [result] = await executor.query(
     `UPDATE request_approvals
      SET
        status = 'REJECTED',
@@ -366,11 +383,14 @@ async function reject(id, note = null, conn = null) {
        AND status = 'PENDING'`,
     [note, id]
   );
+
+  return result.affectedRows > 0;
 }
 
 module.exports = {
   create,
   cancelPendingByRequestId,
+  cancelOtherPendingByRequestId,
   findAllForApprover,
   countAllForApprover,
   findById,

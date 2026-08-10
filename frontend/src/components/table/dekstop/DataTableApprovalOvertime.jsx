@@ -546,9 +546,7 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
-          ...(isHistoryMode
-            ? { status: 'APPROVED' }
-            : { request_status: APPROVABLE_REQUEST_STATUS }),
+          ...(isHistoryMode ? {} : { request_status: APPROVABLE_REQUEST_STATUS }),
           request_id: filters.requestId,
           day_type: filters.dayType,
           work_date_from: filters.workDateFrom,
@@ -562,7 +560,9 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
         }
 
         const rows = normalizeResponseRows(response)
-        const displayRows = isHistoryMode ? rows : rows.filter(isSubmittedRequestRow)
+        const displayRows = isHistoryMode
+          ? rows.filter((row) => !isPendingRow(row))
+          : rows.filter(isSubmittedRequestRow)
         const meta = normalizeResponseMeta(response, displayRows.length, pageSize)
         const totalDisplayRows = displayRows.length === rows.length ? meta.total : displayRows.length
 

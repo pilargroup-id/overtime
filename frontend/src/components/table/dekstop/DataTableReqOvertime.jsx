@@ -264,6 +264,10 @@ function isCanceledStatus(status) {
   return String(status ?? '').toUpperCase() === 'CANCELED'
 }
 
+function isApprovedStatus(status) {
+  return String(status ?? '').toUpperCase() === 'APPROVED'
+}
+
 function getPaginationSummary(firstItem, lastItem, totalItems) {
   if (totalItems === 0) {
     return '0 dari 0 request'
@@ -428,11 +432,12 @@ function DataTableReqOvertime({
           page: currentPage,
           limit: pageSize,
           search: searchQuery,
-          request_id: filters.requestId,
           department_id: filters.departmentId,
           day_type: filters.dayType,
           status: filters.status,
-          submitted_by: filters.submittedBy,
+          request_scope: filters.requestScope,
+          work_date_from: filters.workDate,
+          work_date_to: filters.workDate,
         })
 
         if (!isMounted) {
@@ -573,7 +578,8 @@ function DataTableReqOvertime({
                 label: 'Cancel request',
                 variant: 'danger',
                 buttonComponent: ButtonCancelReqOvertime,
-                hidden: (request) => isCanceledStatus(request.status),
+                hidden: (request) =>
+                  isCanceledStatus(request.status) || isApprovedStatus(request.status),
                 disabled: (request) => String(cancelingRequestId) === String(request.id),
                 onClick: handleCancelRequest,
               },
