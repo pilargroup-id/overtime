@@ -26,6 +26,15 @@ function normalizeIsActive(value) {
   return numberValue;
 }
 
+
+function normalizeIntermediateFlag(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return 0;
+
+  const numberValue = Number(value);
+  return [0, 1].includes(numberValue) ? numberValue : value;
+}
+
 function normalizeNullable(value) {
   if (value === undefined) return undefined;
   if (value === '') return null;
@@ -108,6 +117,32 @@ function validatePayload(payload, isUpdate = false) {
     }
   }
 
+
+  if (payload.use_intermediate_approver !== undefined) {
+    const useIntermediate = normalizeIntermediateFlag(payload.use_intermediate_approver);
+
+    if (![0, 1].includes(useIntermediate)) {
+      errors.use_intermediate_approver = 'use_intermediate_approver must be 0 or 1';
+    }
+  }
+
+  const useIntermediate = normalizeIntermediateFlag(payload.use_intermediate_approver);
+
+  if (useIntermediate === 1) {
+    const intermediateLevel = Number(payload.intermediate_job_level_value);
+
+    if (!Number.isInteger(intermediateLevel)) {
+      errors.intermediate_job_level_value =
+        'intermediate_job_level_value must be an integer when intermediate approval is enabled';
+    }
+  }
+
+  if (payload.intermediate_job_level_value !== undefined && payload.intermediate_job_level_value !== null && payload.intermediate_job_level_value !== '') {
+    if (!Number.isInteger(Number(payload.intermediate_job_level_value))) {
+      errors.intermediate_job_level_value = 'intermediate_job_level_value must be an integer';
+    }
+  }
+
   if (payload.priority !== undefined && !Number.isInteger(Number(payload.priority))) {
     errors.priority = 'Priority must be an integer';
   }
@@ -153,6 +188,12 @@ function buildPayload(payload) {
     approval_type                 : payload.approval_type !== undefined
       ? String(payload.approval_type).trim()
       : undefined,
+    use_intermediate_approver      : normalizeIntermediateFlag(payload.use_intermediate_approver),
+    intermediate_job_level_value  : normalizeIntermediateFlag(payload.use_intermediate_approver) === 0
+      ? null
+      : payload.intermediate_job_level_value !== undefined
+        ? Number(payload.intermediate_job_level_value)
+        : undefined,
     priority                      : payload.priority !== undefined ? Number(payload.priority) : undefined,
     is_active                     : normalizeIsActive(payload.is_active),
   };
@@ -169,6 +210,7 @@ async function list(query) {
     approver_scope_type : query.approver_scope_type || null,
     approver_job_level_name: query.approver_job_level_name || null,
     approval_type       : query.approval_type || null,
+    use_intermediate_approver: query.use_intermediate_approver !== undefined ? query.use_intermediate_approver : null,
     is_active           : query.is_active !== undefined ? query.is_active : null,
     page,
     limit,

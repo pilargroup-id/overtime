@@ -4,6 +4,7 @@ const UserModel = require('../../models/user.model');
 const ApprovalModel = require('../../models/overtime/approval.model');
 const RequestModel = require('../../models/overtime/request.model');
 const LogModel = require('../../models/overtime/log.model');
+const ApprovalResolverService = require('./approval-resolver.service');
 
 function createValidationError(errors) {
   const err = new Error('Validation failed');
@@ -115,6 +116,12 @@ function assertCanAct(approval, authUser) {
       request_status: 'Only SUBMITTED request can be processed',
     });
   }
+
+  if (String(approval.current_approver_id || '') !== String(authUser.id)) {
+    throw createValidationError({
+      approval_step: 'This approval is not the current approval step',
+    });
+  }
 }
 
 function normalizeBulkIds(payload = {}) {
@@ -140,6 +147,100 @@ function normalizeBulkIds(payload = {}) {
   return ids;
 }
 
+
+function buildEmployeeFromApproval(approval) {
+  return {
+    id: approval.employee_id,
+    job_level_value: approval.employee_job_level_value_snapshot,
+    department_id: approval.department_id,
+    departments: approval.department_id === null || approval.department_id === undefined
+      ? []
+      : [{ id: approval.department_id, is_primary: 1 }],
+  };
+}
+
+async function resolveApprovalTransition(approval) {
+  const employee = buildEmployeeFromApproval(approval);
+  const rule = await ApprovalResolverService.resolveApprovalRule(employee);
+  const finalApprover = await ApprovalResolverService.resolveFinalApprover(rule, employee);
+
+  const isConfiguredIntermediateStep =
+    Number(rule.use_intermediate_approver) === 1 &&
+    Number(approval.approval_level) === 1 &&
+    Number(approval.approver_job_level_value_snapshot) === Number(rule.intermediate_job_level_value) &&
+    String(approval.approver_id) !== String(finalApprover.id);
+
+  return {
+    rule,
+    finalApprover,
+    hasNextStep: isConfiguredIntermediateStep,
+  };
+}
+
+async function applyApproveTransition(approval, transition, note, authUser, conn) {
+  await ApprovalModel.approve(approval.id, note, conn);
+
+  if (transition.hasNextStep) {
+    const nextLevel = Number(approval.approval_level) + 1;
+    const existingNextApproval = await ApprovalModel.findByRequestAndLevel(
+      approval.request_id,
+      nextLevel,
+      conn
+    );
+
+    if (!existingNextApproval) {
+      await ApprovalModel.create(
+        {
+          request_id: approval.request_id,
+          approval_level: nextLevel,
+          approver_id: transition.finalApprover.id,
+          approver_name_snapshot: transition.finalApprover.name,
+          approver_job_position_snapshot: transition.finalApprover.job_position,
+          approver_job_level_name_snapshot: transition.finalApprover.job_level,
+          approver_job_level_value_snapshot: transition.finalApprover.job_level_value,
+        },
+        conn
+      );
+    }
+
+    await RequestModel.updateCurrentApprover(
+      approval.request_id,
+      transition.finalApprover.id,
+      conn
+    );
+
+    await LogModel.create(
+      {
+        request_id: approval.request_id,
+        actor_id: authUser.id,
+        actor_name_snapshot: authUser.name,
+        action: 'INTERMEDIATE_APPROVED',
+        from_status: approval.request_status,
+        to_status: 'SUBMITTED',
+        note,
+      },
+      conn
+    );
+
+    return;
+  }
+
+  await RequestModel.markApproved(approval.request_id, conn);
+
+  await LogModel.create(
+    {
+      request_id: approval.request_id,
+      actor_id: authUser.id,
+      actor_name_snapshot: authUser.name,
+      action: 'APPROVED',
+      from_status: approval.request_status,
+      to_status: 'APPROVED',
+      note,
+    },
+    conn
+  );
+}
+
 async function approve(id, payload, authUser) {
   const approval = await ApprovalModel.findById(id);
 
@@ -150,27 +251,14 @@ async function approve(id, payload, authUser) {
   assertCanAct(approval, authUser);
 
   const note = payload?.note || null;
+  const transition = await resolveApprovalTransition(approval);
 
   const conn = await db.getConnection();
 
   try {
     await conn.beginTransaction();
 
-    await ApprovalModel.approve(id, note, conn);
-    await RequestModel.markApproved(approval.request_id, conn);
-
-    await LogModel.create(
-      {
-        request_id: approval.request_id,
-        actor_id: authUser.id,
-        actor_name_snapshot: authUser.name,
-        action: 'APPROVED',
-        from_status: approval.request_status,
-        to_status: 'APPROVED',
-        note,
-      },
-      conn
-    );
+    await applyApproveTransition(approval, transition, note, authUser, conn);
 
     await conn.commit();
 
@@ -244,34 +332,45 @@ async function bulkAct(payload, authUser, action) {
     approvals.push(approval);
   }
 
-  const conn = await db.getConnection();
   const isApprove = action === 'approve';
+  const transitions = isApprove
+    ? await Promise.all(approvals.map((approval) => resolveApprovalTransition(approval)))
+    : [];
+
+  const conn = await db.getConnection();
   const nextStatus = isApprove ? 'APPROVED' : 'REJECTED';
 
   try {
     await conn.beginTransaction();
 
-    for (const approval of approvals) {
+    for (let index = 0; index < approvals.length; index += 1) {
+      const approval = approvals[index];
+
       if (isApprove) {
-        await ApprovalModel.approve(approval.id, note, conn);
-        await RequestModel.markApproved(approval.request_id, conn);
+        await applyApproveTransition(
+          approval,
+          transitions[index],
+          note,
+          authUser,
+          conn
+        );
       } else {
         await ApprovalModel.reject(approval.id, note, conn);
         await RequestModel.markRejected(approval.request_id, conn);
-      }
 
-      await LogModel.create(
-        {
-          request_id: approval.request_id,
-          actor_id: authUser.id,
-          actor_name_snapshot: authUser.name,
-          action: nextStatus,
-          from_status: approval.request_status,
-          to_status: nextStatus,
-          note,
-        },
-        conn
-      );
+        await LogModel.create(
+          {
+            request_id: approval.request_id,
+            actor_id: authUser.id,
+            actor_name_snapshot: authUser.name,
+            action: nextStatus,
+            from_status: approval.request_status,
+            to_status: nextStatus,
+            note,
+          },
+          conn
+        );
+      }
     }
 
     await conn.commit();

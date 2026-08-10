@@ -279,6 +279,19 @@ async function cancel(id, actorId, conn = null) {
   );
 }
 
+
+async function updateCurrentApprover(id, approverId, conn = null) {
+  const executor = getExecutor(conn);
+
+  await executor.query(
+    `UPDATE requests
+     SET current_approver_id = ?
+     WHERE id = ?
+       AND status = 'SUBMITTED'`,
+    [approverId, id]
+  );
+}
+
 async function markApproved(id, conn = null) {
   const executor = getExecutor(conn);
 
@@ -315,6 +328,7 @@ module.exports = {
   findById,
   create,
   cancel,
+  updateCurrentApprover,
   markApproved,
   markRejected,
 };

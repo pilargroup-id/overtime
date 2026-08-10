@@ -415,6 +415,70 @@ async function findActiveUsersForOvertimeOptions(filters = {}) {
     .slice(0, Number(limit) || 20);
 }
 
+
+function matchesApproverTarget(user, targetName) {
+  const target = String(targetName || '').trim();
+  if (!target) return false;
+
+  return String(user.job_level ?? user.job_level_name ?? '').trim() === target ||
+    String(user.job_position ?? '').trim() === target;
+}
+
+async function findActiveUsersByApproverTarget(targetName) {
+  const users = await getAllUsers(1);
+
+  return users
+    .filter((user) => matchesApproverTarget(user, targetName))
+    .map(mapBaseUser)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
+async function findActiveUsersByDepartmentAndApproverTarget(departmentId, targetName) {
+  const users = await getAllUsers(1);
+  const departmentKey = String(departmentId);
+
+  return users
+    .filter((user) => {
+      const belongsToDepartment = (user.departments || []).some(
+        (department) => String(department.id) === departmentKey
+      );
+
+      return belongsToDepartment && matchesApproverTarget(user, targetName);
+    })
+    .map(mapBaseUser)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
+async function findActiveUsersByJobLevelValueAndDepartmentIds(
+  jobLevelValue,
+  departmentIds = [],
+  excludeUserId = null
+) {
+  const users = await getAllUsers(1);
+  const targetLevel = Number(jobLevelValue);
+  const departmentKeys = new Set(normalizeIds(departmentIds));
+
+  return users
+    .filter((user) => {
+      if (excludeUserId && String(user.id) === String(excludeUserId)) {
+        return false;
+      }
+
+      if (Number(user.job_level_value) !== targetLevel) {
+        return false;
+      }
+
+      return (user.departments || []).some((department) =>
+        departmentKeys.has(String(department.id))
+      );
+    })
+    .map((user) => ({
+      ...mapBaseUser(user),
+      departments: user.departments || [],
+    }))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
 module.exports = {
   findByUsername,
   findById,
@@ -427,5 +491,8 @@ module.exports = {
   findFullProfileById,
   findActiveUsersByJobLevelName,
   findActiveUsersByDepartmentAndJobLevelName,
+  findActiveUsersByApproverTarget,
+  findActiveUsersByDepartmentAndApproverTarget,
+  findActiveUsersByJobLevelValueAndDepartmentIds,
   findActiveUsersForOvertimeOptions,
 };
