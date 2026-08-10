@@ -1,0 +1,12 @@
+/*
+ * Global zoom/scale theme.
+ * Adjust --app-zoom to make the whole app render smaller (more "zoomed out")
+ * or larger, without touching individual page styles.
+ */
+:root {
+  --app-zoom: 0.6;
+}
+
+body {
+  zoom: var(--app-zoom);
+}

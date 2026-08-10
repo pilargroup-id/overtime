@@ -1631,6 +1631,10 @@ select {
   flex-direction: column;
 }
 
+.overtime-pagination-bottom .users-table-pagination {
+  margin-top: auto;
+}
+
 .req-overtime-page {
   height: 100%;
   min-height: 0;
@@ -4302,6 +4306,12 @@ select {
 
 .users-table__accordion-button svg {
   flex-shrink: 0;
+}
+
+.overtime-pagination-bottom .users-table-wrapper {
+  flex: 1 1 auto;
+  height: auto;
+  max-height: 100%;
 }
 
 .users-table-pagination {

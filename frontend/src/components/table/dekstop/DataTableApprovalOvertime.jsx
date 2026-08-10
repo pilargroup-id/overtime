@@ -897,7 +897,7 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
         </p>
       ) : null}
 
-      <div className="mtickets-table-shell req-overtime-table-shell approval-overtime-table-shell">
+      <div className="mtickets-table-shell req-overtime-table-shell approval-overtime-table-shell overtime-pagination-bottom">
         <DataTable
           className="mtickets-table"
           rows={approvalRows}
