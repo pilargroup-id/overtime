@@ -6,8 +6,8 @@ import DataTable, { DataTableIdentity } from '../DataTable.jsx'
 import ButtonDeleteApprovalRules from '../../button/button-approval-rules/ButtonDeleteApprovalRules.jsx'
 import ButtonEditApprovalRules from '../../button/button-approval-rules/ButtonEditApprovalRules.jsx'
 // dialog
-import DialogEditApprovalRules from '../../Dialog/dialog-user-permissions/DialogEditUserPermission.jsx'
-import DialogDeleteApprovalRules from '../../Dialog/dialog-user-permissions/DialogDeleteUserPermission.jsx'
+import DialogEditApprovalRules from '../../Dialog/dialog-approval-rules/DialogEditApprovalRules.jsx'
+import DialogDeleteApprovalRules from '../../Dialog/dialog-approval-rules/DialogDeleteApprovalRules.jsx'
 
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
@@ -98,22 +98,33 @@ function createColumns({ onDelete, onEdit } = {}) {
     render : (request) => formatValue(request.approval_type)
   },
   {
+    key: 'useIntermediateApprover',
+    header: 'Intermediate Approver',
+    headerStyle: { width: '12%' },
+    render: (request) => {
+      const isEnabled = Number(request.use_intermediate_approver) === 1
+
+      return isEnabled
+        ? `ON (level ${formatValue(request.intermediate_job_level_value)})`
+        : 'OFF'
+    },
+  },
+  {
     key: 'action',
     header: 'Action',
     headerStyle: { width: '12%' },
     cellStyle: { width: '12%' },
     render: (request) => {
       const rowLabel = formatValue(getFirstFilledValue(
-        request.user_name,
-        request.username,
-        request.user_id,
+        request.name,
+        request.code,
       ))
 
       return (
         <>
           <ButtonEditApprovalRules
             title={`Edit ${rowLabel}`}
-            aria-label={`Edit permission ${rowLabel}`}
+            aria-label={`Edit approval rule ${rowLabel}`}
             onClick={(event) => {
               event.stopPropagation()
               onEdit?.(request)
@@ -122,7 +133,7 @@ function createColumns({ onDelete, onEdit } = {}) {
 
           <ButtonDeleteApprovalRules
             title={`Delete ${rowLabel}`}
-            aria-label={`Delete permission ${rowLabel}`}
+            aria-label={`Delete approval rule ${rowLabel}`}
             onClick={(event) => {
               event.stopPropagation()
               onDelete?.(request)
@@ -286,14 +297,14 @@ function DataTableApprovalRules({
       <DialogEditApprovalRules
         isOpen={Boolean(editingUserPermission)}
         approvalRules={editingUserPermission}
-        title="Edit User Permission"
+        title="Edit Approval Rule"
         onClose={handleCloseEditDialog}
         onEdited={handleEditedUserPermission}
       />
       <DialogDeleteApprovalRules
         isOpen={Boolean(deletingUserPermission)}
         approvalRules={deletingUserPermission}
-        title="Delete User Permission"
+        title="Delete Approval Rule"
         onClose={handleCloseDeleteDialog}
         onDeleted={handleDeletedUserPermission}
       />

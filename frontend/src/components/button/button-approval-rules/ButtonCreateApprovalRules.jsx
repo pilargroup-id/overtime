@@ -1,11 +1,11 @@
 import { useState } from 'react'
 
-import DialogCreateCompensation from '../../Dialog/dialog-compensation/DialogCreateCompensation.jsx'
+import DialogCreateApprovalRules from '../../Dialog/dialog-approval-rules/DialogCreateApprovalRules.jsx'
 import { FileText01 } from '../../template/TemplateIcons.jsx'
 
 function ButtonCreateApprovalRules({
   className = '',
-  children = 'Create Approal Rules',
+  children = 'Create Approval Rules',
   dialogProps = {},
   iconSize = 18,
   onClick,
@@ -30,9 +30,9 @@ function ButtonCreateApprovalRules({
     setIsDialogOpen(false)
   }
 
-  const handleCreated = (createdCompensationType, payload) => {
-    dialogProps.onCreated?.(createdCompensationType, payload)
-    onCreated?.(createdCompensationType, payload)
+  const handleCreated = (createdApprovalRule, payload) => {
+    dialogProps.onCreated?.(createdApprovalRule, payload)
+    onCreated?.(createdApprovalRule, payload)
   }
 
   return (
@@ -48,7 +48,7 @@ function ButtonCreateApprovalRules({
         <span>{children}</span>
       </button>
 
-      <DialogCreateCompensation
+      <DialogCreateApprovalRules
         {...dialogProps}
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}

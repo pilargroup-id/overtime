@@ -760,6 +760,10 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
 
       const nextRow = response?.data ?? null
 
+      // Backend hanya mengembalikan status FINAL request yang sebenarnya (bisa tetap
+      // SUBMITTED untuk intermediate approval). Jangan menebak APPROVED/REJECTED di
+      // client saat response tidak membawa data — biarkan refetch (setReloadKey di
+      // bawah) yang mengoreksi baris ini.
       if (nextRow) {
         setApprovalRows((rows) =>
           rows.map((currentRow) =>
@@ -773,21 +777,6 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
                   request_status: nextRow.request_status ?? currentRow.request_status,
                   note: action === 'reject' ? trimmedNote : currentRow.note,
                   acted_at: nextRow.acted_at ?? nextRow.updated_at ?? new Date().toISOString(),
-                }
-              : currentRow,
-          ),
-        )
-      } else {
-        setApprovalRows((rows) =>
-          rows.map((currentRow) =>
-            String(getApprovalId(currentRow)) === String(approvalId)
-              ? {
-                  ...currentRow,
-                  status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-                  approval_status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-                  request_status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-                  note: action === 'reject' ? trimmedNote : currentRow.note,
-                  acted_at: new Date().toISOString(),
                 }
               : currentRow,
           ),
@@ -942,33 +931,15 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
                   },
                 ],
             sections: (row) => [
-              // {
-              //   title: 'Employee',
-              //   fields: [
-              //     { label: 'Name', value: formatValue(row.employee_name_snapshot) },
-              //     { label: 'Employee ID', value: formatValue(row.employee_internal_id_snapshot) },
-              //     { label: 'Department', value: formatValue(row.department_name_snapshot) },
-              //     { label: 'Company', value: formatValue(row.company_name_snapshot) },
-              //   ],
-              // },
-              // {
-              //   title: 'Approval',
-              //   fields: [
-              //     { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
-              //     { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
-              //     { label: 'Approver', value: formatValue(row.approver_name_snapshot) },
-              //     { label: 'Approval Time', value: formatDateTime(getApprovalTimeValue(row)) },
-              //   ],
-              // },
-              // {
-              //   title: 'Overtime',
-              //   fields: [
-              //     { label: 'Day Type', value: formatValue(row.day_type) },
-              //     { label: 'Work Date', value: formatDate(row.work_date) },
-              //     { label: 'End Date', value: formatDate(row.end_date) },
-              //     { label: 'Duration', value: formatDuration(row.total_minutes) },
-              //   ],
-              // },
+              {
+                title: 'Approval Progress',
+                fields: [
+                  { label: 'Approval Level', value: formatValue(row.approval_level) },
+                  { label: 'Approver (step ini)', value: formatValue(row.approver_name_snapshot) },
+                  { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
+                  { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
+                ],
+              },
               {
                 title: 'Result',
                 wide: true,

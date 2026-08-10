@@ -5,7 +5,6 @@ import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
 
 const initialFormValues = {
-  code: '',
   name: '',
   compensation_kind: 'MONEY',
   amount: '',
@@ -24,6 +23,14 @@ function toRequiredNumber(value) {
   const parsedValue = Number(value)
 
   return Number.isFinite(parsedValue) ? parsedValue : null
+}
+
+function generateCodeFromName(name) {
+  return name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 }
 
 function DialogCreateCompensation({
@@ -82,7 +89,7 @@ function DialogCreateCompensation({
     const description = formValues.description.trim()
 
     return {
-      code: formValues.code.trim(),
+      code: generateCodeFromName(formValues.name),
       name: formValues.name.trim(),
       compensation_kind: formValues.compensation_kind,
       amount,
@@ -93,12 +100,12 @@ function DialogCreateCompensation({
   }
 
   const validatePayload = (payload) => {
-    if (!payload.code) {
-      return 'Code wajib diisi.'
-    }
-
     if (!payload.name) {
       return 'Name wajib diisi.'
+    }
+
+    if (!payload.code) {
+      return 'Name harus mengandung minimal satu huruf atau angka.'
     }
 
     if (!COMPENSATION_KIND_OPTIONS.includes(payload.compensation_kind)) {
@@ -193,25 +200,6 @@ function DialogCreateCompensation({
             <div className="register-user-popup__main">
               <div className="register-user-popup__form">
                 <div className="register-user-popup__grid">
-                  <div className="register-user-popup__field overtime-create-popup__field--half">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="create-compensation-code"
-                    >
-                      Code
-                    </label>
-                    <input
-                      id="create-compensation-code"
-                      name="code"
-                      type="text"
-                      className="register-user-popup__input"
-                      value={formValues.code}
-                      onChange={handleInputChange}
-                      placeholder="MONEY_100K"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
                   <div className="register-user-popup__field overtime-create-popup__field--half">
                     <label
                       className="register-user-popup__label"
