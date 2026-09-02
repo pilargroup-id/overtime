@@ -59,97 +59,155 @@ function getPaginationSummary(firstItem, lastItem, totalItems) {
   return `${firstItem}-${lastItem} dari ${totalItems} request`
 }
 
-function createColumns({ onDelete, onEdit } = {}) {
-  return [
-  {
-    key: 'user_id',
-    header: 'Username',
-    headerStyle: { width: '20%' },
-    cellStyle: { width: '20%' },
-    render: (request) => (
-      <DataTableIdentity
-        title={formatValue(getFirstFilledValue(
-          request.user_name,
-          request.username,
-          request.user_id,
-        ))}
-        subtitle={formatValue(getFirstFilledValue(
-          request.department_name,
-          request.department_code,
-          request.department_id,
-        ))}
-      />
+function summarizeUniqueValues(values) {
+  const uniqueValues = []
+
+  values.forEach((value) => {
+    const displayValue = formatValue(value)
+
+    if (displayValue !== '-' && !uniqueValues.includes(displayValue)) {
+      uniqueValues.push(displayValue)
+    }
+  })
+
+  if (uniqueValues.length === 0) {
+    return '-'
+  }
+
+  if (uniqueValues.length === 1) {
+    return uniqueValues[0]
+  }
+
+  return `${uniqueValues[0]} +${uniqueValues.length - 1} lainnya`
+}
+
+function getRequestCompany(request) {
+  return getFirstFilledValue(request.company_name, request.company_code, request.company_id)
+}
+
+function getRequestDepartment(request) {
+  return getFirstFilledValue(request.department_name, request.department_code, request.department_id)
+}
+
+function getRequestGrantedBy(request) {
+  return getFirstFilledValue(request.granted_by_name, request.granted_by_username, request.granted_by)
+}
+
+function getRequestUserLabel(request) {
+  return getFirstFilledValue(request.user_name, request.username, request.user_id)
+}
+
+function groupPermissionsByUser(rows) {
+  const groups = new Map()
+
+  rows.forEach((request) => {
+    const groupId = String(getFirstFilledValue(request.user_id, request.username, request.user_name) ?? '-')
+
+    if (!groups.has(groupId)) {
+      groups.set(groupId, {
+        groupId,
+        userName: getRequestUserLabel(request),
+        permissions: [],
+      })
+    }
+
+    groups.get(groupId).permissions.push(request)
+  })
+
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    departmentSummary: summarizeUniqueValues(group.permissions.map(getRequestDepartment)),
+    companySummary: summarizeUniqueValues(group.permissions.map(getRequestCompany)),
+    grantedBySummary: summarizeUniqueValues(group.permissions.map(getRequestGrantedBy)),
+    permissionTypes: Array.from(
+      new Set(group.permissions.map((permission) => formatValue(permission.permission_type))),
     ),
-  },
-    {
-    key: 'company',
-    header: 'Company',
-    headerStyle: { width: '10%'},
-    render : (request) => formatValue(getFirstFilledValue(
-      request.company_name,
-      request.company_code,
-      request.company_id,
-    ))
-  },
-  {
-    key: 'permissionType',
-    header: 'Permission Type',
-    headerStyle: { width: '10%'},
-    render : (request) => formatValue(request.permission_type)
-  },
-    {
-    key: 'scopeType',
-    header: 'Scope Type',
-    headerStyle: { width: '10%'},
-    render : (request) => formatValue(request.scope_type)
-  },
-  {
-    key: 'grantedBy',
-    header: 'Granted By',
-    headerStyle: { width: '15%' },
-    cellStyle: { width: '15%' },
-    render: (request) => formatValue(getFirstFilledValue(
-      request.granted_by_name,
-      request.granted_by_username,
-      request.granted_by,
-    )),
-  },
-  {
-    key: 'action',
-    header: 'Action',
-    headerStyle: { width: '12%' },
-    cellStyle: { width: '12%' },
-    render: (request) => {
-      const rowLabel = formatValue(getFirstFilledValue(
-        request.user_name,
-        request.username,
-        request.user_id,
-      ))
+  }))
+}
 
-      return (
-        <>
-          <ButtonEditUserPermission
-            title={`Edit ${rowLabel}`}
-            aria-label={`Edit permission ${rowLabel}`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onEdit?.(request)
-            }}
-          />
-
-          <ButtonDeleteUserPermission
-            title={`Delete ${rowLabel}`}
-            aria-label={`Delete permission ${rowLabel}`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onDelete?.(request)
-            }}
-          />
-        </>
-      )
+function createGroupColumns() {
+  return [
+    {
+      key: 'user',
+      header: 'Username',
+      headerStyle: { width: '28%' },
+      cellStyle: { width: '28%' },
+      render: (group) => (
+        <DataTableIdentity
+          title={formatValue(group.userName)}
+          subtitle={group.departmentSummary}
+        />
+      ),
     },
-  },
-]
+    {
+      key: 'company',
+      header: 'Company',
+      headerStyle: { width: '22%' },
+      render: (group) => group.companySummary,
+    },
+    {
+      key: 'permissionTypes',
+      header: 'Permission Type',
+      type: 'chips',
+      headerStyle: { width: '25%' },
+      render: (group) => group.permissionTypes,
+    },
+    {
+      key: 'grantedBy',
+      header: 'Granted By',
+      headerStyle: { width: '15%' },
+      render: (group) => group.grantedBySummary,
+    },
+  ]
+}
+
+function createDetailConfig({ onDelete, onEdit } = {}) {
+  return {
+    columnLabel: 'Action',
+    eyebrow: 'User Permission',
+    title: (group) => formatValue(group.userName),
+    description: (group) =>
+      `${group.permissions.length} permission${group.permissions.length > 1 ? 's' : ''} terdaftar`,
+    sections: (group) =>
+      group.permissions.map((permission, permissionIndex) => {
+        const rowLabel = formatValue(getRequestUserLabel(permission))
+
+        return {
+          title: `#${permissionIndex + 1} — ${formatValue(getRequestCompany(permission))}`,
+          wide: true,
+          fields: [
+            { label: 'Company', value: formatValue(getRequestCompany(permission)) },
+            { label: 'Permission Type', value: formatValue(permission.permission_type) },
+            { label: 'Scope Type', value: formatValue(permission.scope_type) },
+            { label: 'Granted By', value: formatValue(getRequestGrantedBy(permission)) },
+            {
+              label: 'Action',
+              render: () => (
+                <>
+                  <ButtonEditUserPermission
+                    title={`Edit ${rowLabel}`}
+                    aria-label={`Edit permission ${rowLabel}`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onEdit?.(permission)
+                    }}
+                  />
+
+                  <ButtonDeleteUserPermission
+                    title={`Delete ${rowLabel}`}
+                    aria-label={`Delete permission ${rowLabel}`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onDelete?.(permission)
+                    }}
+                  />
+                </>
+              ),
+            },
+          ],
+        }
+      }),
+  }
 }
 
 function DataTableUserPermission({
@@ -279,8 +337,12 @@ function DataTableUserPermission({
     ? 'Memuat data request overtime...'
     : errorMessage || 'Belum ada request overtime untuk ditampilkan.'
 
-  const columns = useMemo(
-    () => createColumns({
+  const groupedRows = useMemo(() => groupPermissionsByUser(requestRows), [requestRows])
+
+  const columns = useMemo(() => createGroupColumns(), [])
+
+  const detail = useMemo(
+    () => createDetailConfig({
       onDelete: handleOpenDeleteDialog,
       onEdit: handleOpenEditDialog,
     }),
@@ -289,15 +351,16 @@ function DataTableUserPermission({
 
   return (
     <>
-      <div className="mtickets-table-shell req-overtime-table-shell">
+      <div className="mtickets-table-shell req-overtime-table-shell user-permission-table-shell overtime-pagination-bottom">
         <DataTable
           className="mtickets-table"
-          rows={requestRows}
+          rows={groupedRows}
           columns={columns}
-          getRowId={(request, index) => request.id ?? request.request_number ?? index}
+          getRowId={(group, index) => group.groupId ?? index}
           tableLabel={tableLabel}
           emptyMessage={emptyMessage}
           pagination={pagination}
+          detail={detail}
         />
       </div>
       <DialogEditUserPermission

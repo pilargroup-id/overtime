@@ -280,7 +280,7 @@ function DataTableCompensationType({
 
   return (
     <>
-      <div className="mtickets-table-shell req-overtime-table-shell">
+      <div className="mtickets-table-shell req-overtime-table-shell compensation-type-table-shell overtime-pagination-bottom">
         <DataTable
           className="mtickets-table"
           rows={requestRows}

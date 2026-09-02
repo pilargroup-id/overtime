@@ -1981,6 +1981,20 @@ select {
   height: auto;
 }
 
+.compensation-type-table-shell .users-table-wrapper,
+.user-permission-table-shell .users-table-wrapper,
+.approval-rules-table-shell .users-table-wrapper {
+  flex: 1 1 auto;
+  height: auto;
+  max-height: 100%;
+}
+
+.compensation-type-table-shell .users-table,
+.user-permission-table-shell .users-table,
+.approval-rules-table-shell .users-table {
+  height: auto;
+}
+
 .approval-overtime-bulk-toolbar {
   display: flex;
   align-items: center;

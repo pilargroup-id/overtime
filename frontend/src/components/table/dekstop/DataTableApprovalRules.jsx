@@ -283,7 +283,7 @@ function DataTableApprovalRules({
 
   return (
     <>
-      <div className="mtickets-table-shell req-overtime-table-shell">
+      <div className="mtickets-table-shell req-overtime-table-shell approval-rules-table-shell overtime-pagination-bottom">
         <DataTable
           className="mtickets-table"
           rows={requestRows}

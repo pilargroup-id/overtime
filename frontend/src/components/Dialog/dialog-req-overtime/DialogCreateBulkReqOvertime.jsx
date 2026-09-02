@@ -397,6 +397,7 @@ function DialogCreateBulkReqOvertime({
   const [formValues, setFormValues] = useState(initialFormValues)
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('')
   const [eligibleEmployees, setEligibleEmployees] = useState([])
+  const [employeeDirectory, setEmployeeDirectory] = useState({})
   const [compensationTypes, setCompensationTypes] = useState([])
   const [nationalHolidays, setNationalHolidays] = useState([])
   const [isLoadingEligibleEmployees, setIsLoadingEligibleEmployees] = useState(false)
@@ -420,6 +421,24 @@ function DialogCreateBulkReqOvertime({
     resetDialogState()
     onClose?.()
   }, [onClose, resetDialogState])
+
+  const mergeEmployeesIntoDirectory = useCallback((employees) => {
+    if (!employees.length) {
+      return
+    }
+
+    setEmployeeDirectory((currentDirectory) => {
+      const nextDirectory = { ...currentDirectory }
+
+      employees.forEach((employee) => {
+        if (employee?.id) {
+          nextDirectory[employee.id] = employee
+        }
+      })
+
+      return nextDirectory
+    })
+  }, [])
 
   useEffect(() => {
     if (!isOpen) {
@@ -445,34 +464,6 @@ function DialogCreateBulkReqOvertime({
     }
 
     let isMounted = true
-
-    const loadEligibleEmployees = async () => {
-      setIsLoadingEligibleEmployees(true)
-      setErrorMessage('')
-
-      try {
-        const response = await api.overtimeRequests.eligibleEmployees({
-          limit: 100,
-        })
-
-        if (!isMounted) {
-          return
-        }
-
-        setEligibleEmployees(normalizeEligibleEmployees(response))
-      } catch (error) {
-        if (!isMounted) {
-          return
-        }
-
-        setEligibleEmployees([])
-        setErrorMessage(error?.message || 'Gagal memuat eligible employees.')
-      } finally {
-        if (isMounted) {
-          setIsLoadingEligibleEmployees(false)
-        }
-      }
-    }
 
     const loadCompensationTypes = async () => {
       setIsLoadingCompensationTypes(true)
@@ -522,7 +513,6 @@ function DialogCreateBulkReqOvertime({
       }
     }
 
-    loadEligibleEmployees()
     loadCompensationTypes()
     loadNationalHolidays()
 
@@ -530,6 +520,54 @@ function DialogCreateBulkReqOvertime({
       isMounted = false
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined
+    }
+
+    let isMounted = true
+    const trimmedSearchQuery = employeeSearchQuery.trim()
+
+    const timeoutId = window.setTimeout(
+      async () => {
+        setIsLoadingEligibleEmployees(true)
+        setErrorMessage('')
+
+        try {
+          const response = await api.overtimeRequests.eligibleEmployees({
+            search: trimmedSearchQuery || undefined,
+            limit: 100,
+          })
+
+          if (!isMounted) {
+            return
+          }
+
+          const employees = normalizeEligibleEmployees(response)
+          setEligibleEmployees(employees)
+          mergeEmployeesIntoDirectory(employees)
+        } catch (error) {
+          if (!isMounted) {
+            return
+          }
+
+          setEligibleEmployees([])
+          setErrorMessage(error?.message || 'Gagal memuat eligible employees.')
+        } finally {
+          if (isMounted) {
+            setIsLoadingEligibleEmployees(false)
+          }
+        }
+      },
+      trimmedSearchQuery ? 300 : 0,
+    )
+
+    return () => {
+      isMounted = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [isOpen, employeeSearchQuery, mergeEmployeesIntoDirectory])
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
@@ -612,7 +650,7 @@ function DialogCreateBulkReqOvertime({
           setActiveTab('general')
         }
       } else if (!nextDescriptions[employeeId]) {
-        const employee = eligibleEmployees.find((eligibleEmployee) => eligibleEmployee.id === employeeId)
+        const employee = employeeDirectory[employeeId]
         const primaryDepartment = getPrimaryOrgItem(getEmployeeDepartments(employee))
         const primaryCompany = getPrimaryOrgItem(getEmployeeCompanies(employee))
 
@@ -666,9 +704,7 @@ function DialogCreateBulkReqOvertime({
       }
 
       if (name === 'department_id') {
-        const employee = eligibleEmployees.find(
-          (eligibleEmployee) => eligibleEmployee.id === employeeId,
-        )
+        const employee = employeeDirectory[employeeId]
         const matchedDepartment = getEmployeeDepartments(employee).find(
           (department) => String(department.id) === value,
         )
@@ -763,9 +799,7 @@ function DialogCreateBulkReqOvertime({
       if (failedItems.length > 0) {
         const failedMessage = failedItems
           .map((item) => {
-            const employee = eligibleEmployees.find(
-              (eligibleEmployee) => eligibleEmployee.id === item.employee_id,
-            )
+            const employee = employeeDirectory[item.employee_id]
             const employeeLabel = employee ? getEmployeeLabel(employee) : item.employee_id
 
             return `${employeeLabel}: ${item.message}`
@@ -801,26 +835,10 @@ function DialogCreateBulkReqOvertime({
     return null
   }
 
-  const selectedEmployees = eligibleEmployees.filter((employee) =>
-    formValues.employee_ids.includes(employee.id),
-  )
+  const selectedEmployees = formValues.employee_ids
+    .map((employeeId) => employeeDirectory[employeeId])
+    .filter(Boolean)
 
-  const normalizedEmployeeSearchQuery = employeeSearchQuery.trim().toLowerCase()
-  const filteredEmployees = eligibleEmployees.filter((employee) => {
-    if (!normalizedEmployeeSearchQuery) {
-      return true
-    }
-
-    return [
-      employee?.name,
-      employee?.username,
-      employee?.email,
-      employee?.internal_id,
-      employee?.id,
-    ].some((value) =>
-      String(value ?? '').toLowerCase().includes(normalizedEmployeeSearchQuery),
-    )
-  })
   const employeeDropdownLabel = isLoadingEligibleEmployees
     ? 'Loading eligible employees...'
     : selectedEmployees.length
@@ -848,7 +866,7 @@ function DialogCreateBulkReqOvertime({
     compensationMultiplier,
   )
 
-  const activeEmployee = eligibleEmployees.find((employee) => employee.id === activeTab)
+  const activeEmployee = employeeDirectory[activeTab]
   const activeEmployeeDepartmentOptions = activeEmployee
     ? getDepartmentOptions(getEmployeeDepartments(activeEmployee))
     : []
@@ -949,8 +967,12 @@ function DialogCreateBulkReqOvertime({
                             role="listbox"
                             aria-label="Employee"
                           >
-                            {filteredEmployees.length > 0 ? (
-                              filteredEmployees.map((employee) => {
+                            {isLoadingEligibleEmployees ? (
+                              <p className="overtime-create-popup__employee-empty">
+                                Mencari employee...
+                              </p>
+                            ) : eligibleEmployees.length > 0 ? (
+                              eligibleEmployees.map((employee) => {
                                 const employeeId = employee.id
                                 const isSelected = formValues.employee_ids.includes(employeeId)
 
