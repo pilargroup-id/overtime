@@ -156,33 +156,38 @@ function validateBulkPayload(payload = {}) {
 }
 
 function normalizeBulkItems(payload = {}) {
-  const useGeneralDescriptions = Boolean(payload.apply_general_to_all);
+  const useGeneralValues = Boolean(payload.equalize);
+
+  const buildItem = (employeeId, item = {}) => ({
+    employee_id: employeeId,
+    day_type: useGeneralValues ? payload.day_type : item.day_type ?? payload.day_type,
+    work_date: useGeneralValues ? payload.work_date : item.work_date ?? payload.work_date,
+    start_time: useGeneralValues ? payload.start_time : item.start_time ?? payload.start_time,
+    end_time: useGeneralValues ? payload.end_time : item.end_time ?? payload.end_time,
+    compensation_type_id: useGeneralValues
+      ? payload.compensation_type_id
+      : item.compensation_type_id ?? payload.compensation_type_id,
+    task_description: useGeneralValues
+      ? payload.task_description
+      : item.task_description ?? payload.task_description,
+    result_description: useGeneralValues
+      ? payload.result_description
+      : item.result_description ?? payload.result_description,
+  });
 
   if (Array.isArray(payload.items) && payload.items.length > 0) {
     const itemsByEmployeeId = new Map();
 
     payload.items.forEach((item) => {
       if (!itemsByEmployeeId.has(item.employee_id)) {
-        itemsByEmployeeId.set(item.employee_id, {
-          employee_id: item.employee_id,
-          task_description: useGeneralDescriptions
-            ? payload.task_description
-            : item.task_description,
-          result_description: useGeneralDescriptions
-            ? payload.result_description
-            : item.result_description,
-        });
+        itemsByEmployeeId.set(item.employee_id, buildItem(item.employee_id, item));
       }
     });
 
     return [...itemsByEmployeeId.values()];
   }
 
-  return [...new Set(payload.employee_ids)].map((employeeId) => ({
-    employee_id: employeeId,
-    task_description: payload.task_description,
-    result_description: payload.result_description,
-  }));
+  return [...new Set(payload.employee_ids)].map((employeeId) => buildItem(employeeId));
 }
 
 function validatePayload(payload) {

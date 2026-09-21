@@ -11,6 +11,8 @@ function TabsUserCreateBulkRO({
   onRemove,
   getEmployeeLabel,
   disabled = false,
+  employeeTabsDisabled = false,
+  generalTabDisabled = false,
 }) {
   return (
     <Box className="overtime-create-popup__tabs">
@@ -40,7 +42,7 @@ function TabsUserCreateBulkRO({
           },
         }}
       >
-        <Tab label="General" value="general" />
+        <Tab label="General" value="general" disabled={generalTabDisabled} />
         {selectedEmployees.map((employee) => {
           const employeeLabel = getEmployeeLabel(employee)
 
@@ -48,6 +50,7 @@ function TabsUserCreateBulkRO({
             <Tab
               key={employee.id}
               value={employee.id}
+              disabled={employeeTabsDisabled}
               label={
                 <span className="overtime-create-popup__tab-label">
                   <span className="overtime-create-popup__tab-text">

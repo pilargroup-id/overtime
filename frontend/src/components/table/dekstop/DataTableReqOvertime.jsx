@@ -262,14 +262,6 @@ function getStatusVariant(status) {
   return 'app'
 }
 
-function isCanceledStatus(status) {
-  return String(status ?? '').toUpperCase() === 'CANCELED'
-}
-
-function isApprovedStatus(status) {
-  return String(status ?? '').toUpperCase() === 'APPROVED'
-}
-
 function isEditableStatus(status) {
   return String(status ?? '').toUpperCase() === 'SUBMITTED'
 }
@@ -605,8 +597,7 @@ function DataTableReqOvertime({
                 label: 'Cancel request',
                 variant: 'danger',
                 buttonComponent: ButtonCancelReqOvertime,
-                hidden: (request) =>
-                  isCanceledStatus(request.status) || isApprovedStatus(request.status),
+                hidden: (request) => !isEditableStatus(request.status),
                 disabled: (request) => String(cancelingRequestId) === String(request.id),
                 onClick: handleCancelRequest,
               },

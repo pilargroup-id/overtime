@@ -5448,6 +5448,14 @@ select {
   margin-bottom: 1rem;
 }
 
+.overtime-create-popup__employee-schedule-fields {
+  margin-bottom: 1rem;
+}
+
+.overtime-create-popup__equalize-row {
+  margin-bottom: -0.25rem;
+}
+
 @media (max-width: 640px) {
   .overtime-create-popup__employee-org-fields {
     grid-template-columns: 1fr;
