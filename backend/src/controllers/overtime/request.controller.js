@@ -69,6 +69,28 @@ async function store(req, res, next) {
   }
 }
 
+async function update(req, res, next) {
+  try {
+    const result = await RequestService.update(req.params.id, req.body, req.user);
+
+    if (!result) {
+      return R.notFound(res, 'Overtime request not found');
+    }
+
+    return R.ok(res, result, 'Overtime request updated successfully');
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return R.badRequest(res, err.message, err.errors || null);
+    }
+
+    if (err.statusCode === 403) {
+      return R.forbidden(res, err.message);
+    }
+
+    return next(err);
+  }
+}
+
 async function bulkStore(req, res, next) {
   try {
     const result = await RequestService.bulkCreate(req.body, req.user);
@@ -118,6 +140,7 @@ module.exports = {
   show,
   eligibleEmployees,
   store,
+  update,
   bulkStore,
   cancel,
 };

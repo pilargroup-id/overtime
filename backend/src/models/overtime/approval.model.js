@@ -33,6 +33,20 @@ async function create(data, conn = null) {
   return result.insertId;
 }
 
+async function hasProcessedByRequestId(requestId, conn = null) {
+  const executor = getExecutor(conn);
+
+  const [rows] = await executor.query(
+    `SELECT id, status
+     FROM request_approvals
+     WHERE request_id = ?
+     FOR UPDATE`,
+    [requestId]
+  );
+
+  return rows.some((row) => row.status !== 'PENDING');
+}
+
 async function cancelPendingByRequestId(requestId, conn = null) {
   const executor = getExecutor(conn);
 
@@ -44,21 +58,6 @@ async function cancelPendingByRequestId(requestId, conn = null) {
      WHERE request_id = ?
        AND status = 'PENDING'`,
     [requestId]
-  );
-}
-
-async function cancelOtherPendingByRequestId(requestId, actedApprovalId, conn = null) {
-  const executor = getExecutor(conn);
-
-  await executor.query(
-    `UPDATE request_approvals
-     SET status = 'CANCELED',
-         note = 'Auto-canceled: request already decided by another approver',
-         acted_at = CURRENT_TIMESTAMP
-     WHERE request_id = ?
-       AND id != ?
-       AND status = 'PENDING'`,
-    [requestId, actedApprovalId]
   );
 }
 
@@ -373,7 +372,7 @@ async function findByRequestAndLevel(requestId, approvalLevel, conn = null) {
 async function approve(id, note = null, conn = null) {
   const executor = getExecutor(conn);
 
-  const [result] = await executor.query(
+  await executor.query(
     `UPDATE request_approvals
      SET
        status = 'APPROVED',
@@ -383,14 +382,12 @@ async function approve(id, note = null, conn = null) {
        AND status = 'PENDING'`,
     [note, id]
   );
-
-  return result.affectedRows > 0;
 }
 
 async function reject(id, note = null, conn = null) {
   const executor = getExecutor(conn);
 
-  const [result] = await executor.query(
+  await executor.query(
     `UPDATE request_approvals
      SET
        status = 'REJECTED',
@@ -400,14 +397,12 @@ async function reject(id, note = null, conn = null) {
        AND status = 'PENDING'`,
     [note, id]
   );
-
-  return result.affectedRows > 0;
 }
 
 module.exports = {
   create,
+  hasProcessedByRequestId,
   cancelPendingByRequestId,
-  cancelOtherPendingByRequestId,
   findAllForApprover,
   countAllForApprover,
   findById,

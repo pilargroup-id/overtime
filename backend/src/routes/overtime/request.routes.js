@@ -40,6 +40,13 @@ router.get(
 );
 
 router.put(
+  '/:id',
+  authenticate,
+  requireApp('overtime'),
+  RequestController.update
+);
+
+router.put(
   '/:id/cancel',
   authenticate,
   requireApp('overtime'),

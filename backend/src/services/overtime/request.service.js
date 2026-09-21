@@ -224,6 +224,46 @@ function validatePayload(payload) {
   }
 }
 
+function validateUpdatePayload(payload) {
+  const errors = {};
+  const allowedUpdateDayTypes = [...ALLOWED_DAY_TYPES, 'NATIONAL_HOLIDAY'];
+
+  if (payload.day_type === undefined || !allowedUpdateDayTypes.includes(payload.day_type)) {
+    errors.day_type = 'day_type must be WORKDAY, HOLIDAY, WEEKEND, or NATIONAL_HOLIDAY';
+  }
+
+  if (!payload.work_date || !isValidDateString(payload.work_date)) {
+    errors.work_date = 'work_date is required and must use YYYY-MM-DD format';
+  }
+
+  const startTime = normalizeTime(payload.start_time);
+  const endTime = normalizeTime(payload.end_time);
+
+  if (!startTime || !isValidTimeString(startTime)) {
+    errors.start_time = 'start_time is required and must use HH:mm or HH:mm:ss format';
+  }
+
+  if (!endTime || !isValidTimeString(endTime)) {
+    errors.end_time = 'end_time is required and must use HH:mm or HH:mm:ss format';
+  }
+
+  if (!payload.task_description || String(payload.task_description).trim() === '') {
+    errors.task_description = 'task_description is required';
+  }
+
+  if (!payload.result_description || String(payload.result_description).trim() === '') {
+    errors.result_description = 'result_description is required';
+  }
+
+  if (!payload.compensation_type_id) {
+    errors.compensation_type_id = 'compensation_type_id is required';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw createValidationError(errors);
+  }
+}
+
 function validateBackdate(workDate) {
   const today = new Date();
   const minDate = subtractMonths(today, MAX_BACKDATE_MONTHS);
@@ -428,7 +468,6 @@ async function list(query, authUser) {
     day_type: query.day_type || null,
     status: query.status || null,
     submitted_by: query.submitted_by || null,
-    request_scope: query.request_scope || null,
     talenta_status: query.talenta_status || null,
     work_date_from: query.work_date_from || null,
     work_date_to: query.work_date_to || null,
@@ -638,6 +677,143 @@ async function create(payload, authUser) {
   }
 }
 
+async function update(id, payload, authUser) {
+  validateUpdatePayload(payload);
+
+  const workDate = normalizeDate(payload.work_date);
+  validateBackdate(workDate);
+
+  const endDate = resolveEndDate(payload);
+
+  if (!isValidDateString(endDate)) {
+    throw createValidationError({ end_date: 'end_date must use YYYY-MM-DD format' });
+  }
+
+  const totalMinutes = calculateTotalMinutes(
+    workDate,
+    normalizeTime(payload.start_time),
+    endDate,
+    normalizeTime(payload.end_time)
+  );
+
+  if (!totalMinutes) {
+    throw createValidationError({
+      time_range: 'End datetime must be greater than start datetime',
+    });
+  }
+
+  const compensationType = await CompensationTypeModel.findById(
+    payload.compensation_type_id
+  );
+
+  if (!compensationType || Number(compensationType.is_active) !== 1) {
+    throw createValidationError({
+      compensation_type_id: 'Active compensation type not found',
+    });
+  }
+
+  const nationalHoliday = await NationalHolidayModel.findActiveByDate(workDate);
+
+  if (!nationalHoliday && payload.day_type === 'NATIONAL_HOLIDAY') {
+    throw createValidationError({
+      day_type: 'NATIONAL_HOLIDAY can only be used when work_date is an active national holiday',
+    });
+  }
+
+  const resolvedDayType = nationalHoliday ? 'NATIONAL_HOLIDAY' : payload.day_type;
+  const multiplier = nationalHoliday ? Number(nationalHoliday.multiplier) : 1;
+  const compensationSnapshot = calculateCompensationSnapshot(
+    compensationType,
+    multiplier
+  );
+
+  const updateData = {
+    day_type: resolvedDayType,
+    work_date: workDate,
+    start_time: normalizeTime(payload.start_time),
+    end_date: endDate,
+    end_time: normalizeTime(payload.end_time),
+    total_minutes: totalMinutes,
+    task_description: String(payload.task_description).trim(),
+    result_description: String(payload.result_description).trim(),
+    compensation_type_id: payload.compensation_type_id,
+    ...compensationSnapshot,
+  };
+
+  const conn = await db.getConnection();
+
+  try {
+    await conn.beginTransaction();
+
+    // Lock approval rows first to follow the same lock order used when an approver acts.
+    const hasProcessedApproval = await ApprovalModel.hasProcessedByRequestId(id, conn);
+    const request = await RequestModel.findByIdForUpdate(id, conn);
+
+    if (!request) {
+      await conn.rollback();
+      return null;
+    }
+
+    const isOwner =
+      request.submitted_by === authUser.id ||
+      request.employee_id === authUser.id;
+
+    if (!isOwner) {
+      throw createForbiddenError('You are not allowed to edit this overtime request');
+    }
+
+    if (request.status !== 'SUBMITTED') {
+      throw createValidationError({
+        status: 'Only SUBMITTED request can be edited',
+      });
+    }
+
+    if (hasProcessedApproval) {
+      throw createValidationError({
+        approval: 'Request cannot be edited after an approval has been processed',
+      });
+    }
+
+    const workYear = Number(workDate.slice(0, 4));
+
+    if (workYear !== Number(request.sequence_year)) {
+      throw createValidationError({
+        work_date: 'work_date cannot be moved to a different year; cancel and create a new request instead',
+      });
+    }
+
+    const updated = await RequestModel.updateSubmitted(id, updateData, conn);
+
+    if (!updated) {
+      throw createValidationError({
+        status: 'Overtime request is no longer editable',
+      });
+    }
+
+    await LogModel.create(
+      {
+        request_id: id,
+        actor_id: authUser.id,
+        actor_name_snapshot: authUser.name,
+        action: 'UPDATED',
+        from_status: request.status,
+        to_status: request.status,
+        note: 'Submitted overtime request details updated',
+      },
+      conn
+    );
+
+    await conn.commit();
+
+    return RequestModel.findById(id);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 async function bulkCreate(payload = {}, authUser) {
   validateBulkPayload(payload);
 
@@ -744,6 +920,7 @@ module.exports = {
   getById,
   getEligibleEmployees,
   create,
+  update,
   bulkCreate,
   cancel,
 };

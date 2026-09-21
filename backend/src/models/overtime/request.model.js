@@ -57,16 +57,6 @@ function buildWhere(filters = {}, authUser = null) {
     params.push(filters.submitted_by);
   }
 
-  if (filters.request_scope === 'mine' && authUser?.id) {
-    where.push('employee_id = ?');
-    params.push(authUser.id);
-  }
-
-  if (filters.request_scope === 'others' && authUser?.id) {
-    where.push('employee_id != ?');
-    params.push(authUser.id);
-  }
-
   if (filters.talenta_status) {
     where.push('talenta_status = ?');
     params.push(filters.talenta_status);
@@ -182,6 +172,21 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+async function findByIdForUpdate(id, conn = null) {
+  const executor = getExecutor(conn);
+
+  const [rows] = await executor.query(
+    `SELECT *
+     FROM requests
+     WHERE id = ?
+     LIMIT 1
+     FOR UPDATE`,
+    [id]
+  );
+
+  return rows[0] || null;
+}
+
 async function create(data, conn = null) {
   const executor = getExecutor(conn);
 
@@ -273,6 +278,50 @@ async function create(data, conn = null) {
   return result.insertId;
 }
 
+async function updateSubmitted(id, data, conn = null) {
+  const executor = getExecutor(conn);
+
+  const [result] = await executor.query(
+    `UPDATE requests
+     SET
+       day_type = ?,
+       work_date = ?,
+       start_time = ?,
+       end_date = ?,
+       end_time = ?,
+       total_minutes = ?,
+       task_description = ?,
+       result_description = ?,
+       compensation_type_id = ?,
+       compensation_multiplier = ?,
+       compensation_amount_snapshot = ?,
+       compensation_leave_days_snapshot = ?,
+       final_compensation_amount = ?,
+       final_compensation_leave_days = ?
+     WHERE id = ?
+       AND status = 'SUBMITTED'`,
+    [
+      data.day_type,
+      data.work_date,
+      data.start_time,
+      data.end_date,
+      data.end_time,
+      data.total_minutes,
+      data.task_description,
+      data.result_description,
+      data.compensation_type_id,
+      data.compensation_multiplier,
+      data.compensation_amount_snapshot,
+      data.compensation_leave_days_snapshot,
+      data.final_compensation_amount,
+      data.final_compensation_leave_days,
+      id,
+    ]
+  );
+
+  return result.affectedRows > 0;
+}
+
 async function cancel(id, actorId, conn = null) {
   const executor = getExecutor(conn);
 
@@ -336,7 +385,9 @@ module.exports = {
   findAll,
   countAll,
   findById,
+  findByIdForUpdate,
   create,
+  updateSubmitted,
   cancel,
   updateCurrentApprover,
   markApproved,
