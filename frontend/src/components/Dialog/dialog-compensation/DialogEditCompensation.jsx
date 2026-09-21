@@ -5,7 +5,6 @@ import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
 
 const initialFormValues = {
-  code: '',
   name: '',
   compensation_kind: 'MONEY',
   amount: '',
@@ -30,13 +29,20 @@ function getCompensationTypeId(compensationType) {
   return compensationType?.id ?? compensationType?.compensation_type_id ?? null
 }
 
+function generateCodeFromName(name) {
+  return name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
 function createFormValuesFromCompensationType(compensationType) {
   if (!compensationType) {
     return initialFormValues
   }
 
   return {
-    code: String(compensationType.code ?? ''),
     name: String(compensationType.name ?? ''),
     compensation_kind: compensationType.compensation_kind ?? 'MONEY',
     amount:
@@ -117,7 +123,7 @@ function DialogEditCompensation({
     const description = formValues.description.trim()
 
     return {
-      code: formValues.code.trim(),
+      code: generateCodeFromName(formValues.name),
       name: formValues.name.trim(),
       compensation_kind: formValues.compensation_kind,
       amount,
@@ -128,12 +134,12 @@ function DialogEditCompensation({
   }
 
   const validatePayload = (payload) => {
-    if (!payload.code) {
-      return 'Code wajib diisi.'
-    }
-
     if (!payload.name) {
       return 'Name wajib diisi.'
+    }
+
+    if (!payload.code) {
+      return 'Name harus mengandung minimal satu huruf atau angka.'
     }
 
     if (!COMPENSATION_KIND_OPTIONS.includes(payload.compensation_kind)) {
@@ -238,25 +244,6 @@ function DialogEditCompensation({
             <div className="register-user-popup__main">
               <div className="register-user-popup__form">
                 <div className="register-user-popup__grid">
-                  <div className="register-user-popup__field overtime-create-popup__field--half">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="edit-compensation-code"
-                    >
-                      Code
-                    </label>
-                    <input
-                      id="edit-compensation-code"
-                      name="code"
-                      type="text"
-                      className="register-user-popup__input"
-                      value={formValues.code}
-                      onChange={handleInputChange}
-                      placeholder="MONEY_100K"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
                   <div className="register-user-popup__field overtime-create-popup__field--half">
                     <label
                       className="register-user-popup__label"

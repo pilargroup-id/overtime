@@ -287,6 +287,7 @@ const api = {
   overtimeRequests: {
     ...createReadOnlyResource('/overtime/requests'),
     create: (data, options) => api.post('/overtime/requests', data, options),
+    update: (id, data, options) => api.put(`/overtime/requests/${id}`, data, options),
     bulkCreate: (data, options) =>
       api.post('/overtime/requests/bulk', data, options),
     eligibleEmployees: (params, options) =>

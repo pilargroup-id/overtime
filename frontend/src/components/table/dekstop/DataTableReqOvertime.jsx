@@ -6,7 +6,9 @@ import DataTable, {
   DataTableStatus,
 } from '../DataTable.jsx'
 import DialogValidationCancelRO from '../../Dialog/dialog-req-overtime/DialogValidationCancelRO.jsx'
+import DialogEditReqOvertime from '../../Dialog/dialog-req-overtime/DialogEditReqOvertime.jsx'
 import ButtonCancelReqOvertime from '../../button/button-req-overtime/ButtonCancelReqOvertime.jsx'
+import ButtonEditReqOvertime from '../../button/button-req-overtime/ButtonEditReqOvertime.jsx'
 
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
@@ -268,6 +270,10 @@ function isApprovedStatus(status) {
   return String(status ?? '').toUpperCase() === 'APPROVED'
 }
 
+function isEditableStatus(status) {
+  return String(status ?? '').toUpperCase() === 'SUBMITTED'
+}
+
 function getPaginationSummary(firstItem, lastItem, totalItems) {
   if (totalItems === 0) {
     return '0 dari 0 request'
@@ -379,6 +385,7 @@ function DataTableReqOvertime({
   const [cancelingRequestId, setCancelingRequestId] = useState(null)
   const [cancelRequest, setCancelRequest] = useState(null)
   const [cancelErrorMessage, setCancelErrorMessage] = useState('')
+  const [editRequest, setEditRequest] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [compensationTypeMap, setCompensationTypeMap] = useState(() => new Map())
@@ -478,6 +485,19 @@ function DataTableReqOvertime({
     setCancelErrorMessage('')
   }
 
+  const handleEditRequest = (request) => {
+    setEditRequest(request)
+  }
+
+  const handleCloseEditDialog = () => {
+    setEditRequest(null)
+  }
+
+  const handleRequestEdited = () => {
+    setEditRequest(null)
+    setReloadKey((key) => key + 1)
+  }
+
   const handleCloseCancelDialog = () => {
     if (cancelingRequestId) {
       return
@@ -574,6 +594,13 @@ function DataTableReqOvertime({
             title: (request) => formatValue(request.request_number),
             actions: [
               {
+                key: 'edit',
+                label: 'Edit request',
+                buttonComponent: ButtonEditReqOvertime,
+                hidden: (request) => !isEditableStatus(request.status),
+                onClick: handleEditRequest,
+              },
+              {
                 key: 'cancel',
                 label: 'Cancel request',
                 variant: 'danger',
@@ -606,6 +633,13 @@ function DataTableReqOvertime({
         errorMessage={cancelErrorMessage}
         onClose={handleCloseCancelDialog}
         onConfirm={handleConfirmCancelRequest}
+      />
+
+      <DialogEditReqOvertime
+        isOpen={Boolean(editRequest)}
+        request={editRequest}
+        onClose={handleCloseEditDialog}
+        onEdited={handleRequestEdited}
       />
     </>
   )

@@ -3,77 +3,292 @@ import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
+import Time24HourInput from './Time24HourInput.jsx'
 
 const initialFormValues = {
-  code: '',
-  name: '',
-  is_active: '1',
+  day_type: 'WORKDAY',
+  work_date: '',
+  start_time: '',
+  end_time: '',
+  task_description: '',
+  result_description: '',
+  compensation_type_id: '',
 }
 
-const brandFields = [
+const dayTypeOptions = ['WORKDAY', 'HOLIDAY', 'WEEKEND']
+
+const reqOvertimeTextFields = [
   {
-    name: 'code',
-    label: 'Code',
-    placeholder: 'e.g., GOTO',
+    name: 'start_time',
+    label: 'Start Time',
+    type: 'time',
+    className: 'overtime-create-popup__field--third',
   },
   {
-    name: 'name',
-    label: 'Name',
-    placeholder: 'e.g., GOTO',
+    name: 'end_time',
+    label: 'End Time',
+    type: 'time',
+    className: 'overtime-create-popup__field--third',
+  },
+  {
+    name: 'duration',
+    label: 'Duration',
+    type: 'text',
+    className: 'overtime-create-popup__field--third',
   },
 ]
 
-function getBrandId(brand) {
-  return brand?.id ?? brand?.brand_id ?? null
+const reqOvertimeTextareaFields = [
+  {
+    name: 'task_description',
+    label: 'Task Description',
+    placeholder: 'Task Description..',
+  },
+  {
+    name: 'result_description',
+    label: 'Result Description',
+    placeholder: 'Result Description..',
+  },
+]
+
+function normalizeCompensationTypes(responseData) {
+  if (Array.isArray(responseData)) {
+    return responseData
+  }
+
+  if (Array.isArray(responseData?.data)) {
+    return responseData.data
+  }
+
+  if (Array.isArray(responseData?.rows)) {
+    return responseData.rows
+  }
+
+  if (Array.isArray(responseData?.results)) {
+    return responseData.results
+  }
+
+  return []
 }
 
-function getBrandStatusValue(brand) {
-  if (brand?.is_active !== undefined && brand?.is_active !== null) {
-    return Number(brand.is_active) === 1 ? '1' : '0'
+function normalizeNationalHolidays(responseData) {
+  if (Array.isArray(responseData)) {
+    return responseData
   }
 
-  const normalizedStatus = String(brand?.status ?? '').toLowerCase()
-
-  if (normalizedStatus === 'active') {
-    return '1'
+  if (Array.isArray(responseData?.data)) {
+    return responseData.data
   }
 
-  if (normalizedStatus === 'inactive') {
-    return '0'
+  if (Array.isArray(responseData?.rows)) {
+    return responseData.rows
   }
 
-  return '1'
+  if (Array.isArray(responseData?.results)) {
+    return responseData.results
+  }
+
+  return []
 }
 
-function createFormValuesFromBrand(brand) {
-  if (!brand) {
+function isActiveNationalHoliday(nationalHoliday) {
+  return Number(nationalHoliday?.is_active ?? 0) === 1
+}
+
+function getNationalHolidayMultiplier(nationalHoliday) {
+  const multiplier = Number(nationalHoliday?.multiplier)
+
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+}
+
+function formatNumber(value) {
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue)) {
+    return null
+  }
+
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 2,
+  }).format(numberValue)
+}
+
+function formatDateKey(year, month, day) {
+  return [
+    year,
+    String(month).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-')
+}
+
+function normalizeDateKey(dateValue) {
+  const rawValue = String(dateValue ?? '').trim()
+
+  if (!rawValue) {
+    return ''
+  }
+
+  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (dateOnlyMatch) {
+    return `${dateOnlyMatch[1]}-${dateOnlyMatch[2]}-${dateOnlyMatch[3]}`
+  }
+
+  const dateTimeMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/)
+
+  if (dateTimeMatch) {
+    const parsedDate = new Date(rawValue)
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return formatDateKey(
+        parsedDate.getFullYear(),
+        parsedDate.getMonth() + 1,
+        parsedDate.getDate(),
+      )
+    }
+
+    return `${dateTimeMatch[1]}-${dateTimeMatch[2]}-${dateTimeMatch[3]}`
+  }
+
+  const slashDateMatch = rawValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+
+  if (slashDateMatch) {
+    return formatDateKey(slashDateMatch[3], slashDateMatch[1], slashDateMatch[2])
+  }
+
+  return rawValue
+}
+
+function getTimeInMinutes(timeValue) {
+  const [hours, minutes] = String(timeValue).split(':').map(Number)
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null
+  }
+
+  return hours * 60 + minutes
+}
+
+function formatDuration(startTime, endTime) {
+  const startMinutes = getTimeInMinutes(startTime)
+  const endMinutes = getTimeInMinutes(endTime)
+
+  if (startMinutes === null || endMinutes === null) {
+    return ''
+  }
+
+  const durationMinutes =
+    endMinutes >= startMinutes
+      ? endMinutes - startMinutes
+      : endMinutes + 24 * 60 - startMinutes
+  const hours = Math.floor(durationMinutes / 60)
+  const minutes = durationMinutes % 60
+
+  if (hours <= 0) {
+    return `${minutes} menit`
+  }
+
+  if (minutes <= 0) {
+    return `${hours} jam`
+  }
+
+  return `${hours} jam ${minutes} menit`
+}
+
+function formatCompensationOption(compensationType, multiplier) {
+  const name = compensationType.name ?? compensationType.code
+  const amount = Number(compensationType.amount)
+  const leaveDays = Number(compensationType.leave_days)
+  const details = []
+  const multiplierLabel =
+    Number.isFinite(multiplier) && multiplier > 1
+      ? `${formatNumber(multiplier)}x`
+      : null
+
+  if (Number.isFinite(amount) && amount > 0) {
+    details.push(`Rp${formatNumber(amount * multiplier)}`)
+  }
+
+  if (Number.isFinite(leaveDays) && leaveDays > 0) {
+    details.push(`${formatNumber(leaveDays * multiplier)} hari`)
+  }
+
+  if (multiplierLabel) {
+    details.unshift(`Dikali ${multiplierLabel}`)
+  }
+
+  return details.length ? `${name} (${details.join(' / ')})` : name
+}
+
+function formatCompensationAmount(compensationType, multiplier) {
+  if (!compensationType) {
+    return ''
+  }
+
+  const amount = Number(compensationType.amount)
+  const leaveDays = Number(compensationType.leave_days)
+
+  if (Number.isFinite(amount) && amount > 0) {
+    return `Rp${formatNumber(amount * multiplier)}`
+  }
+
+  if (Number.isFinite(leaveDays) && leaveDays > 0) {
+    return `${formatNumber(leaveDays * multiplier)} hari`
+  }
+
+  return ''
+}
+
+function getRequestId(request) {
+  return request?.id ?? null
+}
+
+function createFormValuesFromRequest(request) {
+  if (!request) {
     return initialFormValues
   }
 
   return {
-    code: brand.code ?? brand.brand_code ?? '',
-    name: brand.name ?? brand.brand_name ?? '',
-    is_active: getBrandStatusValue(brand),
+    day_type: request.day_type ?? 'WORKDAY',
+    work_date: normalizeDateKey(request.work_date),
+    start_time: String(request.start_time ?? '').slice(0, 5),
+    end_time: String(request.end_time ?? '').slice(0, 5),
+    task_description: request.task_description ?? '',
+    result_description: request.result_description ?? '',
+    compensation_type_id:
+      request.compensation_type_id !== undefined && request.compensation_type_id !== null
+        ? String(request.compensation_type_id)
+        : '',
   }
 }
 
-function DialogEditBrand({
+function DialogEditReqOvertime({
   isOpen = false,
-  eyebrow = 'Edit Brand',
-  title = 'Edit Brand',
-  brand = null,
+  eyebrow = 'Edit Req Overtime',
+  title = 'Edit Req Overtime',
+  request = null,
   onClose,
   onEdited,
 }) {
-  const [formValues, setFormValues] = useState(() => createFormValuesFromBrand(brand))
+  const [formValues, setFormValues] = useState(() => createFormValuesFromRequest(request))
+  const [compensationTypes, setCompensationTypes] = useState([])
+  const [nationalHolidays, setNationalHolidays] = useState([])
+  const [isLoadingCompensationTypes, setIsLoadingCompensationTypes] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
   const resetDialogState = useCallback(() => {
-    setFormValues(createFormValuesFromBrand(brand))
+    setFormValues(createFormValuesFromRequest(request))
     setIsSubmitting(false)
     setErrorMessage('')
-  }, [brand])
+  }, [request])
 
   const handleClose = useCallback(() => {
     resetDialogState()
@@ -81,8 +296,8 @@ function DialogEditBrand({
   }, [onClose, resetDialogState])
 
   useEffect(() => {
-    setFormValues(createFormValuesFromBrand(brand))
-  }, [brand])
+    setFormValues(createFormValuesFromRequest(request))
+  }, [request])
 
   useEffect(() => {
     if (!isOpen) {
@@ -102,6 +317,81 @@ function DialogEditBrand({
     }
   }, [handleClose, isOpen, isSubmitting])
 
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined
+    }
+
+    let isMounted = true
+
+    const loadCompensationTypes = async () => {
+      setIsLoadingCompensationTypes(true)
+
+      try {
+        const response = await api.compensationTypes.list({
+          is_active: 1,
+          limit: 100,
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setCompensationTypes(normalizeCompensationTypes(response))
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setCompensationTypes([])
+        setErrorMessage(error?.message || 'Gagal memuat compensation types.')
+      } finally {
+        if (isMounted) {
+          setIsLoadingCompensationTypes(false)
+        }
+      }
+    }
+
+    loadCompensationTypes()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined
+    }
+
+    let isMounted = true
+
+    const loadNationalHolidays = async () => {
+      try {
+        const response = await api.nationalHolidays.list({
+          is_active: 1,
+          limit: 500,
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setNationalHolidays(normalizeNationalHolidays(response))
+      } catch {
+        if (isMounted) {
+          setNationalHolidays([])
+        }
+      }
+    }
+
+    loadNationalHolidays()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen])
+
   const handleInputChange = (event) => {
     const { name, value } = event.target
 
@@ -112,25 +402,37 @@ function DialogEditBrand({
   }
 
   const buildPayload = () => ({
-    code: formValues.code.trim(),
-    name: formValues.name.trim(),
-    is_active: Number(formValues.is_active),
+    day_type: formValues.day_type,
+    work_date: formValues.work_date,
+    start_time: formValues.start_time,
+    end_time: formValues.end_time,
+    task_description: formValues.task_description.trim(),
+    result_description: formValues.result_description.trim(),
+    compensation_type_id: Number(formValues.compensation_type_id),
   })
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    const payload = buildPayload()
+    const requestId = getRequestId(request)
 
-    if (!payload.code || !payload.name) {
-      setErrorMessage('Lengkapi code dan name brand terlebih dahulu.')
+    if (!requestId) {
+      setErrorMessage('ID request overtime tidak ditemukan.')
       return
     }
 
-    const brandId = getBrandId(brand)
+    const payload = buildPayload()
 
-    if (!brandId) {
-      setErrorMessage('ID brand tidak ditemukan.')
+    if (
+      !payload.day_type ||
+      !payload.work_date ||
+      !payload.start_time ||
+      !payload.end_time ||
+      !payload.task_description ||
+      !payload.result_description ||
+      !payload.compensation_type_id
+    ) {
+      setErrorMessage('Lengkapi seluruh data request overtime terlebih dahulu.')
       return
     }
 
@@ -138,12 +440,12 @@ function DialogEditBrand({
     setErrorMessage('')
 
     try {
-      const editedBrand = await api.brands.update(brandId, payload)
+      const editedRequest = await api.overtimeRequests.update(requestId, payload)
 
-      onEdited?.(editedBrand, payload)
+      onEdited?.(editedRequest, payload)
       handleClose()
     } catch (error) {
-      setErrorMessage(error?.message || 'Gagal mengubah brand.')
+      setErrorMessage(error?.message || 'Gagal mengubah request overtime.')
     } finally {
       setIsSubmitting(false)
     }
@@ -157,6 +459,29 @@ function DialogEditBrand({
     return null
   }
 
+  const workDateKey = normalizeDateKey(formValues.work_date)
+  const selectedNationalHoliday = nationalHolidays.find(
+    (holiday) =>
+      isActiveNationalHoliday(holiday) &&
+      workDateKey === normalizeDateKey(holiday?.holiday_date),
+  )
+  const isSelectedNationalHoliday = Boolean(selectedNationalHoliday)
+  const compensationMultiplier = isSelectedNationalHoliday
+    ? getNationalHolidayMultiplier(selectedNationalHoliday)
+    : 1
+  const selectedCompensationType = compensationTypes.find(
+    (compensationType) =>
+      String(compensationType.id) === String(formValues.compensation_type_id),
+  )
+  const compensationAmountLabel = formatCompensationAmount(
+    selectedCompensationType,
+    compensationMultiplier,
+  )
+  const durationLabel = formatDuration(formValues.start_time, formValues.end_time)
+  const dayTypeSelectOptions = dayTypeOptions.includes(formValues.day_type)
+    ? dayTypeOptions
+    : [...dayTypeOptions, formValues.day_type].filter(Boolean)
+
   const dialogNode = (
     <div
       className="dashboard-popup-overlay"
@@ -164,17 +489,17 @@ function DialogEditBrand({
       onClick={isSubmitting ? undefined : handleClose}
     >
       <form
-        className="dashboard-popup register-user-popup mtickets-create-popup parent-create-popup"
+        className="dashboard-popup register-user-popup mtickets-create-popup parent-create-popup overtime-create-popup"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-edit-brand-title"
+        aria-labelledby="dialog-edit-req-overtime-title"
         onClick={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
       >
         <div className="dashboard-popup__header">
           <div>
             <p className="dashboard-popup__eyebrow">{eyebrow}</p>
-            <h2 className="dashboard-popup__title" id="dialog-edit-brand-title">
+            <h2 className="dashboard-popup__title" id="dialog-edit-req-overtime-title">
               {title}
             </h2>
           </div>
@@ -195,18 +520,161 @@ function DialogEditBrand({
             <div className="register-user-popup__main">
               <div className="register-user-popup__form">
                 <div className="register-user-popup__grid">
-                  {brandFields.map((field) => (
-                    <div key={field.name} className="register-user-popup__field">
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-day-type"
+                    >
+                      Day Type
+                    </label>
+                    <select
+                      id="edit-req-overtime-day-type"
+                      name="day_type"
+                      className="register-user-popup__select"
+                      value={formValues.day_type}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting}
+                    >
+                      {dayTypeSelectOptions.map((dayType) => (
+                        <option key={dayType} value={dayType}>
+                          {dayType}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-work-date"
+                    >
+                      Work Date
+                    </label>
+                    <input
+                      id="edit-req-overtime-work-date"
+                      name="work_date"
+                      type="date"
+                      className="register-user-popup__input"
+                      value={formValues.work_date}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  {reqOvertimeTextFields.map((field) => (
+                    <div
+                      key={field.name}
+                      className={`register-user-popup__field ${field.className}`}
+                    >
                       <label
                         className="register-user-popup__label"
-                        htmlFor={`brand-${field.name}`}
+                        htmlFor={`edit-req-overtime-${field.name}`}
                       >
                         {field.label}
                       </label>
-                      <input
-                        id={`brand-${field.name}`}
+                      {field.type === 'time' ? (
+                        <Time24HourInput
+                          id={`edit-req-overtime-${field.name}`}
+                          name={field.name}
+                          value={formValues[field.name]}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                        />
+                      ) : field.name === 'duration' ? (
+                        <input
+                          id="edit-req-overtime-duration"
+                          name="duration"
+                          type="text"
+                          className="register-user-popup__input"
+                          value={durationLabel}
+                          placeholder="0 menit"
+                          readOnly
+                          disabled
+                        />
+                      ) : (
+                        <input
+                          id={`edit-req-overtime-${field.name}`}
+                          name={field.name}
+                          type={field.type}
+                          className="register-user-popup__input"
+                          value={formValues[field.name]}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                        />
+                      )}
+                    </div>
+                  ))}
+
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-compensation-type"
+                    >
+                      Compensation
+                    </label>
+                    <select
+                      id="edit-req-overtime-compensation-type"
+                      name="compensation_type_id"
+                      className="register-user-popup__select"
+                      value={formValues.compensation_type_id}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting || isLoadingCompensationTypes}
+                    >
+                      <option value="">
+                        {isLoadingCompensationTypes ? 'Loading...' : 'Select compensation'}
+                      </option>
+                      {compensationTypes.map((compensationType) => (
+                        <option key={compensationType.id} value={compensationType.id}>
+                          {formatCompensationOption(
+                            compensationType,
+                            compensationMultiplier,
+                          )}
+                        </option>
+                      ))}
+                    </select>
+                    {isSelectedNationalHoliday ? (
+                      <p className="register-user-popup__hint">
+                        {selectedNationalHoliday.name} multiplier{' '}
+                        {formatNumber(compensationMultiplier)}x diterapkan pada
+                        kompensasi.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-compensation-amount"
+                    >
+                      Compensation Amount
+                    </label>
+                    <input
+                      id="edit-req-overtime-compensation-amount"
+                      name="compensation_amount"
+                      type="text"
+                      className="register-user-popup__input"
+                      value={compensationAmountLabel}
+                      placeholder="-"
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  {reqOvertimeTextareaFields.map((field) => (
+                    <div
+                      key={field.name}
+                      className="register-user-popup__field register-user-popup__field--full"
+                    >
+                      <label
+                        className="register-user-popup__label"
+                        htmlFor={`edit-req-overtime-${field.name}`}
+                      >
+                        {field.label}
+                      </label>
+                      <textarea
+                        id={`edit-req-overtime-${field.name}`}
                         name={field.name}
-                        className="register-user-popup__input"
+                        className="register-user-popup__input master-project-popup__textarea"
                         value={formValues[field.name]}
                         placeholder={field.placeholder}
                         onChange={handleInputChange}
@@ -214,23 +682,6 @@ function DialogEditBrand({
                       />
                     </div>
                   ))}
-
-                  <div className="register-user-popup__field">
-                    <label className="register-user-popup__label" htmlFor="brand-is-active">
-                      Status
-                    </label>
-                    <select
-                      id="brand-is-active"
-                      name="is_active"
-                      className="register-user-popup__select"
-                      value={formValues.is_active}
-                      onChange={handleInputChange}
-                      disabled={isSubmitting}
-                    >
-                      <option value="1">active</option>
-                      <option value="0">inactive</option>
-                    </select>
-                  </div>
                 </div>
                 {errorMessage ? (
                   <p className="register-user-popup__hint" role="alert">
@@ -266,4 +717,4 @@ function DialogEditBrand({
   return createPortal(dialogNode, document.body)
 }
 
-export default DialogEditBrand
+export default DialogEditReqOvertime
