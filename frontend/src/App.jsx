@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from './services/api.js'
+import api, { ApiError, buildLoginRedirectUrl } from './services/api.js'
 
 import BackgroundMain from './components/layoute/BackgroundMain.jsx'
 import Header from './components/layoute/Header.jsx'
@@ -51,6 +51,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState(DEFAULT_USER_PROFILE)
+  const [authStatus, setAuthStatus] = useState('checking')
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -76,12 +77,20 @@ function App() {
         }
 
         setCurrentUser(getUserProfileFromAuthResponse(response))
-      } catch {
+        setAuthStatus('authenticated')
+      } catch (error) {
         if (!isMounted) {
           return
         }
 
+        if (error instanceof ApiError && error.status === 401) {
+          setAuthStatus('redirecting')
+          window.location.href = buildLoginRedirectUrl()
+          return
+        }
+
         setCurrentUser(DEFAULT_USER_PROFILE)
+        setAuthStatus('authenticated')
       }
     }
 
@@ -91,6 +100,10 @@ function App() {
       isMounted = false
     }
   }, [])
+
+  if (authStatus === 'checking' || authStatus === 'redirecting') {
+    return null
+  }
 
   const shellClassName = [
     'dashboard-shell',

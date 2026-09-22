@@ -28,8 +28,7 @@ function normalizeResponseRows(responseData) {
   }
 
   return []
-}
-
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
 function normalizeResponseMeta(responseData, fallbackRowsLength, pageSize) {
   const meta = responseData?.meta ?? {}
 

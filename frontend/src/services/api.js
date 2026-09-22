@@ -1,9 +1,11 @@
 const DEFAULT_API_BASE_URL = '/api';
 const DEFAULT_AUTH_TOKEN_STORAGE_KEY = 'overtime_auth_token';
+const DEFAULT_LOGIN_URL = 'https://pilargroup.id/login';
 
 const authTokenStorageKey =
   import.meta.env.VITE_AUTH_TOKEN_STORAGE_KEY || DEFAULT_AUTH_TOKEN_STORAGE_KEY;
 const envAuthToken = import.meta.env.VITE_AUTH_TOKEN || '';
+const loginUrl = import.meta.env.VITE_LOGIN_URL || DEFAULT_LOGIN_URL;
 
 const normalizeBaseUrl = (url) => url.replace(/\/+$/, '');
 
@@ -132,6 +134,16 @@ export class ApiError extends Error {
     this.data = options.data ?? null;
   }
 }
+
+export const buildLoginRedirectUrl = () => {
+  if (typeof window === 'undefined') {
+    return loginUrl;
+  }
+
+  const returnUrl = encodeURIComponent(window.location.href);
+
+  return `${loginUrl}?return_url=${returnUrl}`;
+};
 
 let authToken = initializeStoredAuthToken();
 let authTokenGetter = getStoredAuthToken;
