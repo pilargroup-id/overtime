@@ -1,7 +1,7 @@
 import { Fragment, isValidElement, useState } from 'react'
 
 import CreateButton from '../button/ButtonCreate.jsx'
-import { ChevronDown, ChevronUp } from '../layoute/TemplateIcons.jsx'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from '../layoute/TemplateIcons.jsx'
 import DetailCard from '../../mobile/data-card/DetailCard.jsx'
 
 function getInitials(value = '') {
@@ -809,6 +809,8 @@ function DataTable({
   const paginationItems = paginationConfig.items ?? getPaginationItems(currentPage, totalPages)
   const paginationSummary =
     paginationConfig.summary ?? `${firstItem}-${lastItem} dari ${totalRows} data`
+  const previousPageLabel = paginationConfig.previousLabel ?? 'Previous'
+  const nextPageLabel = paginationConfig.nextLabel ?? 'Next'
   const pageSizeMenuId = `${sanitizeId(idPrefix)}-page-size-options`
 
   const handleToggleRow = (rowKey) => {
@@ -1349,11 +1351,19 @@ function DataTable({
           >
             <CreateButton
               variant="pagination"
+              className="users-table-pagination__button--previous"
               type="button"
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
+              aria-label={previousPageLabel}
+              title={previousPageLabel}
             >
-              {paginationConfig.previousLabel ?? 'Previous'}
+              <ChevronLeft
+                className="users-table-pagination__button-icon"
+                size={16}
+                aria-hidden="true"
+              />
+              <span className="users-table-pagination__button-label">{previousPageLabel}</span>
             </CreateButton>
 
             {paginationItems.map((item, index) =>
@@ -1361,6 +1371,7 @@ function DataTable({
                 <CreateButton
                   key={item}
                   variant="pagination"
+                  className="users-table-pagination__button--page"
                   active={item === currentPage}
                   type="button"
                   onClick={() => handleSelectPage(item)}
@@ -1381,11 +1392,19 @@ function DataTable({
 
             <CreateButton
               variant="pagination"
+              className="users-table-pagination__button--next"
               type="button"
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
+              aria-label={nextPageLabel}
+              title={nextPageLabel}
             >
-              {paginationConfig.nextLabel ?? 'Next'}
+              <span className="users-table-pagination__button-label">{nextPageLabel}</span>
+              <ChevronRight
+                className="users-table-pagination__button-icon"
+                size={16}
+                aria-hidden="true"
+              />
             </CreateButton>
           </div>
         </div>

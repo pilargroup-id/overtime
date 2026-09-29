@@ -74,6 +74,18 @@ function getEmployeeLabel(employee) {
   return `${name}${internalId}`
 }
 
+function getSearchableEmployeeText(value) {
+  if (Array.isArray(value)) {
+    return value.map(getSearchableEmployeeText).join(' ')
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).map(getSearchableEmployeeText).join(' ')
+  }
+
+  return String(value ?? '')
+}
+
 function DialogCreateUserPermission({
   isOpen = false,
   eyebrow = 'Create User Permission',
@@ -86,6 +98,7 @@ function DialogCreateUserPermission({
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
   const [authUser, setAuthUser] = useState(null)
   const [eligibleEmployees, setEligibleEmployees] = useState([])
+  const [employeeDirectory, setEmployeeDirectory] = useState({})
   const [isLoadingAuthUser, setIsLoadingAuthUser] = useState(false)
   const [isLoadingEligibleEmployees, setIsLoadingEligibleEmployees] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -97,6 +110,7 @@ function DialogCreateUserPermission({
     setIsUserDropdownOpen(false)
     setAuthUser(null)
     setEligibleEmployees([])
+    setEmployeeDirectory({})
     setIsLoadingAuthUser(false)
     setIsLoadingEligibleEmployees(false)
     setIsSubmitting(false)
@@ -107,6 +121,24 @@ function DialogCreateUserPermission({
     resetDialogState()
     onClose?.()
   }, [onClose, resetDialogState])
+
+  const mergeEmployeesIntoDirectory = useCallback((employees) => {
+    if (!employees.length) {
+      return
+    }
+
+    setEmployeeDirectory((currentDirectory) => {
+      const nextDirectory = { ...currentDirectory }
+
+      employees.forEach((employee) => {
+        if (employee?.id) {
+          nextDirectory[employee.id] = employee
+        }
+      })
+
+      return nextDirectory
+    })
+  }, [])
 
   useEffect(() => {
     if (!isOpen) {
@@ -159,41 +191,60 @@ function DialogCreateUserPermission({
       }
     }
 
-    const loadEligibleEmployees = async () => {
-      setIsLoadingEligibleEmployees(true)
-      setErrorMessage('')
-
-      try {
-        const response = await api.overtimeRequests.eligibleEmployees({
-          limit: 100,
-        })
-
-        if (!isMounted) {
-          return
-        }
-
-        setEligibleEmployees(normalizeEligibleEmployees(response))
-      } catch (error) {
-        if (!isMounted) {
-          return
-        }
-
-        setEligibleEmployees([])
-        setErrorMessage(error?.message || 'Gagal memuat eligible employees.')
-      } finally {
-        if (isMounted) {
-          setIsLoadingEligibleEmployees(false)
-        }
-      }
-    }
-
     loadAuthUser()
-    loadEligibleEmployees()
 
     return () => {
       isMounted = false
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined
+    }
+
+    let isMounted = true
+    const trimmedSearchQuery = userSearchQuery.trim()
+
+    const timeoutId = window.setTimeout(
+      async () => {
+        setIsLoadingEligibleEmployees(true)
+        setErrorMessage('')
+
+        try {
+          const response = await api.overtimeRequests.eligibleEmployees({
+            search: trimmedSearchQuery || undefined,
+            limit: 100,
+          })
+
+          if (!isMounted) {
+            return
+          }
+
+          const employees = normalizeEligibleEmployees(response)
+          setEligibleEmployees(employees)
+          mergeEmployeesIntoDirectory(employees)
+        } catch (error) {
+          if (!isMounted) {
+            return
+          }
+
+          setEligibleEmployees([])
+          setErrorMessage(error?.message || 'Gagal memuat eligible employees.')
+        } finally {
+          if (isMounted) {
+            setIsLoadingEligibleEmployees(false)
+          }
+        }
+      },
+      trimmedSearchQuery ? 300 : 0,
+    )
+
+    return () => {
+      isMounted = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [isOpen, userSearchQuery, mergeEmployeesIntoDirectory])
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
@@ -222,6 +273,14 @@ function DialogCreateUserPermission({
   }
 
   const handleUserSelect = (employeeId) => {
+    const selectedEmployee = eligibleEmployees.find(
+      (employee) => String(employee.id) === String(employeeId),
+    )
+
+    if (selectedEmployee) {
+      mergeEmployeesIntoDirectory([selectedEmployee])
+    }
+
     setFormValues((currentValues) => ({
       ...currentValues,
       user_id: String(employeeId),
@@ -239,9 +298,11 @@ function DialogCreateUserPermission({
       formValues.permission_category,
       normalizedScopeType,
     )
-    const selectedEmployee = eligibleEmployees.find(
-      (employee) => String(employee.id) === String(formValues.user_id),
-    )
+    const selectedEmployee =
+      employeeDirectory[formValues.user_id] ||
+      eligibleEmployees.find(
+        (employee) => String(employee.id) === String(formValues.user_id),
+      )
 
     return {
       user_id: formValues.user_id.trim(),
@@ -312,19 +373,15 @@ function DialogCreateUserPermission({
       return true
     }
 
-    return [
-      employee?.name,
-      employee?.username,
-      employee?.email,
-      employee?.internal_id,
-      employee?.id,
-    ].some((value) =>
-      String(value ?? '').toLowerCase().includes(normalizedUserSearchQuery),
-    )
+    return getSearchableEmployeeText(employee)
+      .toLowerCase()
+      .includes(normalizedUserSearchQuery)
   })
-  const selectedEmployee = eligibleEmployees.find(
-    (employee) => String(employee.id) === String(formValues.user_id),
-  )
+  const selectedEmployee =
+    employeeDirectory[formValues.user_id] ||
+    eligibleEmployees.find(
+      (employee) => String(employee.id) === String(formValues.user_id),
+    )
   const userDropdownLabel = isLoadingEligibleEmployees
     ? 'Loading users...'
     : selectedEmployee
@@ -421,7 +478,7 @@ function DialogCreateUserPermission({
                             type="text"
                             className="register-user-popup__input overtime-create-popup__employee-search"
                             value={userSearchQuery}
-                            placeholder="Cari nama / username / email / internal id"
+                            placeholder="Cari semua data user"
                             onChange={(event) => setUserSearchQuery(event.target.value)}
                             autoFocus
                           />
