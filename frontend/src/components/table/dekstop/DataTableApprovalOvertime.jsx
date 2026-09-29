@@ -228,6 +228,35 @@ function getApprovalTimeValue(row) {
   return row?.acted_at ?? row?.approved_at ?? row?.rejected_at ?? row?.updated_at ?? null
 }
 
+function getApprovalProgressFields(row) {
+  return [
+    { label: 'Approval Level', value: formatValue(row.approval_level) },
+    { label: 'Approver (step ini)', value: formatValue(row.approver_name_snapshot) },
+    { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
+    { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
+  ]
+}
+
+function getResultSectionFields(row) {
+  return [
+    { label: 'Task', value: formatValue(row.task_description) },
+    { label: 'Result', value: formatValue(row.result_description) },
+    { label: 'Talenta Status', value: formatValue(row.talenta_status) },
+    { label: 'Note', value: formatValue(row.note) },
+  ]
+}
+
+function getMobileOverviewFields(row, compensationTypeMap) {
+  return [
+    { label: 'Department', value: formatValue(row.department_name_snapshot) },
+    { label: 'Company', value: formatValue(row.company_name_snapshot) },
+    { label: 'Day Type', value: formatValue(row.day_type) },
+    { label: 'Approval Time', value: formatDateTime(getApprovalTimeValue(row)) },
+    { label: 'Compensation', value: formatCompensation(row, compensationTypeMap) },
+    { label: 'Submitted By', value: formatSubmittedBy(row) },
+  ]
+}
+
 function getStatusVariant(status) {
   const normalizedStatus = String(status ?? '').toUpperCase()
 
@@ -933,23 +962,39 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
             sections: (row) => [
               {
                 title: 'Approval Progress',
-                fields: [
-                  { label: 'Approval Level', value: formatValue(row.approval_level) },
-                  { label: 'Approver (step ini)', value: formatValue(row.approver_name_snapshot) },
-                  { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
-                  { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
-                ],
+                fields: getApprovalProgressFields(row),
               },
               {
                 title: 'Result',
                 wide: true,
-                fields: [
-                  { label: 'Task', value: formatValue(row.task_description) },
-                  { label: 'Result', value: formatValue(row.result_description) },
-                  { label: 'Talenta Status', value: formatValue(row.talenta_status) },
-                  { label: 'Note', value: formatValue(row.note) },
-                ],
+                fields: getResultSectionFields(row),
               },
+            ],
+          }}
+          mobileCard={{
+            title: (row) => formatValue(row.employee_name_snapshot),
+            subtitle: (row) => formatValue(row.request_number),
+            expandableTitle: 'Detail',
+            header: {
+              status: {
+                label: (row) => formatValue(getRequestStatus(row)),
+                variant: (row) => getStatusVariant(getRequestStatus(row)),
+              },
+            },
+            rows: (row) => [
+              { key: 'workDate', label: 'Work Date', value: formatDate(row.work_date) },
+              {
+                key: 'timeDuration',
+                label: 'Time & Duration',
+                value: `${formatTime(row.start_time)} - ${formatTime(row.end_time)} (${formatDuration(
+                  row.total_minutes,
+                )})`,
+              },
+            ],
+            sections: (row) => [
+              { title: 'Overview', fields: getMobileOverviewFields(row, compensationTypeMap) },
+              { title: 'Approval Progress', fields: getApprovalProgressFields(row) },
+              { title: 'Result', wide: true, fields: getResultSectionFields(row) },
             ],
           }}
         />

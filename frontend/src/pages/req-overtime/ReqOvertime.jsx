@@ -121,7 +121,7 @@ function ReqOvertimePages({ activePage, searchQuery, userPermissions = [] }) {
       aria-label={pageTitle}
     >
       <div className="users-table-card__header">
-        <div>
+        <div className="req-overtime-page__title-block">
           <p className="dashboard-panel__eyebrow">{pageEyebrow}</p>
           <h1 className="dashboard-panel__title">{pageTitle}</h1>
         </div>

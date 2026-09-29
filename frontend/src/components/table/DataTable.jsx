@@ -33,6 +33,57 @@ function joinClassNames(...classNames) {
   return classNames.flat().filter(Boolean).join(' ')
 }
 
+function DataTableDetailChevron({
+  isExpanded = false,
+  size = 18,
+  className = '',
+  style,
+  ...props
+}) {
+  return (
+    <span
+      className={joinClassNames(
+        'users-table__detail-chevron',
+        isExpanded ? 'users-table__detail-chevron--open' : '',
+        className,
+      )}
+      style={{
+        '--users-table-detail-chevron-size': `${size}px`,
+        ...style,
+      }}
+      {...props}
+    >
+      <ChevronDown
+        size={Math.max(12, size - 4)}
+        aria-hidden="true"
+        className="users-table__detail-chevron-mark"
+      />
+    </span>
+  )
+}
+
+function renderDetailIcon(Icon, isExpanded, size = 18) {
+  if (Icon) {
+    return (
+      <Icon
+        size={size}
+        aria-hidden="true"
+        className={`users-table__detail-icon${
+          isExpanded ? ' users-table__detail-icon--open' : ''
+        }`}
+      />
+    )
+  }
+
+  return (
+    <DataTableDetailChevron
+      isExpanded={isExpanded}
+      size={size}
+      aria-hidden="true"
+    />
+  )
+}
+
 function resolveTemplateValue(value, row, index) {
   return typeof value === 'function' ? value(row, index) : value
 }
@@ -853,11 +904,7 @@ function DataTable({
       aria-controls={accordionId}
       title={isExpanded ? 'Tutup detail' : 'Buka detail'}
     >
-      {isExpanded ? (
-        <ChevronUp size={16} aria-hidden="true" />
-      ) : (
-        <ChevronDown size={16} aria-hidden="true" />
-      )}
+      {renderDetailIcon(null, isExpanded, 18)}
     </CreateButton>
   )
 
@@ -909,7 +956,7 @@ function DataTable({
                 const detailDescription = resolveTemplateValue(detail?.description, row, index)
                 const detailEyebrow = resolveTemplateValue(detail?.eyebrow, row, index)
                 const detailActions = getDetailActions(detail, row, index)
-                const DetailButtonIcon = detail?.buttonIcon ?? ChevronDown
+                const DetailButtonIcon = detail?.buttonIcon
                 const isDetailButtonHidden = detail?.buttonHidden === true
                 const detailButtonLabel = isExpanded ? 'Tutup detail' : 'Buka detail'
                 const rowClassName = [
@@ -955,13 +1002,7 @@ function DataTable({
                               aria-label={detail.buttonLabel ?? detailButtonLabel}
                               title={detail.buttonLabel ?? detailButtonLabel}
                             >
-                              <DetailButtonIcon
-                                size={16}
-                                aria-hidden="true"
-                                className={`users-table__detail-icon${
-                                  isExpanded ? ' users-table__detail-icon--open' : ''
-                                }`}
-                              />
+                              {renderDetailIcon(DetailButtonIcon, isExpanded, 16)}
                             </CreateButton>
 
                             <div className="users-table__detail-indicator-content">
@@ -1027,13 +1068,11 @@ function DataTable({
                                   {detail?.buttonIconOnly ? null : (
                                     <span>{detail.buttonLabel ?? 'Detail'}</span>
                                   )}
-                                  <DetailButtonIcon
-                                    size={detail?.buttonIconOnly ? 18 : 16}
-                                    aria-hidden="true"
-                                    className={`users-table__detail-icon${
-                                      isExpanded ? ' users-table__detail-icon--open' : ''
-                                    }`}
-                                  />
+                                  {renderDetailIcon(
+                                    DetailButtonIcon,
+                                    isExpanded,
+                                    detail?.buttonIconOnly ? 18 : 16,
+                                  )}
                                 </CreateButton>
                               )}
 

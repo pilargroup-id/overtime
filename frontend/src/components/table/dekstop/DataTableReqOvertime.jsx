@@ -244,6 +244,25 @@ function formatCompensationAmount(request) {
   return '-'
 }
 
+function getResultSectionFields(request) {
+  return [
+    { label: 'Task', value: formatValue(request.task_description) },
+    { label: 'Result', value: formatValue(request.result_description) },
+    { label: 'Talenta Status', value: formatValue(request.talenta_status) },
+  ]
+}
+
+function getMobileOverviewFields(request, compensationTypeMap) {
+  return [
+    { label: 'Department', value: formatValue(request.department_name_snapshot) },
+    { label: 'Company', value: formatValue(request.company_name_snapshot) },
+    { label: 'Day Type', value: formatValue(request.day_type) },
+    { label: 'Compensation', value: formatCompensation(request, compensationTypeMap) },
+    { label: 'Compensation Amount', value: formatCompensationAmount(request) },
+    { label: 'Submitted By', value: formatSubmittedBy(request) },
+  ]
+}
+
 function getStatusVariant(status) {
   const normalizedStatus = String(status ?? '').toUpperCase()
 
@@ -606,12 +625,33 @@ function DataTableReqOvertime({
               {
                 title: 'Result',
                 wide: true,
-                fields: [
-                  { label: 'Task', value: formatValue(request.task_description) },
-                  { label: 'Result', value: formatValue(request.result_description) },
-                  { label: 'Talenta Status', value: formatValue(request.talenta_status) },
-                ],
+                fields: getResultSectionFields(request),
               },
+            ],
+          }}
+          mobileCard={{
+            title: (request) => formatValue(request.employee_name_snapshot),
+            subtitle: (request) => formatValue(request.request_number),
+            expandableTitle: 'Detail',
+            header: {
+              status: {
+                label: (request) => formatValue(request.status),
+                variant: (request) => getStatusVariant(request.status),
+              },
+            },
+            rows: (request) => [
+              { key: 'workDate', label: 'Work Date', value: formatDate(request.work_date) },
+              {
+                key: 'timeDuration',
+                label: 'Time & Duration',
+                value: `${formatTime(request.start_time)} - ${formatTime(
+                  request.end_time,
+                )} (${formatDuration(request.total_minutes)})`,
+              },
+            ],
+            sections: (request) => [
+              { title: 'Overview', fields: getMobileOverviewFields(request, compensationTypeMap) },
+              { title: 'Result', wide: true, fields: getResultSectionFields(request) },
             ],
           }}
         />
