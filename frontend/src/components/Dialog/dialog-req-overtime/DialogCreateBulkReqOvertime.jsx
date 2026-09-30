@@ -400,7 +400,7 @@ function formatCompensationAmount(compensationType, multiplier) {
 function getOvertimeComputedFields(values, nationalHolidays, compensationTypes) {
   const durationLabel = formatDuration(values.start_time, values.end_time)
   const isCompensationEnabled =
-    getDurationInMinutes(values.start_time, values.end_time) >= 120
+    getDurationInMinutes(values.start_time, values.end_time) >= 60
   const workDateKey = normalizeDateKey(values.work_date)
   const selectedNationalHoliday = nationalHolidays.find(
     (holiday) =>
@@ -623,7 +623,7 @@ function DialogCreateBulkReqOvertime({
 
       if (
         (name === 'start_time' || name === 'end_time') &&
-        getDurationInMinutes(nextValues.start_time, nextValues.end_time) < 120
+        getDurationInMinutes(nextValues.start_time, nextValues.end_time) < 60
       ) {
         nextValues.compensation_type_id = ''
       }
@@ -780,7 +780,7 @@ function DialogCreateBulkReqOvertime({
 
       if (
         (name === 'start_time' || name === 'end_time') &&
-        getDurationInMinutes(nextDescription.start_time, nextDescription.end_time) < 120
+        getDurationInMinutes(nextDescription.start_time, nextDescription.end_time) < 60
       ) {
         nextDescription.compensation_type_id = ''
       }
@@ -823,7 +823,7 @@ function DialogCreateBulkReqOvertime({
         start_time: startTime,
         end_time: endTime,
         compensation_type_id:
-          getDurationInMinutes(startTime, endTime) >= 120 ? Number(compensationTypeId) || null : null,
+          getDurationInMinutes(startTime, endTime) >= 60 ? Number(compensationTypeId) || null : null,
         task_description: String(taskDescription ?? '').trim(),
         result_description: String(resultDescription ?? '').trim(),
       }
@@ -844,7 +844,7 @@ function DialogCreateBulkReqOvertime({
         formValues.result_description.trim() || firstItem.result_description || '',
       equalize: formValues.equalize,
       compensation_type_id:
-        getDurationInMinutes(formValues.start_time, formValues.end_time) >= 120
+        getDurationInMinutes(formValues.start_time, formValues.end_time) >= 60
           ? Number(formValues.compensation_type_id)
           : null,
       items,
@@ -866,7 +866,7 @@ function DialogCreateBulkReqOvertime({
       }
 
       return (
-        getDurationInMinutes(item.start_time, item.end_time) >= 120 && !item.compensation_type_id
+        getDurationInMinutes(item.start_time, item.end_time) >= 60 && !item.compensation_type_id
       )
     })
     const missingGeneralDescriptions =
@@ -1238,7 +1238,7 @@ function DialogCreateBulkReqOvertime({
                               ? 'Loading...'
                               : isCompensationEnabled
                                 ? 'Select compensation'
-                                : 'Durasi minimal 2 jam'}
+                                : 'Durasi minimal 1 jam'}
                           </option>
                           {compensationTypes.map((compensationType) => (
                             <option key={compensationType.id} value={compensationType.id}>
@@ -1399,7 +1399,7 @@ function DialogCreateBulkReqOvertime({
                                   ? 'Loading...'
                                   : activeEmployeeComputed.isCompensationEnabled
                                     ? 'Select compensation'
-                                    : 'Durasi minimal 2 jam'}
+                                    : 'Durasi minimal 1 jam'}
                               </option>
                               {compensationTypes.map((compensationType) => (
                                 <option key={compensationType.id} value={compensationType.id}>

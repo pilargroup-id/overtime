@@ -44,6 +44,18 @@ async function resolveApprovalRule(employee) {
 async function resolveFinalApprover(rule, employee) {
   let approvers = [];
 
+  if (rule.approver_scope_type === 'SPECIFIC_USER') {
+    const approver = await UserModel.findFullProfileById(rule.approver_job_level_name);
+
+    if (!approver || Number(approver.is_active) !== 1) {
+      throw createValidationError({
+        approver: `Final approver user ${rule.approver_job_level_name} not found`,
+      });
+    }
+
+    return approver;
+  }
+
   if (rule.approver_scope_type === 'SAME_DEPARTMENT') {
     approvers = await UserModel.findActiveUsersByDepartmentAndApproverTarget(
       employee.department_id,
@@ -80,7 +92,7 @@ async function resolveIntermediateApprover(rule, employee) {
     return null;
   }
 
-  if (!Number.isInteger(Number(rule.intermediate_job_level_value))) {
+  if (!Number.isFinite(Number(rule.intermediate_job_level_value))) {
     throw createValidationError({
       intermediate_job_level_value:
         'Approval rule enables intermediate approval but intermediate_job_level_value is not configured',

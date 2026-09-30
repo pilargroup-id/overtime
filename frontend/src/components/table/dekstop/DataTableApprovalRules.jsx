@@ -87,9 +87,11 @@ function createColumns({ onDelete, onEdit } = {}) {
   },
   {
     key: 'approverJobLevelName',
-    header: 'Approver Job Level',
+    header: 'Approver Job Level / User',
     headerStyle: { width: '10%'},
-    render : (request) => formatValue(request.approver_job_level_name)
+    render : (request) => request.approver_scope_type === 'SPECIFIC_USER'
+      ? formatValue(request.approver_user_name || request.approver_user_id)
+      : formatValue(request.approver_job_level_name)
   },
     {
     key: 'approvalType',

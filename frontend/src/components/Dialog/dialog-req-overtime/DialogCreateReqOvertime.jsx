@@ -521,7 +521,7 @@ function DialogCreateReqOvertime({
 
       if (
         (name === 'start_time' || name === 'end_time') &&
-        getDurationInMinutes(nextValues.start_time, nextValues.end_time) < 120
+        getDurationInMinutes(nextValues.start_time, nextValues.end_time) < 60
       ) {
         nextValues.compensation_type_id = ''
       }
@@ -538,7 +538,7 @@ function DialogCreateReqOvertime({
     task_description: formValues.task_description.trim(),
     result_description: formValues.result_description.trim(),
     compensation_type_id:
-      getDurationInMinutes(formValues.start_time, formValues.end_time) >= 120
+      getDurationInMinutes(formValues.start_time, formValues.end_time) >= 60
         ? Number(formValues.compensation_type_id)
         : null,
   })
@@ -604,7 +604,7 @@ function DialogCreateReqOvertime({
   )
   const durationLabel = formatDuration(formValues.start_time, formValues.end_time)
   const isCompensationEnabled =
-    getDurationInMinutes(formValues.start_time, formValues.end_time) >= 120
+    getDurationInMinutes(formValues.start_time, formValues.end_time) >= 60
   const departmentOptions = getDepartmentOptions(userOrganization.departments)
   const departmentClassOptions = getDepartmentClassOptions(
     userOrganization.departments,
@@ -860,7 +860,7 @@ function DialogCreateReqOvertime({
                           ? 'Loading...'
                           : isCompensationEnabled
                             ? 'Select compensation'
-                            : 'Durasi minimal 2 jam'}
+                            : 'Durasi minimal 1 jam'}
                       </option>
                       {compensationTypes.map((compensationType) => (
                         <option key={compensationType.id} value={compensationType.id}>

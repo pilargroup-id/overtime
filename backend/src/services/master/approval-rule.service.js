@@ -1,9 +1,11 @@
 const ApprovalRuleModel = require('../../models/master/approval-rule.model');
+const UserModel = require('../../models/user.model');
 
 const ALLOWED_APPROVER_SCOPE_TYPES = [
   'SAME_DEPARTMENT',
   'GLOBAL',
   'SPECIFIC_DEPARTMENT',
+  'SPECIFIC_USER',
 ];
 
 function createValidationError(errors) {
@@ -41,19 +43,19 @@ function normalizeNullable(value) {
   return value;
 }
 
-function validateIntegerRange(payload, errors) {
+function validateJobLevelRange(payload, errors) {
   const min = Number(payload.requester_min_job_level_value);
   const max = Number(payload.requester_max_job_level_value);
 
-  if (!Number.isInteger(min)) {
-    errors.requester_min_job_level_value = 'Requester min job level value must be an integer';
+  if (!Number.isFinite(min)) {
+    errors.requester_min_job_level_value = 'Requester min job level value must be a number';
   }
 
-  if (!Number.isInteger(max)) {
-    errors.requester_max_job_level_value = 'Requester max job level value must be an integer';
+  if (!Number.isFinite(max)) {
+    errors.requester_max_job_level_value = 'Requester max job level value must be a number';
   }
 
-  if (Number.isInteger(min) && Number.isInteger(max) && min > max) {
+  if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
     errors.requester_max_job_level_value = 'Requester max job level value must be greater than or equal to min value';
   }
 }
@@ -84,7 +86,7 @@ function validatePayload(payload, isUpdate = false) {
     ) {
       errors.requester_job_level = 'Requester min and max job level values are required';
     } else {
-      validateIntegerRange(payload, errors);
+      validateJobLevelRange(payload, errors);
     }
   }
 
@@ -94,7 +96,7 @@ function validatePayload(payload, isUpdate = false) {
       !ALLOWED_APPROVER_SCOPE_TYPES.includes(payload.approver_scope_type)
     ) {
       errors.approver_scope_type =
-        'Approver scope type must be SAME_DEPARTMENT, GLOBAL, or SPECIFIC_DEPARTMENT';
+        'Approver scope type must be SAME_DEPARTMENT, GLOBAL, SPECIFIC_DEPARTMENT, or SPECIFIC_USER';
     }
   }
 
@@ -105,7 +107,19 @@ function validatePayload(payload, isUpdate = false) {
     }
   }
 
-  if (!isUpdate || payload.approver_job_level_name !== undefined) {
+  if (payload.approver_scope_type === 'SPECIFIC_USER') {
+    const approverUserId = payload.approver_user_id ?? payload.approver_job_level_name;
+
+    if (!approverUserId || String(approverUserId).trim() === '') {
+      errors.approver_user_id =
+        'Approver user is required when approver_scope_type is SPECIFIC_USER';
+    }
+  }
+
+  if (
+    (!isUpdate || payload.approver_job_level_name !== undefined) &&
+    payload.approver_scope_type !== 'SPECIFIC_USER'
+  ) {
     if (!payload.approver_job_level_name || String(payload.approver_job_level_name).trim() === '') {
       errors.approver_job_level_name = 'Approver job level name is required';
     }
@@ -131,15 +145,15 @@ function validatePayload(payload, isUpdate = false) {
   if (useIntermediate === 1) {
     const intermediateLevel = Number(payload.intermediate_job_level_value);
 
-    if (!Number.isInteger(intermediateLevel)) {
+    if (!Number.isFinite(intermediateLevel)) {
       errors.intermediate_job_level_value =
-        'intermediate_job_level_value must be an integer when intermediate approval is enabled';
+        'intermediate_job_level_value must be a number when intermediate approval is enabled';
     }
   }
 
   if (payload.intermediate_job_level_value !== undefined && payload.intermediate_job_level_value !== null && payload.intermediate_job_level_value !== '') {
-    if (!Number.isInteger(Number(payload.intermediate_job_level_value))) {
-      errors.intermediate_job_level_value = 'intermediate_job_level_value must be an integer';
+    if (!Number.isFinite(Number(payload.intermediate_job_level_value))) {
+      errors.intermediate_job_level_value = 'intermediate_job_level_value must be a number';
     }
   }
 
@@ -162,12 +176,23 @@ function validatePayload(payload, isUpdate = false) {
 
 function buildPayload(payload) {
   let approverDepartmentId = normalizeNullable(payload.approver_department_id);
+  let approverTarget = payload.approver_job_level_name !== undefined
+    ? String(payload.approver_job_level_name).trim()
+    : undefined;
 
   if (
     payload.approver_scope_type === 'SAME_DEPARTMENT' ||
-    payload.approver_scope_type === 'GLOBAL'
+    payload.approver_scope_type === 'GLOBAL' ||
+    payload.approver_scope_type === 'SPECIFIC_USER'
   ) {
     approverDepartmentId = null;
+  }
+
+  if (payload.approver_scope_type === 'SPECIFIC_USER') {
+    const approverUserId = payload.approver_user_id ?? payload.approver_job_level_name;
+    approverTarget = approverUserId !== undefined
+      ? String(approverUserId).trim()
+      : undefined;
   }
 
   return {
@@ -182,9 +207,7 @@ function buildPayload(payload) {
     department_id                 : normalizeNullable(payload.department_id),
     approver_scope_type           : payload.approver_scope_type,
     approver_department_id        : approverDepartmentId,
-    approver_job_level_name       : payload.approver_job_level_name !== undefined
-      ? String(payload.approver_job_level_name).trim()
-      : undefined,
+    approver_job_level_name       : approverTarget,
     approval_type                 : payload.approval_type !== undefined
       ? String(payload.approval_type).trim()
       : undefined,
@@ -197,6 +220,45 @@ function buildPayload(payload) {
     priority                      : payload.priority !== undefined ? Number(payload.priority) : undefined,
     is_active                     : normalizeIsActive(payload.is_active),
   };
+}
+
+function createMapById(rows = []) {
+  return new Map(rows.map((row) => [String(row.id), row]));
+}
+
+async function enrichWithApproverUsers(rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return rows;
+  }
+
+  const approverUserIds = rows
+    .filter((row) => row.approver_scope_type === 'SPECIFIC_USER')
+    .map((row) => row.approver_job_level_name);
+
+  if (approverUserIds.length === 0) {
+    return rows;
+  }
+
+  const users = await UserModel.findUsersByIds(approverUserIds);
+  const userMap = createMapById(users);
+
+  return rows.map((row) => {
+    if (row.approver_scope_type !== 'SPECIFIC_USER') {
+      return row;
+    }
+
+    const approverUserId = row.approver_job_level_name;
+    const approverUser = userMap.get(String(approverUserId));
+
+    return {
+      ...row,
+      approver_user_id: approverUserId,
+      approver_user_name: approverUser?.name || null,
+      approver_user_username: approverUser?.username || null,
+      approver_user_email: approverUser?.email || null,
+      approver_user_internal_id: approverUser?.internal_id || null,
+    };
+  });
 }
 
 async function list(query) {
@@ -222,8 +284,10 @@ async function list(query) {
     ApprovalRuleModel.countAll(filters),
   ]);
 
+  const enrichedData = await enrichWithApproverUsers(data);
+
   return {
-    data,
+    data: enrichedData,
     meta: {
       page,
       limit,
@@ -234,7 +298,10 @@ async function list(query) {
 }
 
 async function getById(id) {
-  return ApprovalRuleModel.findById(id);
+  const row = await ApprovalRuleModel.findById(id);
+  const [enrichedRow = null] = await enrichWithApproverUsers(row ? [row] : []);
+
+  return enrichedRow;
 }
 
 async function create(payload) {
@@ -244,7 +311,7 @@ async function create(payload) {
 
   try {
     const id = await ApprovalRuleModel.create(data);
-    return ApprovalRuleModel.findById(id);
+    return getById(id);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       throw createValidationError({ code: 'Code already exists' });
@@ -267,7 +334,7 @@ async function update(id, payload) {
 
   try {
     await ApprovalRuleModel.update(id, data);
-    return ApprovalRuleModel.findById(id);
+    return getById(id);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       throw createValidationError({ code: 'Code already exists' });

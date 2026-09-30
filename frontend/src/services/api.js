@@ -330,6 +330,9 @@ const api = {
   },
 
   compensationTypes: createResource('/master/compensation-types'),
+  departments: createReadOnlyResource('/master/departments'),
+  jobLevels: createReadOnlyResource('/master/job-levels'),
+  users: createReadOnlyResource('/master/users'),
   userPermissions: createResource('/master/user-permissions'),
   approvalRules: createResource('/master/approval-rules'),
   nationalHolidays: createResource('/master/national-holidays'),
