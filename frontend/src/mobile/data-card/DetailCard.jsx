@@ -3,6 +3,7 @@ import { Fragment, isValidElement } from 'react'
 import CreateButton from '../../components/button/ButtonCreate.jsx'
 import ButtonDelete from '../../components/button/ButtonDelete.jsx'
 import ButtonEdit from '../../components/button/ButtonEdit.jsx'
+import { ChevronDown } from '../../components/layoute/TemplateIcons.jsx'
 
 function joinClassNames(...classNames) {
   return classNames.filter(Boolean).join(' ')
@@ -204,7 +205,7 @@ export default function DetailCard({
           <summary className="detail-card-mobile__summary">
             <span>{expandableTitle}</span>
             <span className="detail-card-mobile__summary-icon" aria-hidden="true">
-              v
+              <ChevronDown size={16} strokeWidth={2.4} />
             </span>
           </summary>
 
