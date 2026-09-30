@@ -328,10 +328,7 @@ function DialogEditReqOvertime({
       setIsLoadingCompensationTypes(true)
 
       try {
-        const response = await api.compensationTypes.list({
-          is_active: 1,
-          limit: 100,
-        })
+        const response = await api.overtimeRequests.compensationOptions()
 
         if (!isMounted) {
           return

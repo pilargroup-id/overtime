@@ -46,6 +46,32 @@ function getUserProfileFromAuthResponse(response) {
   }
 }
 
+
+function hasGlobalPermission(permissions = [], permissionType) {
+  return permissions.some(
+    (permission) =>
+      permission?.permission_type === permissionType && permission?.scope_type === 'GLOBAL',
+  )
+}
+
+function AccessDeniedPage() {
+  return (
+    <section className="dashboard-grid" aria-label="Access Denied">
+      <article className="dashboard-panel">
+        <div className="dashboard-panel__header">
+          <p className="dashboard-panel__eyebrow">403</p>
+          <h1 className="dashboard-panel__title">Access Denied</h1>
+        </div>
+        <div className="dashboard-stack">
+          <p className="dashboard-stack__text">
+            Anda tidak memiliki permission untuk membuka halaman ini.
+          </p>
+        </div>
+      </article>
+    </section>
+  )
+}
+
 function App() {
   const [activePath, setActivePath] = useState(getCurrentPath)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -134,6 +160,11 @@ function App() {
     .filter(Boolean)
     .join(' ')
 
+  const hasRequestCreateAll = hasGlobalPermission(
+    currentUser.permissions,
+    'REQUEST_CREATE_ALL',
+  )
+
   const renderContent = () => {
     switch (activePath) {
       case '/RequestOvertime':
@@ -143,11 +174,11 @@ function App() {
       case '/ReportOvertime':
         return <ReportOvertime />
       case '/Master/UserPermissions':
-        return <UserPermission />
+        return hasRequestCreateAll ? <UserPermission /> : <AccessDeniedPage />
       case '/Master/CompensationType':
-        return <CompensationType />
+        return hasRequestCreateAll ? <CompensationType /> : <AccessDeniedPage />
       case '/Master/ApprovalRules':
-        return <ApprovalRules />
+        return hasRequestCreateAll ? <ApprovalRules /> : <AccessDeniedPage />
       case '/Master/NationalHoliday':
         return <NationalHoliday />
       default:

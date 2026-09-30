@@ -16,6 +16,15 @@ async function index(req, res, next) {
   }
 }
 
+async function options(req, res, next) {
+  try {
+    const data = await ApprovalRuleService.getOptions();
+    return R.ok(res, data, 'Approval rule options fetched successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function show(req, res, next) {
   try {
     const data = await ApprovalRuleService.getById(req.params.id);
@@ -63,6 +72,7 @@ async function update(req, res, next) {
 
 module.exports = {
   index,
+  options,
   show,
   store,
   update,

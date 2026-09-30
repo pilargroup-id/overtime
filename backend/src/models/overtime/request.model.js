@@ -4,14 +4,52 @@ function getExecutor(conn) {
   return conn || db;
 }
 
-function buildWhere(filters = {}, authUser = null) {
+function buildWhere(filters = {}, authUser = null, accessPermissions = []) {
   const where = [];
   const params = [];
 
-  // My Requests scope only for this endpoint
   if (authUser?.id) {
-    where.push('(submitted_by = ? OR employee_id = ?)');
-    params.push(authUser.id, authUser.id);
+    const accessClauses = ['submitted_by = ?', 'employee_id = ?'];
+    const accessParams = [authUser.id, authUser.id];
+    let hasGlobalRequestAccess = false;
+
+    accessPermissions.forEach((permission) => {
+      if (!['REQUEST_CREATE_SCOPED', 'REQUEST_CREATE_ALL'].includes(permission.permission_type)) {
+        return;
+      }
+
+      if (permission.scope_type === 'GLOBAL') {
+        hasGlobalRequestAccess = true;
+        return;
+      }
+
+      if (permission.scope_type === 'COMPANY' && permission.company_id) {
+        accessClauses.push('company_id = ?');
+        accessParams.push(permission.company_id);
+      }
+
+      if (
+        permission.scope_type === 'DEPARTMENT' &&
+        permission.department_id !== null &&
+        permission.department_id !== undefined
+      ) {
+        accessClauses.push('department_id = ?');
+        accessParams.push(permission.department_id);
+      }
+    });
+
+    if (!hasGlobalRequestAccess) {
+      where.push(`(${accessClauses.join(' OR ')})`);
+      params.push(...accessParams);
+    }
+
+    if (filters.request_scope === 'mine') {
+      where.push('employee_id = ?');
+      params.push(authUser.id);
+    } else if (filters.request_scope === 'others') {
+      where.push('employee_id <> ?');
+      params.push(authUser.id);
+    }
   }
 
   if (filters.search) {
@@ -78,8 +116,8 @@ function buildWhere(filters = {}, authUser = null) {
   };
 }
 
-async function findAll(filters = {}, authUser = null) {
-  const where = buildWhere(filters, authUser);
+async function findAll(filters = {}, authUser = null, accessPermissions = []) {
+  const where = buildWhere(filters, authUser, accessPermissions);
 
   const [rows] = await db.query(
     `SELECT
@@ -140,8 +178,8 @@ async function findAll(filters = {}, authUser = null) {
   return rows;
 }
 
-async function countAll(filters = {}, authUser = null) {
-  const where = buildWhere(filters, authUser);
+async function countAll(filters = {}, authUser = null, accessPermissions = []) {
+  const where = buildWhere(filters, authUser, accessPermissions);
 
   const [rows] = await db.query(
     `SELECT COUNT(*) AS total
@@ -322,20 +360,21 @@ async function updateSubmitted(id, data, conn = null) {
   return result.affectedRows > 0;
 }
 
-async function cancel(id, actorId, conn = null) {
+async function cancel(id, conn = null) {
   const executor = getExecutor(conn);
 
-  await executor.query(
+  const [result] = await executor.query(
     `UPDATE requests
      SET
        status = 'CANCELED',
        canceled_at = CURRENT_TIMESTAMP,
        current_approver_id = NULL
      WHERE id = ?
-       AND status = 'SUBMITTED'
-       AND (submitted_by = ? OR employee_id = ?)`,
-    [id, actorId, actorId]
+       AND status = 'SUBMITTED'`,
+    [id]
   );
+
+  return result.affectedRows > 0;
 }
 
 

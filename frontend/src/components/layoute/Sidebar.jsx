@@ -50,7 +50,7 @@ const PERMISSION_REQUIREMENTS_BY_ITEM_ID = {
     { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
   ],
   'compensation-type': [
-    { anyPermission: true },
+    { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },
   ],
   'user-permissions': [
     { permissionType: 'REQUEST_CREATE_ALL', scopeTypes: ['GLOBAL'] },

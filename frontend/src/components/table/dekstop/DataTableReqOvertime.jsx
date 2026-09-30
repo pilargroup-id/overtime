@@ -8,7 +8,7 @@ import DataTable, {
 import DialogValidationCancelRO from '../../Dialog/dialog-req-overtime/DialogValidationCancelRO.jsx'
 import DialogEditReqOvertime from '../../Dialog/dialog-req-overtime/DialogEditReqOvertime.jsx'
 import ButtonCancelReqOvertime from '../../button/button-req-overtime/ButtonCancelReqOvertime.jsx'
-import ButtonEditReqOvertime from '../../button/button-req-overtime/ButtonEditReqOvertime.jsx'
+import ButtonEdit from '../../button/ButtonEdit.jsx'
 
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
@@ -406,7 +406,7 @@ function DataTableReqOvertime({
 
     const loadCompensationTypes = async () => {
       try {
-        const response = await api.compensationTypes.list({ limit: 500 })
+        const response = await api.overtimeRequests.compensationOptions()
         const rows = normalizeResponseRows(response)
         const nextMap = new Map()
 
@@ -607,7 +607,7 @@ function DataTableReqOvertime({
               {
                 key: 'edit',
                 label: 'Edit request',
-                buttonComponent: ButtonEditReqOvertime,
+                buttonComponent: ButtonEdit,
                 hidden: (request) => !isEditableStatus(request.status),
                 onClick: handleEditRequest,
               },

@@ -297,10 +297,6 @@ function resolveEndDate(payload) {
   return workDate;
 }
 
-function userHasPermission(permissions, permissionType) {
-  return permissions.some((item) => item.permission_type === permissionType);
-}
-
 function isScopeMatch(permission, employee) {
   if (permission.scope_type === 'GLOBAL') {
     return true;
@@ -331,6 +327,52 @@ function isScopeMatch(permission, employee) {
   }
 
   return false;
+}
+
+function isRequestScopeMatch(permission, request) {
+  if (permission.scope_type === 'GLOBAL') {
+    return true;
+  }
+
+  if (permission.scope_type === 'COMPANY') {
+    return Boolean(permission.company_id) &&
+      String(request.company_id) === String(permission.company_id);
+  }
+
+  if (permission.scope_type === 'DEPARTMENT') {
+    return permission.department_id !== null &&
+      permission.department_id !== undefined &&
+      String(request.department_id) === String(permission.department_id);
+  }
+
+  return false;
+}
+
+function canManageRequest(authUser, request, permissions = []) {
+  if (!authUser?.id || !request) {
+    return false;
+  }
+
+  if (
+    String(request.submitted_by) === String(authUser.id) ||
+    String(request.employee_id) === String(authUser.id)
+  ) {
+    return true;
+  }
+
+  return permissions.some(
+    (permission) =>
+      ['REQUEST_CREATE_SCOPED', 'REQUEST_CREATE_ALL'].includes(permission.permission_type) &&
+      isRequestScopeMatch(permission, request)
+  );
+}
+
+async function getRequestAccessPermissions(authUser) {
+  if (!authUser?.id) {
+    return [];
+  }
+
+  return UserPermissionModel.findActiveByUserId(authUser.id);
 }
 
 async function assertCanSubmitForEmployee(authUser, employee) {
@@ -469,6 +511,7 @@ async function list(query, authUser) {
   const filters = {
     search: query.search || null,
     request_id: query.request_id || null,
+    request_scope: ['mine', 'others'].includes(query.request_scope) ? query.request_scope : null,
     department_id: query.department_id || null,
     day_type: query.day_type || null,
     status: query.status || null,
@@ -481,9 +524,11 @@ async function list(query, authUser) {
     offset,
   };
 
+  const accessPermissions = await getRequestAccessPermissions(authUser);
+
   const [data, total] = await Promise.all([
-    RequestModel.findAll(filters, authUser),
-    RequestModel.countAll(filters, authUser),
+    RequestModel.findAll(filters, authUser, accessPermissions),
+    RequestModel.countAll(filters, authUser, accessPermissions),
   ]);
   const rows = await attachSubmitterSnapshots(data);
 
@@ -505,15 +550,21 @@ async function getById(id, authUser) {
     return null;
   }
 
-  const isOwner =
-    request.submitted_by === authUser.id ||
-    request.employee_id === authUser.id;
+  const permissions = await getRequestAccessPermissions(authUser);
 
-  if (!isOwner) {
+  if (!canManageRequest(authUser, request, permissions)) {
     throw createForbiddenError('You are not allowed to view this overtime request');
   }
 
   return request;
+}
+
+async function getCompensationOptions() {
+  return CompensationTypeModel.findAll({
+    is_active: 1,
+    limit: 1000,
+    offset: 0,
+  });
 }
 
 async function getEligibleEmployees(query = {}, authUser) {
@@ -732,6 +783,8 @@ async function update(id, payload, authUser) {
     multiplier
   );
 
+  const accessPermissions = await getRequestAccessPermissions(authUser);
+
   const updateData = {
     day_type: resolvedDayType,
     work_date: workDate,
@@ -759,11 +812,7 @@ async function update(id, payload, authUser) {
       return null;
     }
 
-    const isOwner =
-      request.submitted_by === authUser.id ||
-      request.employee_id === authUser.id;
-
-    if (!isOwner) {
+    if (!canManageRequest(authUser, request, accessPermissions)) {
       throw createForbiddenError('You are not allowed to edit this overtime request');
     }
 
@@ -874,11 +923,9 @@ async function cancel(id, payload, authUser) {
     return null;
   }
 
-  const isOwner =
-    request.submitted_by === authUser.id ||
-    request.employee_id === authUser.id;
+  const accessPermissions = await getRequestAccessPermissions(authUser);
 
-  if (!isOwner) {
+  if (!canManageRequest(authUser, request, accessPermissions)) {
     throw createForbiddenError('You are not allowed to cancel this overtime request');
   }
 
@@ -893,7 +940,14 @@ async function cancel(id, payload, authUser) {
   try {
     await conn.beginTransaction();
 
-    await RequestModel.cancel(id, authUser.id, conn);
+    const canceled = await RequestModel.cancel(id, conn);
+
+    if (!canceled) {
+      throw createValidationError({
+        status: 'Overtime request is no longer cancelable',
+      });
+    }
+
     await ApprovalModel.cancelPendingByRequestId(id, conn);
 
     await LogModel.create(
@@ -923,6 +977,7 @@ async function cancel(id, payload, authUser) {
 module.exports = {
   list,
   getById,
+  getCompensationOptions,
   getEligibleEmployees,
   create,
   update,

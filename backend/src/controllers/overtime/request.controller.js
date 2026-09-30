@@ -34,6 +34,15 @@ async function show(req, res, next) {
   }
 }
 
+async function compensationOptions(req, res, next) {
+  try {
+    const result = await RequestService.getCompensationOptions();
+    return R.ok(res, result, 'Compensation options fetched successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function eligibleEmployees(req, res, next) {
   try {
     const result = await RequestService.getEligibleEmployees(req.query, req.user);
@@ -138,6 +147,7 @@ async function cancel(req, res, next) {
 module.exports = {
   index,
   show,
+  compensationOptions,
   eligibleEmployees,
   store,
   update,

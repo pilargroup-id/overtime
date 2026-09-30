@@ -261,6 +261,99 @@ async function enrichWithApproverUsers(rows = []) {
   });
 }
 
+
+function createDepartmentOptionsFromUsers(users = []) {
+  const departmentMap = new Map();
+
+  users.forEach((user) => {
+    const departments = Array.isArray(user.departments) ? user.departments : [];
+
+    departments.forEach((department) => {
+      if (department?.id === null || department?.id === undefined) return;
+
+      const key = String(department.id);
+      if (!departmentMap.has(key)) {
+        departmentMap.set(key, {
+          id: department.id,
+          name: department.name ?? null,
+          code: department.code ?? null,
+          class: department.class ?? null,
+          company_id: department.company_id ?? null,
+        });
+      }
+    });
+  });
+
+  return [...departmentMap.values()].sort((a, b) =>
+    String(a.name || '').localeCompare(String(b.name || ''))
+  );
+}
+
+function createJobLevelOptionsFromUsers(users = []) {
+  const jobLevelMap = new Map();
+
+  users.forEach((user) => {
+    const name = user.job_level_name ?? user.job_level ?? null;
+    const value = user.job_level_value;
+
+    if (!name || value === null || value === undefined) return;
+
+    const normalizedValue = Number(value);
+    const key = `${normalizedValue}:${String(name)}`;
+
+    if (!jobLevelMap.has(key)) {
+      jobLevelMap.set(key, {
+        name: String(name),
+        value: normalizedValue,
+      });
+    }
+  });
+
+  return [...jobLevelMap.values()].sort(
+    (a, b) => a.value - b.value || a.name.localeCompare(b.name)
+  );
+}
+
+async function getOptions() {
+  const users = await UserModel.findActiveUsersForOvertimeOptions({
+    allUsers: true,
+    limit: 10000,
+  });
+
+  return {
+    users: users.map((user) => ({
+      id: user.id,
+      internal_id: user.internal_id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      job_position: user.job_position,
+      job_level_name: user.job_level_name,
+      job_level_value: user.job_level_value,
+      department_id: user.department_id,
+      department_name: user.department_name,
+      departments: user.departments || [],
+    })),
+    departments: createDepartmentOptionsFromUsers(users),
+    job_levels: createJobLevelOptionsFromUsers(users),
+  };
+}
+
+async function assertSpecificApproverUser(data) {
+  if (data.approver_scope_type !== 'SPECIFIC_USER') {
+    return;
+  }
+
+  const userId = data.approver_job_level_name;
+  const user = await UserModel.findById(userId);
+
+  if (!user || Number(user.is_active) !== 1) {
+    throw createValidationError({
+      approver_user_id: 'Active approver user not found in PilarGroup directory',
+    });
+  }
+}
+
 async function list(query) {
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(query.limit, 10) || 10, 1), 100);
@@ -308,6 +401,7 @@ async function create(payload) {
   validatePayload(payload);
 
   const data = buildPayload(payload);
+  await assertSpecificApproverUser(data);
 
   try {
     const id = await ApprovalRuleModel.create(data);
@@ -328,9 +422,27 @@ async function update(id, payload) {
     return null;
   }
 
-  validatePayload(payload, true);
+  const validationPayload = {
+    ...existing,
+    ...payload,
+    approver_user_id:
+      payload.approver_user_id ??
+      (payload.approver_scope_type === 'SPECIFIC_USER'
+        ? payload.approver_job_level_name
+        : undefined),
+  };
+
+  validatePayload(validationPayload);
 
   const data = buildPayload(payload);
+  const resultingScopeType = data.approver_scope_type ?? existing.approver_scope_type;
+  const resultingApproverTarget =
+    data.approver_job_level_name ?? existing.approver_job_level_name;
+
+  await assertSpecificApproverUser({
+    approver_scope_type: resultingScopeType,
+    approver_job_level_name: resultingApproverTarget,
+  });
 
   try {
     await ApprovalRuleModel.update(id, data);
@@ -345,6 +457,7 @@ async function update(id, payload) {
 }
 
 module.exports = {
+  getOptions,
   list,
   getById,
   create,

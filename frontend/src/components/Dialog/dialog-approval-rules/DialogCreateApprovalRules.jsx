@@ -11,7 +11,6 @@ import {
   createJobLevelNameOptions,
   createJobLevelValueOptions,
   createUserOptions,
-  normalizeResourceResponseRows,
 } from './approvalRuleOptions.js'
 
 const initialFormValues = {
@@ -133,113 +132,47 @@ function DialogCreateApprovalRules({
 
     let isMounted = true
 
-    const loadDepartments = async () => {
+    const loadApprovalRuleOptions = async () => {
       setIsLoadingDepartments(true)
-      setDepartmentErrorMessage('')
-
-      try {
-        const response = await api.departments.list({ active: 'all', limit: 1000 })
-
-        if (!isMounted) {
-          return
-        }
-
-        setDepartmentOptions(createDepartmentOptions(normalizeResourceResponseRows(response)))
-      } catch (error) {
-        if (!isMounted) {
-          return
-        }
-
-        setDepartmentOptions([])
-        setDepartmentErrorMessage(error?.message || 'Gagal memuat data department.')
-      } finally {
-        if (isMounted) {
-          setIsLoadingDepartments(false)
-        }
-      }
-    }
-
-    loadDepartments()
-
-    return () => {
-      isMounted = false
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined
-    }
-
-    let isMounted = true
-
-    const loadJobLevels = async () => {
       setIsLoadingJobLevels(true)
-      setJobLevelErrorMessage('')
-
-      try {
-        const response = await api.jobLevels.list({ active: 'all', limit: 1000 })
-
-        if (!isMounted) {
-          return
-        }
-
-        setJobLevels(normalizeResourceResponseRows(response))
-      } catch (error) {
-        if (!isMounted) {
-          return
-        }
-
-        setJobLevels([])
-        setJobLevelErrorMessage(error?.message || 'Gagal memuat data job level.')
-      } finally {
-        if (isMounted) {
-          setIsLoadingJobLevels(false)
-        }
-      }
-    }
-
-    loadJobLevels()
-
-    return () => {
-      isMounted = false
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined
-    }
-
-    let isMounted = true
-
-    const loadUsers = async () => {
       setIsLoadingUsers(true)
+      setDepartmentErrorMessage('')
+      setJobLevelErrorMessage('')
       setUserErrorMessage('')
 
       try {
-        const response = await api.users.list({ active: 'all', limit: 1000 })
+        const response = await api.approvalRules.options()
+        const options = response?.data ?? response ?? {}
 
         if (!isMounted) {
           return
         }
 
-        setUsers(normalizeResourceResponseRows(response))
+        setDepartmentOptions(createDepartmentOptions(options.departments || []))
+        setJobLevels(Array.isArray(options.job_levels) ? options.job_levels : [])
+        setUsers(Array.isArray(options.users) ? options.users : [])
       } catch (error) {
         if (!isMounted) {
           return
         }
 
+        const message = error?.message || 'Gagal memuat opsi approval rule.'
+        setDepartmentOptions([])
+        setJobLevels([])
         setUsers([])
-        setUserErrorMessage(error?.message || 'Gagal memuat data user.')
+        setDepartmentErrorMessage(message)
+        setJobLevelErrorMessage(message)
+        setUserErrorMessage(message)
       } finally {
         if (isMounted) {
+          setIsLoadingDepartments(false)
+          setIsLoadingJobLevels(false)
           setIsLoadingUsers(false)
         }
       }
     }
 
-    loadUsers()
+    loadApprovalRuleOptions()
 
     return () => {
       isMounted = false

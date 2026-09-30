@@ -87,8 +87,30 @@ function requireJobLevel(minLevel) {
   };
 }
 
+function requirePermission(...permissionTypes) {
+  const allowedTypes = new Set(permissionTypes.flat().filter(Boolean));
+
+  return (req, res, next) => {
+    const permissions = Array.isArray(req.user?.permissions) ? req.user.permissions : [];
+    const hasPermission = permissions.some((permission) =>
+      allowedTypes.has(permission?.permission_type)
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: insufficient permission',
+        code: 'PERMISSION_FORBIDDEN',
+      });
+    }
+
+    return next();
+  };
+}
+
 module.exports = {
   authenticate,
   requireApp,
   requireJobLevel,
+  requirePermission,
 };

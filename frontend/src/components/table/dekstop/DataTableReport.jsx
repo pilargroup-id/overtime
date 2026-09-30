@@ -427,7 +427,7 @@ const DataTableReport = forwardRef(function DataTableReport(
 
     const loadCompensationTypes = async () => {
       try {
-        const response = await api.compensationTypes.list({ limit: 500 })
+        const response = await api.overtimeRequests.compensationOptions()
         const rows = normalizeResponseRows(response)
         const nextMap = new Map()
 

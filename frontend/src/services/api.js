@@ -304,6 +304,8 @@ const api = {
       api.post('/overtime/requests/bulk', data, options),
     eligibleEmployees: (params, options) =>
       api.get('/overtime/requests/eligible-employees', { ...options, params }),
+    compensationOptions: (options) =>
+      api.get('/overtime/requests/compensation-options', options),
     cancel: (id, data = {}, options) =>
       api.put(`/overtime/requests/${id}/cancel`, data, options),
   },
@@ -330,11 +332,11 @@ const api = {
   },
 
   compensationTypes: createResource('/master/compensation-types'),
-  departments: createReadOnlyResource('/master/departments'),
-  jobLevels: createReadOnlyResource('/master/job-levels'),
-  users: createReadOnlyResource('/master/users'),
   userPermissions: createResource('/master/user-permissions'),
-  approvalRules: createResource('/master/approval-rules'),
+  approvalRules: {
+    ...createResource('/master/approval-rules'),
+    options: (options) => api.get('/master/approval-rules/options', options),
+  },
   nationalHolidays: createResource('/master/national-holidays'),
 };
 

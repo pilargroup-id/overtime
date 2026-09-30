@@ -2,34 +2,18 @@ const express = require('express');
 const router  = express.Router();
 
 const ApprovalRuleController = require('../../controllers/master/approval-rule.controller');
-const { authenticate, requireApp } = require('../../middleware/auth.middleware');
+const { authenticate, requireApp, requirePermission } = require('../../middleware/auth.middleware');
 
-router.get(
-  '/',
+router.use(
   authenticate,
   requireApp('overtime'),
-  ApprovalRuleController.index
+  requirePermission('REQUEST_CREATE_ALL')
 );
 
-router.get(
-  '/:id',
-  authenticate,
-  requireApp('overtime'),
-  ApprovalRuleController.show
-);
-
-router.post(
-  '/',
-  authenticate,
-  requireApp('overtime'),
-  ApprovalRuleController.store
-);
-
-router.put(
-  '/:id',
-  authenticate,
-  requireApp('overtime'),
-  ApprovalRuleController.update
-);
+router.get('/options', ApprovalRuleController.options);
+router.get('/', ApprovalRuleController.index);
+router.get('/:id', ApprovalRuleController.show);
+router.post('/', ApprovalRuleController.store);
+router.put('/:id', ApprovalRuleController.update);
 
 module.exports = router;

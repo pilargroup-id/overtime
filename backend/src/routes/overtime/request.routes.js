@@ -19,6 +19,13 @@ router.post(
 );
 
 router.get(
+  '/compensation-options',
+  authenticate,
+  requireApp('overtime'),
+  RequestController.compensationOptions
+);
+
+router.get(
   '/eligible-employees',
   authenticate,
   requireApp('overtime'),

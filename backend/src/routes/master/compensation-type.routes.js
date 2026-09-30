@@ -2,34 +2,17 @@ const express = require('express');
 const router  = express.Router();
 
 const CompensationTypeController = require('../../controllers/master/compensation-type.controller');
-const { authenticate, requireApp } = require('../../middleware/auth.middleware');
+const { authenticate, requireApp, requirePermission } = require('../../middleware/auth.middleware');
 
-router.get(
-  '/',
+router.use(
   authenticate,
   requireApp('overtime'),
-  CompensationTypeController.index
+  requirePermission('REQUEST_CREATE_ALL')
 );
 
-router.get(
-  '/:id',
-  authenticate,
-  requireApp('overtime'),
-  CompensationTypeController.show
-);
-
-router.post(
-  '/',
-  authenticate,
-  requireApp('overtime'),
-  CompensationTypeController.store
-);
-
-router.put(
-  '/:id',
-  authenticate,
-  requireApp('overtime'),
-  CompensationTypeController.update
-);
+router.get('/', CompensationTypeController.index);
+router.get('/:id', CompensationTypeController.show);
+router.post('/', CompensationTypeController.store);
+router.put('/:id', CompensationTypeController.update);
 
 module.exports = router;
