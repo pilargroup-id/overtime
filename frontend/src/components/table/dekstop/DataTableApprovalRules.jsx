@@ -3,11 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '../../../services/api.js'
 import DataTable, { DataTableIdentity } from '../DataTable.jsx'
 // button
-import ButtonDeleteApprovalRules from '../../button/button-approval-rules/ButtonDeleteApprovalRules.jsx'
 import ButtonEditApprovalRules from '../../button/button-approval-rules/ButtonEditApprovalRules.jsx'
 // dialog
 import DialogEditApprovalRules from '../../Dialog/dialog-approval-rules/DialogEditApprovalRules.jsx'
-import DialogDeleteApprovalRules from '../../Dialog/dialog-approval-rules/DialogDeleteApprovalRules.jsx'
 
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500]
@@ -59,7 +57,7 @@ function getPaginationSummary(firstItem, lastItem, totalItems) {
   return `${firstItem}-${lastItem} dari ${totalItems} request`
 }
 
-function createColumns({ onDelete, onEdit } = {}) {
+function createColumns({ onEdit } = {}) {
   return [
   {
     key: 'name',
@@ -123,25 +121,14 @@ function createColumns({ onDelete, onEdit } = {}) {
       ))
 
       return (
-        <>
-          <ButtonEditApprovalRules
-            title={`Edit ${rowLabel}`}
-            aria-label={`Edit approval rule ${rowLabel}`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onEdit?.(request)
-            }}
-          />
-
-          <ButtonDeleteApprovalRules
-            title={`Delete ${rowLabel}`}
-            aria-label={`Delete approval rule ${rowLabel}`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onDelete?.(request)
-            }}
-          />
-        </>
+        <ButtonEditApprovalRules
+          title={`Edit ${rowLabel}`}
+          aria-label={`Edit approval rule ${rowLabel}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            onEdit?.(request)
+          }}
+        />
       )
     },
   },
@@ -152,7 +139,6 @@ function DataTableApprovalRules({
   searchQuery = '',
   tableLabel = 'User Permission',
   refreshKey = 0,
-  onDelete,
   onEdit,
 }) {
   const [requestRows, setRequestRows] = useState([])
@@ -162,7 +148,6 @@ function DataTableApprovalRules({
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [editingUserPermission, setEditingUserPermission] = useState(null)
-  const [deletingUserPermission, setDeletingUserPermission] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -230,19 +215,6 @@ function DataTableApprovalRules({
     setReloadKey((key) => key + 1)
   }, [onEdit])
 
-  const handleOpenDeleteDialog = useCallback((approvalRules) => {
-    setDeletingUserPermission(approvalRules)
-  }, [])
-
-  const handleCloseDeleteDialog = useCallback(() => {
-    setDeletingUserPermission(null)
-  }, [])
-
-  const handleDeletedUserPermission = useCallback((deletedUserPermission) => {
-    onDelete?.(deletedUserPermission)
-    setReloadKey((key) => key + 1)
-  }, [onDelete])
-
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const firstItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1
   const lastItem = totalItems === 0 ? 0 : Math.min(firstItem + requestRows.length - 1, totalItems)
@@ -277,10 +249,9 @@ function DataTableApprovalRules({
 
   const columns = useMemo(
     () => createColumns({
-      onDelete: handleOpenDeleteDialog,
       onEdit: handleOpenEditDialog,
     }),
-    [handleOpenDeleteDialog, handleOpenEditDialog],
+    [handleOpenEditDialog],
   )
 
   return (
@@ -302,13 +273,6 @@ function DataTableApprovalRules({
         title="Edit Approval Rule"
         onClose={handleCloseEditDialog}
         onEdited={handleEditedUserPermission}
-      />
-      <DialogDeleteApprovalRules
-        isOpen={Boolean(deletingUserPermission)}
-        approvalRules={deletingUserPermission}
-        title="Delete Approval Rule"
-        onClose={handleCloseDeleteDialog}
-        onDeleted={handleDeletedUserPermission}
       />
     </>
   )

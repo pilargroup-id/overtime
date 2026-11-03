@@ -54,7 +54,7 @@ function toRequiredInt(value) {
 
 function toOptionalInt(value) {
   return toRequiredInt(value)
-}
+} 
 
 function toRequiredNumber(value) {
   const trimmed = String(value ?? '').trim()

@@ -2548,6 +2548,109 @@ select {
   line-height: 1.6;
 }
 
+.timeline-horizontal {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.timeline-horizontal__step {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 108px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.timeline-horizontal__track {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.timeline-horizontal__connector {
+  flex: 1 1 auto;
+  height: 2px;
+  min-width: 0.75rem;
+  border-radius: 999px;
+  background: rgba(26, 42, 87, 0.12);
+}
+
+.timeline-horizontal__connector--hidden {
+  visibility: hidden;
+}
+
+.timeline-horizontal__dot {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin: 0 0.4rem;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: rgba(26, 42, 87, 0.18);
+  box-shadow: 0 0 0 2px rgba(26, 42, 87, 0.08);
+}
+
+.timeline-horizontal__dot--active {
+  background: #18786e;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.18);
+}
+
+.timeline-horizontal__dot--pending {
+  background: #d5a021;
+  box-shadow: 0 0 0 2px rgba(233, 196, 106, 0.24);
+}
+
+.timeline-horizontal__dot--app {
+  background: #18786e;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.18);
+}
+
+.timeline-horizontal__dot--inactive {
+  background: #51627f;
+  box-shadow: 0 0 0 2px rgba(81, 98, 127, 0.14);
+}
+
+.timeline-horizontal__content {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0 0.3rem;
+}
+
+.timeline-horizontal__title {
+  margin: 0;
+  color: var(--primary-blue);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.timeline-horizontal__description {
+  margin: 0;
+  color: #51627f;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.timeline-horizontal__empty {
+  margin: 0;
+  color: #51627f;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  .timeline-horizontal__step {
+    min-width: 100px;
+  }
+
+  .timeline-horizontal__description {
+    font-size: 0.74rem;
+  }
+}
+
 .mtickets-timeline-popup {
   width: min(100%, 840px);
 }

@@ -228,13 +228,17 @@ export default function DetailCard({
                       <p className="detail-card-mobile__section-title">{section.title}</p>
                     ) : null}
 
-                    <dl className="detail-card-mobile__fields">
-                      {(section.fields ?? []).map((field, fieldIndex) => (
-                        <Fragment key={field.key ?? `field-${fieldIndex}`}>
-                          <DetailCardField field={field} emptyLabel={emptyLabel} />
-                        </Fragment>
-                      ))}
-                    </dl>
+                    {section.content ? (
+                      section.content
+                    ) : (
+                      <dl className="detail-card-mobile__fields">
+                        {(section.fields ?? []).map((field, fieldIndex) => (
+                          <Fragment key={field.key ?? `field-${fieldIndex}`}>
+                            <DetailCardField field={field} emptyLabel={emptyLabel} />
+                          </Fragment>
+                        ))}
+                      </dl>
+                    )}
                   </section>
                 ))}
               </div>

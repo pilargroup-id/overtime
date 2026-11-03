@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import api from '../../../services/api.js'
 import DataTable from '../DataTable.jsx'
-import ButtonDeleteCompensation from '../../button/button-compensation/ButtonDeleteCompensation.jsx'
 import ButtonEditCompensation from '../../button/button-compensation/ButtonEditCompensation.jsx'
-import DialogDeleteCompensation from '../../Dialog/dialog-compensation/DialogDeleteCompensation.jsx'
 import DialogEditCompensation from '../../Dialog/dialog-compensation/DialogEditCompensation.jsx'
 
 const DEFAULT_PAGE_SIZE = 25
@@ -112,7 +110,7 @@ function getPaginationSummary(firstItem, lastItem, totalItems) {
   return `${firstItem}-${lastItem} dari ${totalItems} national holiday`
 }
 
-function createColumns({ onDelete, onEdit } = {}) {
+function createColumns({ onEdit } = {}) {
   return [
     {
       key: 'id',
@@ -175,25 +173,14 @@ function createColumns({ onDelete, onEdit } = {}) {
         ))
 
         return (
-          <>
-            <ButtonEditCompensation
-              title={`Edit ${rowLabel}`}
-              aria-label={`Edit national holiday ${rowLabel}`}
-              onClick={(event) => {
-                event.stopPropagation()
-                onEdit?.(request)
-              }}
-            />
-
-            <ButtonDeleteCompensation
-              title={`Delete ${rowLabel}`}
-              aria-label={`Delete national holiday ${rowLabel}`}
-              onClick={(event) => {
-                event.stopPropagation()
-                onDelete?.(request)
-              }}
-            />
-          </>
+          <ButtonEditCompensation
+            title={`Edit ${rowLabel}`}
+            aria-label={`Edit national holiday ${rowLabel}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit?.(request)
+            }}
+          />
         )
       },
     },
@@ -204,7 +191,6 @@ function DataTableNationalHoliday({
   searchQuery = '',
   tableLabel = 'National Holiday',
   refreshKey = 0,
-  onDelete,
   onEdit,
 }) {
   const [requestRows, setRequestRows] = useState([])
@@ -214,7 +200,6 @@ function DataTableNationalHoliday({
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [editingCompensationType, setEditingCompensationType] = useState(null)
-  const [deletingCompensationType, setDeletingCompensationType] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -282,19 +267,6 @@ function DataTableNationalHoliday({
     setReloadKey((key) => key + 1)
   }, [onEdit])
 
-  const handleOpenDeleteDialog = useCallback((compensationType) => {
-    setDeletingCompensationType(compensationType)
-  }, [])
-
-  const handleCloseDeleteDialog = useCallback(() => {
-    setDeletingCompensationType(null)
-  }, [])
-
-  const handleDeletedCompensationType = useCallback((deletedCompensationType) => {
-    onDelete?.(deletedCompensationType)
-    setReloadKey((key) => key + 1)
-  }, [onDelete])
-
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const firstItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1
   const lastItem = totalItems === 0 ? 0 : Math.min(firstItem + requestRows.length - 1, totalItems)
@@ -329,10 +301,9 @@ function DataTableNationalHoliday({
 
   const columns = useMemo(
     () => createColumns({
-      onDelete: handleOpenDeleteDialog,
       onEdit: handleOpenEditDialog,
     }),
-    [handleOpenDeleteDialog, handleOpenEditDialog],
+    [handleOpenEditDialog],
   )
 
   return (
@@ -354,13 +325,6 @@ function DataTableNationalHoliday({
         title="Edit Compensation Type"
         onClose={handleCloseEditDialog}
         onEdited={handleEditedCompensationType}
-      />
-      <DialogDeleteCompensation
-        isOpen={Boolean(deletingCompensationType)}
-        compensationType={deletingCompensationType}
-        title="Delete Compensation Type"
-        onClose={handleCloseDeleteDialog}
-        onDeleted={handleDeletedCompensationType}
       />
     </>
   )

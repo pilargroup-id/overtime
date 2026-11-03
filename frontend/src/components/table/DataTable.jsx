@@ -467,6 +467,7 @@ function resolveMobileCardSections(sectionsConfig, row, index, detail) {
     key: section.key ?? section.title ?? `section-${sectionIndex}`,
     title: resolveResponsiveValue(section.title, row, index),
     wide: Boolean(resolveResponsiveValue(section.wide, row, index)),
+    content: typeof section.render === 'function' ? section.render(row, index) : undefined,
     fields: (section.fields ?? [])
       .filter((field) => !(field?.hidden?.(row, index) ?? field?.hidden))
       .map((field, fieldIndex) => ({
@@ -1166,32 +1167,36 @@ function DataTable({
                                       </p>
                                     </div>
 
-                                    <dl className="users-table__detail-list">
-                                      {(section.fields ?? []).map((field) => {
-                                        const fieldValue =
-                                          typeof field.render === 'function'
-                                            ? field.render(row, index)
-                                            : resolveTemplateValue(field.value, row, index)
+                                    {typeof section.render === 'function' ? (
+                                      section.render(row, index)
+                                    ) : (
+                                      <dl className="users-table__detail-list">
+                                        {(section.fields ?? []).map((field) => {
+                                          const fieldValue =
+                                            typeof field.render === 'function'
+                                              ? field.render(row, index)
+                                              : resolveTemplateValue(field.value, row, index)
 
-                                        return (
-                                          <div
-                                            key={field.label}
-                                            className={`users-table__detail-row${
-                                              field.kind === 'chips'
-                                                ? ' users-table__detail-row--stacked'
-                                                : ''
-                                            }`}
-                                          >
-                                            <dt className="users-table__detail-label">
-                                              {field.label}
-                                            </dt>
-                                            <dd className="users-table__detail-field">
-                                              {renderDetailValue(fieldValue)}
-                                            </dd>
-                                          </div>
-                                        )
-                                      })}
-                                    </dl>
+                                          return (
+                                            <div
+                                              key={field.label}
+                                              className={`users-table__detail-row${
+                                                field.kind === 'chips'
+                                                  ? ' users-table__detail-row--stacked'
+                                                  : ''
+                                              }`}
+                                            >
+                                              <dt className="users-table__detail-label">
+                                                {field.label}
+                                              </dt>
+                                              <dd className="users-table__detail-field">
+                                                {renderDetailValue(fieldValue)}
+                                              </dd>
+                                            </div>
+                                          )
+                                        })}
+                                      </dl>
+                                    )}
                                   </section>
                                 ))}
                               </div>

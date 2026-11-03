@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import api from '../../../services/api.js'
 import DataTable from '../DataTable.jsx'
-import ButtonDeleteCompensation from '../../button/button-compensation/ButtonDeleteCompensation.jsx'
 import ButtonEditCompensation from '../../button/button-compensation/ButtonEditCompensation.jsx'
-import DialogDeleteCompensation from '../../Dialog/dialog-compensation/DialogDeleteCompensation.jsx'
 import DialogEditCompensation from '../../Dialog/dialog-compensation/DialogEditCompensation.jsx'
 
 const DEFAULT_PAGE_SIZE = 25
@@ -60,7 +58,7 @@ function getPaginationSummary(firstItem, lastItem, totalItems) {
   return `${firstItem}-${lastItem} dari ${totalItems} compensation type`
 }
 
-function createColumns({ onDelete, onEdit } = {}) {
+function createColumns({ onEdit } = {}) {
   return [
     {
       key: 'code',
@@ -117,25 +115,14 @@ function createColumns({ onDelete, onEdit } = {}) {
         ))
 
         return (
-          <>
-            <ButtonEditCompensation
-              title={`Edit ${rowLabel}`}
-              aria-label={`Edit compensation type ${rowLabel}`}
-              onClick={(event) => {
-                event.stopPropagation()
-                onEdit?.(request)
-              }}
-            />
-
-            <ButtonDeleteCompensation
-              title={`Delete ${rowLabel}`}
-              aria-label={`Delete compensation type ${rowLabel}`}
-              onClick={(event) => {
-                event.stopPropagation()
-                onDelete?.(request)
-              }}
-            />
-          </>
+          <ButtonEditCompensation
+            title={`Edit ${rowLabel}`}
+            aria-label={`Edit compensation type ${rowLabel}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit?.(request)
+            }}
+          />
         )
       },
     },
@@ -146,7 +133,6 @@ function DataTableCompensationType({
   searchQuery = '',
   tableLabel = 'Compensation Type',
   refreshKey = 0,
-  onDelete,
   onEdit,
 }) {
   const [requestRows, setRequestRows] = useState([])
@@ -156,7 +142,6 @@ function DataTableCompensationType({
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [editingCompensationType, setEditingCompensationType] = useState(null)
-  const [deletingCompensationType, setDeletingCompensationType] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -174,7 +159,7 @@ function DataTableCompensationType({
       try {
         const response = await api.compensationTypes.list({
           page: currentPage,
-          limit: pageSize,
+          limit: pageSize, 
           search: searchQuery,
         })
 
@@ -211,7 +196,7 @@ function DataTableCompensationType({
     }
   }, [currentPage, pageSize, refreshKey, reloadKey, searchQuery])
 
-  const handleOpenEditDialog = useCallback((compensationType) => {
+  const handleOpenEditDialog = useCallback((compensationType) => { 
     setEditingCompensationType(compensationType)
   }, [])
 
@@ -223,19 +208,6 @@ function DataTableCompensationType({
     onEdit?.(editedCompensationType, payload)
     setReloadKey((key) => key + 1)
   }, [onEdit])
-
-  const handleOpenDeleteDialog = useCallback((compensationType) => {
-    setDeletingCompensationType(compensationType)
-  }, [])
-
-  const handleCloseDeleteDialog = useCallback(() => {
-    setDeletingCompensationType(null)
-  }, [])
-
-  const handleDeletedCompensationType = useCallback((deletedCompensationType) => {
-    onDelete?.(deletedCompensationType)
-    setReloadKey((key) => key + 1)
-  }, [onDelete])
 
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const firstItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1
@@ -271,10 +243,9 @@ function DataTableCompensationType({
 
   const columns = useMemo(
     () => createColumns({
-      onDelete: handleOpenDeleteDialog,
       onEdit: handleOpenEditDialog,
     }),
-    [handleOpenDeleteDialog, handleOpenEditDialog],
+    [handleOpenEditDialog],
   )
 
   return (
@@ -296,13 +267,6 @@ function DataTableCompensationType({
         title="Edit Compensation Type"
         onClose={handleCloseEditDialog}
         onEdited={handleEditedCompensationType}
-      />
-      <DialogDeleteCompensation
-        isOpen={Boolean(deletingCompensationType)}
-        compensationType={deletingCompensationType}
-        title="Delete Compensation Type"
-        onClose={handleCloseDeleteDialog}
-        onDeleted={handleDeletedCompensationType}
       />
     </>
   )

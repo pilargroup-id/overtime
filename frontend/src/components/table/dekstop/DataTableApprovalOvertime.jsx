@@ -13,6 +13,9 @@ import ButtonReject from '../../button/button-approval-overtime/ButtonReject.jsx
 // import-dialog
 import DialogValidationApproveRO from '../../Dialog/dialog-approval-overtime/DialogValidationApproveRO.jsx'
 
+// import-timeline
+import TimelineHorizontal from '../../timeline/TimelineHorizontal.jsx'
+
 const DEFAULT_PAGE_SIZE = 25
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const APPROVABLE_REQUEST_STATUS = 'SUBMITTED'
@@ -228,12 +231,32 @@ function getApprovalTimeValue(row) {
   return row?.acted_at ?? row?.approved_at ?? row?.rejected_at ?? row?.updated_at ?? null
 }
 
-function getApprovalProgressFields(row) {
+function getApprovalProgressTimelineSteps(row) {
+  const approvalStatus = getApprovalStatus(row)
+  const requestStatus = getRequestStatus(row)
+
   return [
-    { label: 'Approval Level', value: formatValue(row.approval_level) },
-    { label: 'Approver (step ini)', value: formatValue(row.approver_name_snapshot) },
-    { label: 'Approval Status', value: formatValue(getApprovalStatus(row)) },
-    { label: 'Request Status', value: formatValue(getRequestStatus(row)) },
+    {
+      key: 'submitted',
+      title: 'Diajukan',
+      description: formatSubmittedBy(row),
+      status: 'Submitted',
+      variant: 'active',
+    },
+    {
+      key: 'approval',
+      title: `Approval Level ${formatValue(row.approval_level)}`,
+      description: formatValue(row.approver_name_snapshot),
+      status: formatValue(approvalStatus),
+      variant: getStatusVariant(approvalStatus),
+    },
+    {
+      key: 'result',
+      title: 'Hasil Akhir',
+      description: formatDateTime(getApprovalTimeValue(row)),
+      status: formatValue(requestStatus),
+      variant: getStatusVariant(requestStatus),
+    },
   ]
 }
 
@@ -962,11 +985,10 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
             sections: (row) => [
               {
                 title: 'Approval Progress',
-                fields: getApprovalProgressFields(row),
+                render: () => <TimelineHorizontal steps={getApprovalProgressTimelineSteps(row)} />,
               },
               {
                 title: 'Result',
-                wide: true,
                 fields: getResultSectionFields(row),
               },
             ],
@@ -993,7 +1015,11 @@ const DataTableApprovalOvertime = forwardRef(function DataTableApprovalOvertime(
             ],
             sections: (row) => [
               { title: 'Overview', fields: getMobileOverviewFields(row, compensationTypeMap) },
-              { title: 'Approval Progress', fields: getApprovalProgressFields(row) },
+              {
+                title: 'Approval Progress',
+                wide: true,
+                render: () => <TimelineHorizontal steps={getApprovalProgressTimelineSteps(row)} />,
+              },
               { title: 'Result', wide: true, fields: getResultSectionFields(row) },
             ],
           }}
