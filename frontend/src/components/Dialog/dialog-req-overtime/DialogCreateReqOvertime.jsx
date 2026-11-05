@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
+import ToastAlert from '../ToastAlert.jsx'
 import Time24HourInput from './Time24HourInput.jsx'
 
 const initialFormValues = {
@@ -16,6 +17,7 @@ const initialFormValues = {
   task_description: '',
   result_description: '',
   compensation_type_id: '',
+  compensation_amount: '',
 }
 
 const dayTypeOptions = ['WORKDAY', 'HOLIDAY', 'WEEKEND']
@@ -53,6 +55,7 @@ const reqOvertimeTextareaFields = [
     name: 'task_description',
     label: 'Task Description',
     placeholder: 'Task Description..',
+    required: true,
   },
   {
     name: 'result_description',
@@ -90,22 +93,6 @@ function normalizeUserProfile(responseData) {
   }
 }
 
-function dedupeByValue(values) {
-  const seen = new Set()
-  const result = []
-
-  values.forEach((value) => {
-    if (!value || seen.has(value)) {
-      return
-    }
-
-    seen.add(value)
-    result.push(value)
-  })
-
-  return result
-}
-
 function getDepartmentOptions(departments) {
   return [...departments]
     .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
@@ -114,18 +101,6 @@ function getDepartmentOptions(departments) {
       label: department.name || department.code || String(department.id),
       isPrimary: Number(department.is_primary) === 1,
     }))
-}
-
-function getDepartmentClassOptions(departments, departmentId) {
-  const matchingDepartments = departmentId
-    ? departments.filter((department) => String(department.id) === String(departmentId))
-    : departments
-  const classValues = dedupeByValue(matchingDepartments.map((department) => department.class))
-
-  return classValues.map((classValue) => ({
-    value: classValue,
-    label: classValue,
-  }))
 }
 
 function getCompanyOptions(companies) {
@@ -282,48 +257,47 @@ function getDurationInMinutes(startTime, endTime) {
     : endMinutes + 24 * 60 - startMinutes
 }
 
-function formatCompensationOption(compensationType, multiplier) {
+function formatCompensationOption(compensationType) {
   const name = compensationType.name ?? compensationType.code
-  const amount = Number(compensationType.amount)
-  const leaveDays = Number(compensationType.leave_days)
-  const details = []
-  const multiplierLabel =
-    Number.isFinite(multiplier) && multiplier > 1
-      ? `${formatNumber(multiplier)}x`
-      : null
+  const kind = getCompensationKind(compensationType)
+  const fixedAmount = getFixedAmount(compensationType)
 
-  if (Number.isFinite(amount) && amount > 0) {
-    details.push(`Rp${formatNumber(amount * multiplier)}`)
+  if (fixedAmount) {
+    return `${name} (Rp${formatNumber(fixedAmount)})`
   }
 
-  if (Number.isFinite(leaveDays) && leaveDays > 0) {
-    details.push(`${formatNumber(leaveDays * multiplier)} hari`)
-  }
-
-  if (multiplierLabel) {
-    details.unshift(`Dikali ${multiplierLabel}`)
-  }
-
-  return details.length ? `${name} (${details.join(' / ')})` : name
+  return kind ? `${name} (${kind})` : name
 }
 
-function formatCompensationAmount(compensationType, multiplier) {
-  if (!compensationType) {
-    return ''
+function getCompensationKind(compensationType) {
+  return String(compensationType?.compensation_kind || '').toUpperCase()
+}
+
+function getFixedAmount(compensationType) {
+  const fixedAmount = Number(compensationType?.fixed_amount)
+
+  return Number.isFinite(fixedAmount) && fixedAmount > 0 ? fixedAmount : null
+}
+
+const MEAL_ALLOWANCE_MIN_MINUTES = 120
+const MEAL_ALLOWANCE_MAX_MINUTES = 180
+
+function isMealAllowanceCode(code) {
+  return String(code || '').toUpperCase() === 'MEAL_ALLOWANCE_ONLY'
+}
+
+function getLeaveCompensationPreviewLabel(totalMinutes, multiplier) {
+  if (!Number.isFinite(totalMinutes) || totalMinutes < 240) {
+    return 'Minimal 4 jam'
   }
 
-  const amount = Number(compensationType.amount)
-  const leaveDays = Number(compensationType.leave_days)
+  const baseDays = totalMinutes >= 480 ? 1 : 0.5
+  const safeMultiplier = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+  const finalDays = baseDays * safeMultiplier
 
-  if (Number.isFinite(amount) && amount > 0) {
-    return `Rp${formatNumber(amount * multiplier)}`
-  }
-
-  if (Number.isFinite(leaveDays) && leaveDays > 0) {
-    return `${formatNumber(leaveDays * multiplier)} hari`
-  }
-
-  return ''
+  return safeMultiplier > 1
+    ? `${formatNumber(baseDays)} hari x ${formatNumber(safeMultiplier)} = ${formatNumber(finalDays)} hari`
+    : `${formatNumber(baseDays)} hari`
 }
 
 function DialogCreateReqOvertime({
@@ -422,10 +396,7 @@ function DialogCreateReqOvertime({
 
     const loadNationalHolidays = async () => {
       try {
-        const response = await api.nationalHolidays.list({
-          is_active: 1,
-          limit: 500,
-        })
+        const response = await api.overtimeRequests.nationalHolidayOptions()
 
         if (!isMounted) {
           return
@@ -516,34 +487,53 @@ function DialogCreateReqOvertime({
         nextValues.department_class = selectedDepartment?.class || ''
       }
 
-      if (
-        (name === 'start_time' || name === 'end_time') &&
-        getDurationInMinutes(nextValues.start_time, nextValues.end_time) < 60
-      ) {
-        nextValues.compensation_type_id = ''
+      if (name === 'compensation_type_id') {
+        nextValues.compensation_amount = ''
       }
 
       return nextValues
     })
   }
 
-  const buildPayload = () => ({
-    day_type: formValues.day_type,
-    work_date: formValues.work_date,
-    start_time: formValues.start_time,
-    end_time: formValues.end_time,
-    task_description: formValues.task_description.trim(),
-    result_description: formValues.result_description.trim(),
-    compensation_type_id:
-      getDurationInMinutes(formValues.start_time, formValues.end_time) >= 60
+  const buildPayload = () => {
+    const selectedCompensationType = compensationTypes.find(
+      (compensationType) =>
+        String(compensationType.id) === String(formValues.compensation_type_id),
+    )
+    const selectedKind = getCompensationKind(selectedCompensationType)
+    const fixedAmount = getFixedAmount(selectedCompensationType)
+
+    const payload = {
+      day_type: formValues.day_type,
+      work_date: formValues.work_date,
+      start_time: formValues.start_time,
+      end_time: formValues.end_time,
+      task_description: formValues.task_description.trim(),
+      result_description: formValues.result_description.trim(),
+      compensation_type_id: formValues.compensation_type_id
         ? Number(formValues.compensation_type_id)
         : null,
-  })
+    }
+
+    if (selectedKind === 'MONEY' && !fixedAmount) {
+      payload.compensation_amount = formValues.compensation_amount
+        ? Number(formValues.compensation_amount)
+        : null
+    }
+
+    return {
+      ...payload,
+      compensationKind: selectedKind,
+      fixedAmount,
+      compensationCode: selectedCompensationType?.code,
+    }
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    const payload = buildPayload()
+    const { compensationKind, fixedAmount, compensationCode, ...payload } = buildPayload()
+    const durationMinutes = getDurationInMinutes(payload.start_time, payload.end_time)
 
     if (
       !payload.day_type ||
@@ -552,9 +542,27 @@ function DialogCreateReqOvertime({
       !payload.end_time ||
       !payload.task_description ||
       !payload.result_description ||
-      (isCompensationEnabled && !payload.compensation_type_id)
+      !payload.compensation_type_id
     ) {
       setErrorMessage('Lengkapi seluruh data request overtime terlebih dahulu.')
+      return
+    }
+
+    if (compensationKind === 'MONEY' && !fixedAmount && !(Number(payload.compensation_amount) > 0)) {
+      setErrorMessage('Nominal Compensation Amount wajib diisi untuk kompensasi Uang.')
+      return
+    }
+
+    if (compensationKind === 'LEAVE' && durationMinutes < 240) {
+      setErrorMessage('Kompensasi Cuti membutuhkan durasi overtime minimal 4 jam.')
+      return
+    }
+
+    if (
+      isMealAllowanceCode(compensationCode) &&
+      (durationMinutes < MEAL_ALLOWANCE_MIN_MINUTES || durationMinutes > MEAL_ALLOWANCE_MAX_MINUTES)
+    ) {
+      setErrorMessage('Kompensasi Uang Makan membutuhkan durasi overtime minimal 2 jam dan maksimal 3 jam.')
       return
     }
 
@@ -595,18 +603,15 @@ function DialogCreateReqOvertime({
     (compensationType) =>
       String(compensationType.id) === String(formValues.compensation_type_id),
   )
-  const compensationAmountLabel = formatCompensationAmount(
-    selectedCompensationType,
+  const compensationKind = getCompensationKind(selectedCompensationType)
+  const selectedFixedAmount = getFixedAmount(selectedCompensationType)
+  const durationMinutes = getDurationInMinutes(formValues.start_time, formValues.end_time)
+  const leaveCompensationPreviewLabel = getLeaveCompensationPreviewLabel(
+    durationMinutes,
     compensationMultiplier,
   )
   const durationLabel = formatDuration(formValues.start_time, formValues.end_time)
-  const isCompensationEnabled =
-    getDurationInMinutes(formValues.start_time, formValues.end_time) >= 60
   const departmentOptions = getDepartmentOptions(userOrganization.departments)
-  const departmentClassOptions = getDepartmentClassOptions(
-    userOrganization.departments,
-    formValues.department_id,
-  )
   const companyOptions = getCompanyOptions(userOrganization.companies)
 
   const dialogNode = (
@@ -697,30 +702,18 @@ function DialogCreateReqOvertime({
                     >
                       Department
                     </label>
-                    <select
+                    <input
                       id="req-overtime-department-id"
-                      name="department_id"
-                      className="register-user-popup__select"
-                      value={formValues.department_id}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingUserOrganization ||
-                        departmentOptions.length <= 1
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={
+                        departmentOptions.find(
+                          (option) => option.value === formValues.department_id,
+                        )?.label || (isLoadingUserOrganization ? 'Loading...' : '-')
                       }
-                    >
-                      {departmentOptions.length === 0 ? (
-                        <option value="">
-                          {isLoadingUserOrganization ? 'Loading...' : '-'}
-                        </option>
-                      ) : (
-                        departmentOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      readOnly
+                      disabled
+                    />
                   </div>
 
                   <div className="register-user-popup__field overtime-create-popup__field--third">
@@ -730,30 +723,14 @@ function DialogCreateReqOvertime({
                     >
                       Class
                     </label>
-                    <select
+                    <input
                       id="req-overtime-department-class"
-                      name="department_class"
-                      className="register-user-popup__select"
-                      value={formValues.department_class}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingUserOrganization ||
-                        departmentClassOptions.length <= 1
-                      }
-                    >
-                      {departmentClassOptions.length === 0 ? (
-                        <option value="">
-                          {isLoadingUserOrganization ? 'Loading...' : '-'}
-                        </option>
-                      ) : (
-                        departmentClassOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={formValues.department_class || (isLoadingUserOrganization ? 'Loading...' : '-')}
+                      readOnly
+                      disabled
+                    />
                   </div>
 
                   <div className="register-user-popup__field overtime-create-popup__field--third">
@@ -763,30 +740,102 @@ function DialogCreateReqOvertime({
                     >
                       Company
                     </label>
-                    <select
+                    <input
                       id="req-overtime-company-id"
-                      name="company_id"
-                      className="register-user-popup__select"
-                      value={formValues.company_id}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingUserOrganization ||
-                        companyOptions.length <= 1
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={
+                        companyOptions.find((option) => option.value === formValues.company_id)
+                          ?.label || (isLoadingUserOrganization ? 'Loading...' : '-')
                       }
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="req-overtime-compensation-type"
                     >
-                      {companyOptions.length === 0 ? (
-                        <option value="">
-                          {isLoadingUserOrganization ? 'Loading...' : '-'}
+                      Compensation
+                    </label>
+                    <select
+                      id="req-overtime-compensation-type"
+                      name="compensation_type_id"
+                      className="register-user-popup__select"
+                      value={formValues.compensation_type_id}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting || isLoadingCompensationTypes}
+                    >
+                      <option value="">
+                        {isLoadingCompensationTypes ? 'Loading...' : 'Select compensation'}
+                      </option>
+                      {compensationTypes.map((compensationType) => (
+                        <option key={compensationType.id} value={compensationType.id}>
+                          {formatCompensationOption(compensationType)}
                         </option>
-                      ) : (
-                        companyOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
+                      ))}
                     </select>
+                    {isSelectedNationalHoliday && compensationKind === 'LEAVE' ? (
+                      <p className="register-user-popup__hint">
+                        {selectedNationalHoliday.name} multiplier{' '}
+                        {formatNumber(compensationMultiplier)}x diterapkan pada
+                        kompensasi.
+                      </p>
+                    ) : null}
+                    {isSelectedNationalHoliday && compensationKind === 'MONEY' ? (
+                      <p className="register-user-popup__hint">
+                        {selectedNationalHoliday.name} — nominal Uang tidak dikali
+                        multiplier hari libur nasional.
+                      </p>
+                    ) : null}
+                    {isMealAllowanceCode(selectedCompensationType?.code) ? (
+                      <p className="register-user-popup__hint">
+                        Kompensasi Uang Makan membutuhkan durasi overtime minimal 2 jam
+                        dan maksimal 3 jam.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="req-overtime-compensation-amount"
+                    >
+                      Compensation Amount
+                    </label>
+                    {compensationKind === 'MONEY' && !selectedFixedAmount ? (
+                      <input
+                        id="req-overtime-compensation-amount"
+                        name="compensation_amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="register-user-popup__input"
+                        value={formValues.compensation_amount}
+                        placeholder="Masukkan nominal"
+                        onChange={handleInputChange}
+                        disabled={isSubmitting}
+                      />
+                    ) : (
+                      <input
+                        id="req-overtime-compensation-amount"
+                        name="compensation_amount"
+                        type="text"
+                        className="register-user-popup__input register-user-popup__input--static"
+                        value={
+                          compensationKind === 'LEAVE'
+                            ? leaveCompensationPreviewLabel
+                            : compensationKind === 'MONEY' && selectedFixedAmount
+                              ? `Rp${formatNumber(selectedFixedAmount)}`
+                              : ''
+                        }
+                        placeholder="-"
+                        readOnly
+                        disabled
+                      />
+                    )}
                   </div>
 
                   {reqOvertimeTextFields.map((field) => (
@@ -813,7 +862,7 @@ function DialogCreateReqOvertime({
                           id="req-overtime-duration"
                           name="duration"
                           type="text"
-                          className="register-user-popup__input"
+                          className="register-user-popup__input register-user-popup__input--static"
                           value={durationLabel}
                           placeholder="0 menit"
                           readOnly
@@ -833,69 +882,6 @@ function DialogCreateReqOvertime({
                     </div>
                   ))}
 
-                  <div className="register-user-popup__field overtime-create-popup__field--half">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="req-overtime-compensation-type"
-                    >
-                      Compensation
-                    </label>
-                    <select
-                      id="req-overtime-compensation-type"
-                      name="compensation_type_id"
-                      className="register-user-popup__select"
-                      value={formValues.compensation_type_id}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingCompensationTypes ||
-                        !isCompensationEnabled
-                      }
-                    >
-                      <option value="">
-                        {isLoadingCompensationTypes
-                          ? 'Loading...'
-                          : isCompensationEnabled
-                            ? 'Select compensation'
-                            : 'Durasi minimal 1 jam'}
-                      </option>
-                      {compensationTypes.map((compensationType) => (
-                        <option key={compensationType.id} value={compensationType.id}>
-                          {formatCompensationOption(
-                            compensationType,
-                            compensationMultiplier,
-                          )}
-                        </option>
-                      ))}
-                    </select>
-                    {isSelectedNationalHoliday ? (
-                      <p className="register-user-popup__hint">
-                        {selectedNationalHoliday.name} multiplier{' '}
-                        {formatNumber(compensationMultiplier)}x diterapkan pada
-                        kompensasi.
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="register-user-popup__field overtime-create-popup__field--half">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="req-overtime-compensation-amount"
-                    >
-                      Compensation Amount
-                    </label>
-                    <input
-                      id="req-overtime-compensation-amount"
-                      name="compensation_amount"
-                      type="text"
-                      className="register-user-popup__input"
-                      value={compensationAmountLabel}
-                      placeholder="-"
-                      readOnly
-                      disabled
-                    />
-                  </div>
-
                   {reqOvertimeTextareaFields.map((field) => (
                     <div
                       key={field.name}
@@ -906,6 +892,9 @@ function DialogCreateReqOvertime({
                         htmlFor={`req-overtime-${field.name}`}
                       >
                         {field.label}
+                        {field.required ? (
+                          <span className="register-user-popup__required">*</span>
+                        ) : null}
                       </label>
                       <textarea
                         id={`req-overtime-${field.name}`}
@@ -919,11 +908,6 @@ function DialogCreateReqOvertime({
                     </div>
                   ))}
                 </div>
-                {errorMessage ? (
-                  <p className="register-user-popup__hint" role="alert">
-                    {errorMessage}
-                  </p>
-                ) : null}
               </div>
             </div>
           </div>
@@ -950,7 +934,18 @@ function DialogCreateReqOvertime({
     </div>
   )
 
-  return createPortal(dialogNode, document.body)
+  return createPortal(
+    <>
+      {dialogNode}
+      <ToastAlert
+        open={Boolean(errorMessage)}
+        onClose={() => setErrorMessage('')}
+        message={errorMessage}
+        severity="error"
+      />
+    </>,
+    document.body,
+  )
 }
 
 export default DialogCreateReqOvertime
