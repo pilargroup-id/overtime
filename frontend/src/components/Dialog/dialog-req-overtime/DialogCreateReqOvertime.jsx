@@ -55,6 +55,7 @@ const reqOvertimeTextareaFields = [
     name: 'task_description',
     label: 'Task Description',
     placeholder: 'Task Description..',
+    required: true,
   },
   {
     name: 'result_description',
@@ -276,6 +277,13 @@ function getFixedAmount(compensationType) {
   const fixedAmount = Number(compensationType?.fixed_amount)
 
   return Number.isFinite(fixedAmount) && fixedAmount > 0 ? fixedAmount : null
+}
+
+const MEAL_ALLOWANCE_MIN_MINUTES = 120
+const MEAL_ALLOWANCE_MAX_MINUTES = 180
+
+function isMealAllowanceCode(code) {
+  return String(code || '').toUpperCase() === 'MEAL_ALLOWANCE_ONLY'
 }
 
 function getLeaveCompensationPreviewLabel(totalMinutes, multiplier) {
@@ -513,13 +521,18 @@ function DialogCreateReqOvertime({
         : null
     }
 
-    return { ...payload, compensationKind: selectedKind, fixedAmount }
+    return {
+      ...payload,
+      compensationKind: selectedKind,
+      fixedAmount,
+      compensationCode: selectedCompensationType?.code,
+    }
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    const { compensationKind, fixedAmount, ...payload } = buildPayload()
+    const { compensationKind, fixedAmount, compensationCode, ...payload } = buildPayload()
     const durationMinutes = getDurationInMinutes(payload.start_time, payload.end_time)
 
     if (
@@ -542,6 +555,14 @@ function DialogCreateReqOvertime({
 
     if (compensationKind === 'LEAVE' && durationMinutes < 240) {
       setErrorMessage('Kompensasi Cuti membutuhkan durasi overtime minimal 4 jam.')
+      return
+    }
+
+    if (
+      isMealAllowanceCode(compensationCode) &&
+      (durationMinutes < MEAL_ALLOWANCE_MIN_MINUTES || durationMinutes > MEAL_ALLOWANCE_MAX_MINUTES)
+    ) {
+      setErrorMessage('Kompensasi Uang Makan membutuhkan durasi overtime minimal 2 jam dan maksimal 3 jam.')
       return
     }
 
@@ -769,6 +790,12 @@ function DialogCreateReqOvertime({
                         multiplier hari libur nasional.
                       </p>
                     ) : null}
+                    {isMealAllowanceCode(selectedCompensationType?.code) ? (
+                      <p className="register-user-popup__hint">
+                        Kompensasi Uang Makan membutuhkan durasi overtime minimal 2 jam
+                        dan maksimal 3 jam.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="register-user-popup__field overtime-create-popup__field--half">
@@ -865,6 +892,9 @@ function DialogCreateReqOvertime({
                         htmlFor={`req-overtime-${field.name}`}
                       >
                         {field.label}
+                        {field.required ? (
+                          <span className="register-user-popup__required">*</span>
+                        ) : null}
                       </label>
                       <textarea
                         id={`req-overtime-${field.name}`}

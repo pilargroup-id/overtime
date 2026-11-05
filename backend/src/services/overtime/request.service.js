@@ -13,6 +13,9 @@ const ApprovalResolverService = require('./approval-resolver.service');
 
 const ALLOWED_DAY_TYPES = ['WORKDAY', 'HOLIDAY', 'WEEKEND'];
 const MAX_BACKDATE_MONTHS = 2;
+const MEAL_ALLOWANCE_COMPENSATION_CODE = 'MEAL_ALLOWANCE_ONLY';
+const MEAL_ALLOWANCE_MIN_MINUTES = 120;
+const MEAL_ALLOWANCE_MAX_MINUTES = 180;
 
 function createValidationError(errors) {
   const err = new Error('Validation failed');
@@ -129,6 +132,16 @@ function calculateCompensationSnapshot({
       throw createValidationError({
         compensation_amount: 'compensation_amount is required and must be greater than 0 for manual MONEY compensation',
       });
+    }
+
+    if (String(compensationType.code || '').toUpperCase() === MEAL_ALLOWANCE_COMPENSATION_CODE) {
+      const minutes = Number(totalMinutes);
+
+      if (minutes < MEAL_ALLOWANCE_MIN_MINUTES || minutes > MEAL_ALLOWANCE_MAX_MINUTES) {
+        throw createValidationError({
+          duration: 'MEAL_ALLOWANCE_ONLY compensation requires overtime duration between 2 and 3 hours',
+        });
+      }
     }
 
     return {

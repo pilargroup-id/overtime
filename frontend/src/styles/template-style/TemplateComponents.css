@@ -5908,6 +5908,11 @@ select {
   font-weight: 700;
 }
 
+.register-user-popup__required {
+  color: #e53935;
+  margin-left: 0.2rem;
+}
+
 .register-user-popup__input,
 .register-user-popup__select {
   width: 100%;

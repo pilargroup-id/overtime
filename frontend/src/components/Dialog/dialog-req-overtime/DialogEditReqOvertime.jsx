@@ -45,6 +45,7 @@ const reqOvertimeTextareaFields = [
     name: 'task_description',
     label: 'Task Description',
     placeholder: 'Task Description..',
+    required: true,
   },
   {
     name: 'result_description',
@@ -793,6 +794,9 @@ function DialogEditReqOvertime({
                         htmlFor={`edit-req-overtime-${field.name}`}
                       >
                         {field.label}
+                        {field.required ? (
+                          <span className="register-user-popup__required">*</span>
+                        ) : null}
                       </label>
                       <textarea
                         id={`edit-req-overtime-${field.name}`}

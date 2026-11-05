@@ -67,6 +67,7 @@ const reqOvertimeTextareaFields = [
     name: 'task_description',
     label: 'Task Description',
     placeholder: 'Task Description..',
+    required: true,
   },
   {
     name: 'result_description',
@@ -379,6 +380,19 @@ function getFixedAmount(compensationType) {
   return Number.isFinite(fixedAmount) && fixedAmount > 0 ? fixedAmount : null
 }
 
+const MEAL_ALLOWANCE_MIN_MINUTES = 120
+const MEAL_ALLOWANCE_MAX_MINUTES = 180
+
+function isMealAllowanceCode(code) {
+  return String(code || '').toUpperCase() === 'MEAL_ALLOWANCE_ONLY'
+}
+
+function isInvalidMealAllowanceDuration(durationMinutes) {
+  return (
+    durationMinutes < MEAL_ALLOWANCE_MIN_MINUTES || durationMinutes > MEAL_ALLOWANCE_MAX_MINUTES
+  )
+}
+
 function getLeaveCompensationPreviewLabel(totalMinutes, multiplier) {
   if (!Number.isFinite(totalMinutes) || totalMinutes < 240) {
     return 'Minimal 4 jam'
@@ -633,8 +647,18 @@ function DialogCreateBulkReqOvertime({
             String(compensationType.id) === String(nextValues.compensation_type_id),
         )
         const selectedKind = getCompensationKind(selectedCompensationType)
+        const isMealAllowance = isMealAllowanceCode(selectedCompensationType?.code)
 
         if (hasCompleteTimeRange && selectedKind === 'LEAVE' && nextDurationMinutes < 240) {
+          nextValues.compensation_type_id = ''
+          nextValues.compensation_amount = ''
+        }
+
+        if (
+          hasCompleteTimeRange &&
+          isMealAllowance &&
+          isInvalidMealAllowanceDuration(nextDurationMinutes)
+        ) {
           nextValues.compensation_type_id = ''
           nextValues.compensation_amount = ''
         }
@@ -809,8 +833,18 @@ function DialogCreateBulkReqOvertime({
             String(compensationType.id) === String(nextDescription.compensation_type_id),
         )
         const selectedKind = getCompensationKind(selectedCompensationType)
+        const isMealAllowance = isMealAllowanceCode(selectedCompensationType?.code)
 
         if (hasCompleteTimeRange && selectedKind === 'LEAVE' && nextDurationMinutes < 240) {
+          nextDescription.compensation_type_id = ''
+          nextDescription.compensation_amount = ''
+        }
+
+        if (
+          hasCompleteTimeRange &&
+          isMealAllowance &&
+          isInvalidMealAllowanceDuration(nextDurationMinutes)
+        ) {
           nextDescription.compensation_type_id = ''
           nextDescription.compensation_amount = ''
         }
@@ -865,6 +899,7 @@ function DialogCreateBulkReqOvertime({
         compensation_type_id: compensationTypeId ? Number(compensationTypeId) : null,
         compensation_kind: compensationKind,
         compensation_fixed_amount: fixedAmount,
+        compensation_code: selectedCompensationType?.code,
         task_description: String(taskDescription ?? '').trim(),
         result_description: String(resultDescription ?? '').trim(),
       }
@@ -883,6 +918,7 @@ function DialogCreateBulkReqOvertime({
       const wireItem = { ...item }
       delete wireItem.compensation_kind
       delete wireItem.compensation_fixed_amount
+      delete wireItem.compensation_code
       return wireItem
     })
 
@@ -915,14 +951,20 @@ function DialogCreateBulkReqOvertime({
         : null
     }
 
-    return { ...payload, generalCompensationKind, generalFixedAmount }
+    return {
+      ...payload,
+      generalCompensationKind,
+      generalFixedAmount,
+      generalCompensationCode: selectedGeneralCompensationType?.code,
+    }
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
     const items = buildEmployeeItems()
-    const { generalCompensationKind, generalFixedAmount, ...payload } = buildPayload()
+    const { generalCompensationKind, generalFixedAmount, generalCompensationCode, ...payload } =
+      buildPayload()
     const isEqualized = formValues.equalize
     const generalDurationMinutes = getDurationInMinutes(payload.start_time, payload.end_time)
 
@@ -954,6 +996,13 @@ function DialogCreateBulkReqOvertime({
         return true
       }
 
+      if (
+        isMealAllowanceCode(item.compensation_code) &&
+        isInvalidMealAllowanceDuration(getDurationInMinutes(item.start_time, item.end_time))
+      ) {
+        return true
+      }
+
       return false
     })
     const missingGeneralDescriptions =
@@ -966,6 +1015,10 @@ function DialogCreateBulkReqOvertime({
       !(Number(payload.compensation_amount) > 0)
     const invalidGeneralLeaveDuration =
       isEqualized && generalCompensationKind === 'LEAVE' && generalDurationMinutes < 240
+    const invalidGeneralMealAllowanceDuration =
+      isEqualized &&
+      isMealAllowanceCode(generalCompensationCode) &&
+      isInvalidMealAllowanceDuration(generalDurationMinutes)
 
     const missingGeneralMainFields =
       isEqualized &&
@@ -978,6 +1031,7 @@ function DialogCreateBulkReqOvertime({
       missingGeneralCompensation ||
       missingGeneralCompensationAmount ||
       invalidGeneralLeaveDuration ||
+      invalidGeneralMealAllowanceDuration ||
       (!isEqualized && hasIncompleteItems)
     ) {
       setErrorSeverity('error')
@@ -1052,6 +1106,7 @@ function DialogCreateBulkReqOvertime({
     selectedNationalHoliday,
     isSelectedNationalHoliday,
     compensationMultiplier,
+    selectedCompensationType,
     compensationKind,
     selectedFixedAmount,
     leaveCompensationPreviewLabel,
@@ -1326,6 +1381,12 @@ function DialogCreateBulkReqOvertime({
                             multiplier hari libur nasional.
                           </p>
                         ) : null}
+                        {isMealAllowanceCode(selectedCompensationType?.code) ? (
+                          <p className="register-user-popup__hint">
+                            Kompensasi Uang Makan membutuhkan durasi overtime minimal 2
+                            jam dan maksimal 3 jam.
+                          </p>
+                        ) : null}
                       </div>
 
                       <div className="register-user-popup__field overtime-create-popup__field--half">
@@ -1422,6 +1483,9 @@ function DialogCreateBulkReqOvertime({
                             htmlFor={`req-overtime-${field.name}`}
                           >
                             {field.label}
+                            {field.required ? (
+                              <span className="register-user-popup__required">*</span>
+                            ) : null}
                           </label>
                           <textarea
                             id={`req-overtime-${field.name}`}
@@ -1521,6 +1585,14 @@ function DialogCreateBulkReqOvertime({
                               <p className="register-user-popup__hint">
                                 {activeEmployeeComputed.selectedNationalHoliday.name} — nominal
                                 Uang tidak dikali multiplier hari libur nasional.
+                              </p>
+                            ) : null}
+                            {isMealAllowanceCode(
+                              activeEmployeeComputed.selectedCompensationType?.code,
+                            ) ? (
+                              <p className="register-user-popup__hint">
+                                Kompensasi Uang Makan membutuhkan durasi overtime minimal 2
+                                jam dan maksimal 3 jam.
                               </p>
                             ) : null}
                           </div>
@@ -1710,6 +1782,9 @@ function DialogCreateBulkReqOvertime({
                                 htmlFor={`req-overtime-${activeTab}-${field.name}`}
                               >
                                 {field.label}
+                                {field.required ? (
+                                  <span className="register-user-popup__required">*</span>
+                                ) : null}
                               </label>
                               <textarea
                                 id={`req-overtime-${activeTab}-${field.name}`}
