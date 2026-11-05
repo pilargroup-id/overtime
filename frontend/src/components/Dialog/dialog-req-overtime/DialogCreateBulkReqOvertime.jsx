@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
@@ -47,12 +47,14 @@ const reqOvertimeTextFields = [
     label: 'Start Time',
     type: 'time',
     className: 'overtime-create-popup__field--third',
+    required: true,
   },
   {
     name: 'end_time',
     label: 'End Time',
     type: 'time',
     className: 'overtime-create-popup__field--third',
+    required: true,
   },
   {
     name: 'duration',
@@ -73,7 +75,19 @@ const reqOvertimeTextareaFields = [
     name: 'result_description',
     label: 'Result Description',
     placeholder: 'Result Description..',
+    required: true,
   },
+]
+
+const VALIDATION_FIELD_ORDER = [
+  'day_type',
+  'work_date',
+  'compensation_type_id',
+  'compensation_amount',
+  'start_time',
+  'end_time',
+  'task_description',
+  'result_description',
 ]
 
 function normalizeCompensationTypes(responseData) {
@@ -443,6 +457,44 @@ function getOvertimeComputedFields(values, nationalHolidays, compensationTypes) 
   }
 }
 
+function validateItemFields(item) {
+  const errors = {}
+
+  if (!item.day_type) errors.day_type = true
+  if (!item.work_date) errors.work_date = true
+  if (!item.start_time) errors.start_time = true
+  if (!item.end_time) errors.end_time = true
+  if (!item.compensation_type_id) errors.compensation_type_id = true
+  if (!item.task_description) errors.task_description = true
+  if (!item.result_description) errors.result_description = true
+
+  const durationMinutes = getDurationInMinutes(item.start_time, item.end_time)
+
+  if (
+    item.compensation_kind === 'MONEY' &&
+    !item.compensation_fixed_amount &&
+    !(Number(item.compensation_amount) > 0)
+  ) {
+    errors.compensation_amount = true
+  }
+
+  if (item.compensation_kind === 'LEAVE' && durationMinutes < 240) {
+    errors.start_time = true
+    errors.end_time = true
+  }
+
+  if (isMealAllowanceCode(item.compensation_code) && isInvalidMealAllowanceDuration(durationMinutes)) {
+    errors.start_time = true
+    errors.end_time = true
+  }
+
+  return errors
+}
+
+function getFirstInvalidFieldName(errors) {
+  return VALIDATION_FIELD_ORDER.find((name) => errors[name]) || null
+}
+
 function DialogCreateBulkReqOvertime({
   isOpen = false,
   eyebrow = 'Create Bulk Req Overtime',
@@ -463,6 +515,42 @@ function DialogCreateBulkReqOvertime({
   const [errorMessage, setErrorMessage] = useState('')
   const [errorSeverity, setErrorSeverity] = useState('error')
   const [activeTab, setActiveTab] = useState('general')
+  const [generalFieldErrors, setGeneralFieldErrors] = useState({})
+  const [employeeFieldErrors, setEmployeeFieldErrors] = useState({})
+  const [pendingFocus, setPendingFocus] = useState(null)
+  const fieldRefs = useRef({})
+
+  const setFieldRef = (key) => (node) => {
+    // eslint-disable-next-line react-hooks/refs -- callback ref map populated on commit, not during render
+    fieldRefs.current[key] = node
+  }
+
+  const focusEmployeeDropdown = () => {
+    setPendingFocus({ key: 'employee-dropdown' })
+  }
+
+  const focusGeneralField = (errors) => {
+    const fieldName = getFirstInvalidFieldName(errors)
+    setPendingFocus(fieldName ? { key: `general:${fieldName}` } : null)
+  }
+
+  const focusEmployeeField = (errors) => {
+    const fieldName = getFirstInvalidFieldName(errors)
+    setPendingFocus(fieldName ? { key: `employee:${fieldName}` } : null)
+  }
+
+  useEffect(() => {
+    if (!pendingFocus) {
+      return
+    }
+
+    const node = fieldRefs.current[pendingFocus.key]
+
+    if (node) {
+      node.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      node.focus?.({ preventScroll: true })
+    }
+  }, [pendingFocus, activeTab])
 
   const resetDialogState = useCallback(() => {
     setFormValues(initialFormValues)
@@ -473,6 +561,9 @@ function DialogCreateBulkReqOvertime({
     setErrorMessage('')
     setErrorSeverity('error')
     setActiveTab('general')
+    setGeneralFieldErrors({})
+    setEmployeeFieldErrors({})
+    setPendingFocus(null)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -685,6 +776,26 @@ function DialogCreateBulkReqOvertime({
 
       return nextValues
     })
+
+    setGeneralFieldErrors((currentErrors) => {
+      if (!Object.keys(currentErrors).length) {
+        return currentErrors
+      }
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[name]
+
+      if (name === 'compensation_type_id') {
+        delete nextErrors.compensation_amount
+      }
+
+      if (name === 'start_time' || name === 'end_time') {
+        delete nextErrors.start_time
+        delete nextErrors.end_time
+      }
+
+      return nextErrors
+    })
   }
 
   const handleEqualizeChange = (event) => {
@@ -718,6 +829,9 @@ function DialogCreateBulkReqOvertime({
     } else if (activeTab === 'general' && formValues.employee_ids.length > 0) {
       setActiveTab(formValues.employee_ids[0])
     }
+
+    setGeneralFieldErrors({})
+    setEmployeeFieldErrors({})
   }
 
   const handleEmployeeToggle = (employeeId) => {
@@ -771,6 +885,16 @@ function DialogCreateBulkReqOvertime({
         employee_descriptions: nextDescriptions,
       }
     })
+
+    setEmployeeFieldErrors((currentErrors) => {
+      if (!currentErrors[employeeId]) {
+        return currentErrors
+      }
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[employeeId]
+      return nextErrors
+    })
   }
 
   const handleEmployeeRemove = (employeeId) => {
@@ -789,6 +913,16 @@ function DialogCreateBulkReqOvertime({
         ),
         employee_descriptions: nextDescriptions,
       }
+    })
+
+    setEmployeeFieldErrors((currentErrors) => {
+      if (!currentErrors[employeeId]) {
+        return currentErrors
+      }
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[employeeId]
+      return nextErrors
     })
 
     if (activeTab === employeeId) {
@@ -856,6 +990,31 @@ function DialogCreateBulkReqOvertime({
           ...currentValues.employee_descriptions,
           [employeeId]: nextDescription,
         },
+      }
+    })
+
+    setEmployeeFieldErrors((currentErrors) => {
+      const employeeErrors = currentErrors[employeeId]
+
+      if (!employeeErrors || !Object.keys(employeeErrors).length) {
+        return currentErrors
+      }
+
+      const nextEmployeeErrors = { ...employeeErrors }
+      delete nextEmployeeErrors[name]
+
+      if (name === 'compensation_type_id') {
+        delete nextEmployeeErrors.compensation_amount
+      }
+
+      if (name === 'start_time' || name === 'end_time') {
+        delete nextEmployeeErrors.start_time
+        delete nextEmployeeErrors.end_time
+      }
+
+      return {
+        ...currentErrors,
+        [employeeId]: nextEmployeeErrors,
       }
     })
   }
@@ -966,79 +1125,73 @@ function DialogCreateBulkReqOvertime({
     const { generalCompensationKind, generalFixedAmount, generalCompensationCode, ...payload } =
       buildPayload()
     const isEqualized = formValues.equalize
-    const generalDurationMinutes = getDurationInMinutes(payload.start_time, payload.end_time)
 
-    const hasIncompleteItems = items.some((item) => {
-      if (!item.task_description || !item.result_description) {
-        return true
-      }
-
-      if (!item.day_type || !item.work_date || !item.start_time || !item.end_time) {
-        return true
-      }
-
-      if (!item.compensation_type_id) {
-        return true
-      }
-
-      if (
-        item.compensation_kind === 'MONEY' &&
-        !item.compensation_fixed_amount &&
-        !(Number(item.compensation_amount) > 0)
-      ) {
-        return true
-      }
-
-      if (
-        item.compensation_kind === 'LEAVE' &&
-        getDurationInMinutes(item.start_time, item.end_time) < 240
-      ) {
-        return true
-      }
-
-      if (
-        isMealAllowanceCode(item.compensation_code) &&
-        isInvalidMealAllowanceDuration(getDurationInMinutes(item.start_time, item.end_time))
-      ) {
-        return true
-      }
-
-      return false
-    })
-    const missingGeneralDescriptions =
-      isEqualized && (!payload.task_description || !payload.result_description)
-    const missingGeneralCompensation = isEqualized && !payload.compensation_type_id
-    const missingGeneralCompensationAmount =
-      isEqualized &&
-      generalCompensationKind === 'MONEY' &&
-      !generalFixedAmount &&
-      !(Number(payload.compensation_amount) > 0)
-    const invalidGeneralLeaveDuration =
-      isEqualized && generalCompensationKind === 'LEAVE' && generalDurationMinutes < 240
-    const invalidGeneralMealAllowanceDuration =
-      isEqualized &&
-      isMealAllowanceCode(generalCompensationCode) &&
-      isInvalidMealAllowanceDuration(generalDurationMinutes)
-
-    const missingGeneralMainFields =
-      isEqualized &&
-      (!payload.day_type || !payload.work_date || !payload.start_time || !payload.end_time)
-
-    if (
-      !payload.employee_ids.length ||
-      missingGeneralMainFields ||
-      missingGeneralDescriptions ||
-      missingGeneralCompensation ||
-      missingGeneralCompensationAmount ||
-      invalidGeneralLeaveDuration ||
-      invalidGeneralMealAllowanceDuration ||
-      (!isEqualized && hasIncompleteItems)
-    ) {
+    if (!payload.employee_ids.length) {
+      setGeneralFieldErrors({})
+      setEmployeeFieldErrors({})
       setErrorSeverity('error')
-      setErrorMessage(
-        'Pilih employee, lengkapi data utama, lalu isi Day Type, Work Date, Start/End Time, Compensation, Task Description, dan Result Description per employee, atau centang Equalize untuk isi sekaligus.',
-      )
+      setErrorMessage('Pilih minimal satu employee terlebih dahulu.')
+      setIsEmployeeDropdownOpen(true)
+      focusEmployeeDropdown()
       return
+    }
+
+    if (isEqualized) {
+      const generalItem = {
+        day_type: payload.day_type,
+        work_date: payload.work_date,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+        compensation_type_id: payload.compensation_type_id,
+        compensation_kind: generalCompensationKind,
+        compensation_fixed_amount: generalFixedAmount,
+        compensation_code: generalCompensationCode,
+        compensation_amount: payload.compensation_amount,
+        task_description: payload.task_description,
+        result_description: payload.result_description,
+      }
+      const errors = validateItemFields(generalItem)
+
+      if (Object.keys(errors).length > 0) {
+        setGeneralFieldErrors(errors)
+        setEmployeeFieldErrors({})
+        setActiveTab('general')
+        setErrorSeverity('error')
+        setErrorMessage('Lengkapi field yang ditandai pada form General sebelum submit.')
+        focusGeneralField(errors)
+        return
+      }
+
+      setGeneralFieldErrors({})
+    } else {
+      const nextEmployeeFieldErrors = {}
+      let firstInvalidEmployeeId = null
+
+      formValues.employee_ids.forEach((employeeId, index) => {
+        const errors = validateItemFields(items[index])
+
+        if (Object.keys(errors).length > 0) {
+          nextEmployeeFieldErrors[employeeId] = errors
+
+          if (!firstInvalidEmployeeId) {
+            firstInvalidEmployeeId = employeeId
+          }
+        }
+      })
+
+      setEmployeeFieldErrors(nextEmployeeFieldErrors)
+      setGeneralFieldErrors({})
+
+      if (firstInvalidEmployeeId) {
+        const employee = employeeDirectory[firstInvalidEmployeeId]
+        const employeeLabel = employee ? getEmployeeLabel(employee) : firstInvalidEmployeeId
+
+        setActiveTab(firstInvalidEmployeeId)
+        setErrorSeverity('error')
+        setErrorMessage(`Lengkapi field yang ditandai untuk ${employeeLabel}.`)
+        focusEmployeeField(nextEmployeeFieldErrors[firstInvalidEmployeeId])
+        return
+      }
     }
 
     setIsSubmitting(true)
@@ -1114,6 +1267,7 @@ function DialogCreateBulkReqOvertime({
 
   const activeEmployee = employeeDirectory[activeTab]
   const activeEmployeeDescription = formValues.employee_descriptions[activeTab] ?? {}
+  const activeEmployeeFieldErrors = employeeFieldErrors[activeTab] ?? {}
   const activeEmployeeComputed = getOvertimeComputedFields(
     activeEmployeeDescription,
     nationalHolidays,
@@ -1188,7 +1342,16 @@ function DialogCreateBulkReqOvertime({
                       <button
                         id="bulk-req-overtime-employee-dropdown"
                         type="button"
-                        className="register-user-popup__select overtime-create-popup__employee-trigger"
+                        ref={setFieldRef('employee-dropdown')}
+                        className={[
+                          'register-user-popup__select',
+                          'overtime-create-popup__employee-trigger',
+                          !selectedEmployees.length && pendingFocus?.key === 'employee-dropdown'
+                            ? 'register-user-popup__select--error'
+                            : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                         onClick={() =>
                           setIsEmployeeDropdownOpen((currentValue) => !currentValue)
                         }
@@ -1295,6 +1458,8 @@ function DialogCreateBulkReqOvertime({
                         disabled={isSubmitting}
                         employeeTabsDisabled={formValues.equalize}
                         generalTabDisabled={!formValues.equalize}
+                        hasGeneralError={Object.keys(generalFieldErrors).length > 0}
+                        errorEmployeeIds={Object.keys(employeeFieldErrors)}
                       />
                     </div>
                   ) : null}
@@ -1307,11 +1472,18 @@ function DialogCreateBulkReqOvertime({
                           htmlFor="req-overtime-day-type"
                         >
                           Day Type
+                          <span className="register-user-popup__required">*</span>
                         </label>
                         <select
                           id="req-overtime-day-type"
                           name="day_type"
-                          className="register-user-popup__select"
+                          ref={setFieldRef('general:day_type')}
+                          className={[
+                            'register-user-popup__select',
+                            generalFieldErrors.day_type ? 'register-user-popup__select--error' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                           value={formValues.day_type}
                           onChange={handleInputChange}
                           disabled={isSubmitting}
@@ -1332,12 +1504,21 @@ function DialogCreateBulkReqOvertime({
                           htmlFor={`req-overtime-${workDateField.name}`}
                         >
                           {workDateField.label}
+                          <span className="register-user-popup__required">*</span>
                         </label>
                         <input
                           id={`req-overtime-${workDateField.name}`}
                           name={workDateField.name}
                           type={workDateField.type}
-                          className="register-user-popup__input"
+                          ref={setFieldRef(`general:${workDateField.name}`)}
+                          className={[
+                            'register-user-popup__input',
+                            generalFieldErrors[workDateField.name]
+                              ? 'register-user-popup__input--error'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                           value={formValues[workDateField.name]}
                           onChange={handleInputChange}
                           disabled={isSubmitting}
@@ -1350,11 +1531,20 @@ function DialogCreateBulkReqOvertime({
                           htmlFor="req-overtime-compensation-type"
                         >
                           Compensation
+                          <span className="register-user-popup__required">*</span>
                         </label>
                         <select
                           id="req-overtime-compensation-type"
                           name="compensation_type_id"
-                          className="register-user-popup__select"
+                          ref={setFieldRef('general:compensation_type_id')}
+                          className={[
+                            'register-user-popup__select',
+                            generalFieldErrors.compensation_type_id
+                              ? 'register-user-popup__select--error'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                           value={formValues.compensation_type_id}
                           onChange={handleInputChange}
                           disabled={isSubmitting || isLoadingCompensationTypes}
@@ -1395,6 +1585,9 @@ function DialogCreateBulkReqOvertime({
                           htmlFor="req-overtime-compensation-amount"
                         >
                           Compensation Amount
+                          {compensationKind === 'MONEY' && !selectedFixedAmount ? (
+                            <span className="register-user-popup__required">*</span>
+                          ) : null}
                         </label>
                         {compensationKind === 'MONEY' && !selectedFixedAmount ? (
                           <input
@@ -1403,7 +1596,15 @@ function DialogCreateBulkReqOvertime({
                             type="number"
                             min="0"
                             step="0.01"
-                            className="register-user-popup__input"
+                            ref={setFieldRef('general:compensation_amount')}
+                            className={[
+                              'register-user-popup__input',
+                              generalFieldErrors.compensation_amount
+                                ? 'register-user-popup__input--error'
+                                : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
                             value={formValues.compensation_amount}
                             placeholder="Masukkan nominal"
                             onChange={handleInputChange}
@@ -1439,11 +1640,16 @@ function DialogCreateBulkReqOvertime({
                             htmlFor={`req-overtime-${field.name}`}
                           >
                             {field.label}
+                            {field.required ? (
+                              <span className="register-user-popup__required">*</span>
+                            ) : null}
                           </label>
                           {field.type === 'time' ? (
                             <Time24HourInput
                               id={`req-overtime-${field.name}`}
                               name={field.name}
+                              ref={setFieldRef(`general:${field.name}`)}
+                              hasError={Boolean(generalFieldErrors[field.name])}
                               value={formValues[field.name]}
                               onChange={handleInputChange}
                               disabled={isSubmitting}
@@ -1490,7 +1696,16 @@ function DialogCreateBulkReqOvertime({
                           <textarea
                             id={`req-overtime-${field.name}`}
                             name={field.name}
-                            className="register-user-popup__input master-project-popup__textarea"
+                            ref={setFieldRef(`general:${field.name}`)}
+                            className={[
+                              'register-user-popup__input',
+                              'master-project-popup__textarea',
+                              generalFieldErrors[field.name]
+                                ? 'register-user-popup__input--error'
+                                : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
                             value={formValues[field.name]}
                             placeholder={field.placeholder}
                             onChange={handleInputChange}
@@ -1513,11 +1728,20 @@ function DialogCreateBulkReqOvertime({
                               htmlFor={`req-overtime-${activeTab}-day_type`}
                             >
                               Day Type
+                              <span className="register-user-popup__required">*</span>
                             </label>
                             <select
                               id={`req-overtime-${activeTab}-day_type`}
                               name="day_type"
-                              className="register-user-popup__select"
+                              ref={setFieldRef('employee:day_type')}
+                              className={[
+                                'register-user-popup__select',
+                                activeEmployeeFieldErrors.day_type
+                                  ? 'register-user-popup__select--error'
+                                  : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
                               value={activeEmployeeDescription.day_type ?? ''}
                               onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
                               disabled={isSubmitting}
@@ -1536,12 +1760,21 @@ function DialogCreateBulkReqOvertime({
                               htmlFor={`req-overtime-${activeTab}-work_date`}
                             >
                               Work Date
+                              <span className="register-user-popup__required">*</span>
                             </label>
                             <input
                               id={`req-overtime-${activeTab}-work_date`}
                               name="work_date"
                               type="date"
-                              className="register-user-popup__input"
+                              ref={setFieldRef('employee:work_date')}
+                              className={[
+                                'register-user-popup__input',
+                                activeEmployeeFieldErrors.work_date
+                                  ? 'register-user-popup__input--error'
+                                  : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
                               value={activeEmployeeDescription.work_date ?? ''}
                               onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
                               disabled={isSubmitting}
@@ -1554,11 +1787,20 @@ function DialogCreateBulkReqOvertime({
                               htmlFor={`req-overtime-${activeTab}-compensation_type_id`}
                             >
                               Compensation
+                              <span className="register-user-popup__required">*</span>
                             </label>
                             <select
                               id={`req-overtime-${activeTab}-compensation_type_id`}
                               name="compensation_type_id"
-                              className="register-user-popup__select"
+                              ref={setFieldRef('employee:compensation_type_id')}
+                              className={[
+                                'register-user-popup__select',
+                                activeEmployeeFieldErrors.compensation_type_id
+                                  ? 'register-user-popup__select--error'
+                                  : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
                               value={activeEmployeeDescription.compensation_type_id ?? ''}
                               onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
                               disabled={isSubmitting || isLoadingCompensationTypes}
@@ -1603,6 +1845,10 @@ function DialogCreateBulkReqOvertime({
                               htmlFor={`req-overtime-${activeTab}-compensation-amount`}
                             >
                               Compensation Amount
+                              {activeEmployeeComputed.compensationKind === 'MONEY' &&
+                              !activeEmployeeComputed.selectedFixedAmount ? (
+                                <span className="register-user-popup__required">*</span>
+                              ) : null}
                             </label>
                             {activeEmployeeComputed.compensationKind === 'MONEY' &&
                             !activeEmployeeComputed.selectedFixedAmount ? (
@@ -1612,7 +1858,15 @@ function DialogCreateBulkReqOvertime({
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                className="register-user-popup__input"
+                                ref={setFieldRef('employee:compensation_amount')}
+                                className={[
+                                  'register-user-popup__input',
+                                  activeEmployeeFieldErrors.compensation_amount
+                                    ? 'register-user-popup__input--error'
+                                    : '',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
                                 value={activeEmployeeDescription.compensation_amount ?? ''}
                                 placeholder="Masukkan nominal"
                                 onChange={(event) =>
@@ -1650,11 +1904,16 @@ function DialogCreateBulkReqOvertime({
                                 htmlFor={`req-overtime-${activeTab}-${field.name}`}
                               >
                                 {field.label}
+                                {field.required ? (
+                                  <span className="register-user-popup__required">*</span>
+                                ) : null}
                               </label>
                               {field.type === 'time' ? (
                                 <Time24HourInput
                                   id={`req-overtime-${activeTab}-${field.name}`}
                                   name={field.name}
+                                  ref={setFieldRef(`employee:${field.name}`)}
+                                  hasError={Boolean(activeEmployeeFieldErrors[field.name])}
                                   value={activeEmployeeDescription[field.name] ?? ''}
                                   onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
                                   disabled={isSubmitting}
@@ -1789,7 +2048,16 @@ function DialogCreateBulkReqOvertime({
                               <textarea
                                 id={`req-overtime-${activeTab}-${field.name}`}
                                 name={field.name}
-                                className="register-user-popup__input master-project-popup__textarea"
+                                ref={setFieldRef(`employee:${field.name}`)}
+                                className={[
+                                  'register-user-popup__input',
+                                  'master-project-popup__textarea',
+                                  activeEmployeeFieldErrors[field.name]
+                                    ? 'register-user-popup__input--error'
+                                    : '',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
                                 value={descriptions[field.name] ?? ''}
                                 placeholder={field.placeholder}
                                 onChange={(event) =>

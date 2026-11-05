@@ -13,6 +13,8 @@ function TabsUserCreateBulkRO({
   disabled = false,
   employeeTabsDisabled = false,
   generalTabDisabled = false,
+  hasGeneralError = false,
+  errorEmployeeIds = [],
 }) {
   return (
     <Box className="overtime-create-popup__tabs">
@@ -42,9 +44,21 @@ function TabsUserCreateBulkRO({
           },
         }}
       >
-        <Tab label="General" value="general" disabled={generalTabDisabled} />
+        <Tab
+          value="general"
+          disabled={generalTabDisabled}
+          label={
+            <span className="overtime-create-popup__tab-label">
+              <span className="overtime-create-popup__tab-text">General</span>
+              {hasGeneralError ? (
+                <span className="overtime-create-popup__tab-error-dot" aria-label="Ada data yang belum lengkap" />
+              ) : null}
+            </span>
+          }
+        />
         {selectedEmployees.map((employee) => {
           const employeeLabel = getEmployeeLabel(employee)
+          const hasError = errorEmployeeIds.includes(employee.id)
 
           return (
             <Tab
@@ -56,6 +70,9 @@ function TabsUserCreateBulkRO({
                   <span className="overtime-create-popup__tab-text">
                     {employeeLabel}
                   </span>
+                  {hasError ? (
+                    <span className="overtime-create-popup__tab-error-dot" aria-label="Ada data yang belum lengkap" />
+                  ) : null}
                   <button
                     type="button"
                     className="overtime-create-popup__tab-close"

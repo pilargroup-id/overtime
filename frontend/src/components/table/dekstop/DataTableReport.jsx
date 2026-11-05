@@ -96,7 +96,19 @@ function getNestedValue(source, path) {
   return path.split('.').reduce((value, key) => value?.[key], source)
 }
 
-function formatCompensation(request, compensationTypeMap) {
+function formatNumber(value) {
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue)) {
+    return null
+  }
+
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 2,
+  }).format(numberValue)
+}
+
+function getCompensationName(request, compensationTypeMap) {
   const compensationNameFields = [
     'compensation_type_name',
     'compensation_name',
@@ -117,6 +129,28 @@ function formatCompensation(request, compensationTypeMap) {
   const mappedName = compensationTypeMap.get(String(request.compensation_type_id))
 
   return mappedName ? formatValue(mappedName) : formatValue(request.compensation_type_id)
+}
+
+function getCompensationLeaveDays(request) {
+  const leaveDays =
+    request?.final_compensation_leave_days ??
+    request?.compensation_leave_days_snapshot ??
+    request?.compensation_leave_days
+
+  const numberValue = Number(leaveDays)
+
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null
+}
+
+function formatCompensation(request, compensationTypeMap) {
+  const name = getCompensationName(request, compensationTypeMap)
+  const leaveDays = getCompensationLeaveDays(request)
+
+  if (leaveDays !== null) {
+    return `${name} (${formatNumber(leaveDays)} hari)`
+  }
+
+  return name
 }
 
 function getStatusVariant(status) {

@@ -1,3 +1,5 @@
+import { forwardRef } from 'react'
+
 function formatTimeInput(inputValue) {
   const cleanedValue = inputValue.replace(/[^\d:]/g, '')
   const [hour = '', minute = ''] = cleanedValue.split(':')
@@ -39,7 +41,10 @@ function normalizeTimeValue(inputValue) {
   return `${String(hourNumber).padStart(2, '0')}:${String(minuteNumber).padStart(2, '0')}`
 }
 
-function Time24HourInput({ id, name, value, onChange, disabled = false }) {
+const Time24HourInput = forwardRef(function Time24HourInput(
+  { id, name, value, onChange, disabled = false, hasError = false },
+  ref,
+) {
   const emitChange = (nextValue) => {
     onChange({
       target: {
@@ -59,11 +64,17 @@ function Time24HourInput({ id, name, value, onChange, disabled = false }) {
 
   return (
     <input
+      ref={ref}
       id={id}
       name={name}
       type="text"
       inputMode="numeric"
-      className="register-user-popup__input"
+      className={[
+        'register-user-popup__input',
+        hasError ? 'register-user-popup__input--error' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       value={value}
       placeholder="HH:MM"
       maxLength={5}
@@ -74,6 +85,6 @@ function Time24HourInput({ id, name, value, onChange, disabled = false }) {
       disabled={disabled}
     />
   )
-}
+})
 
 export default Time24HourInput

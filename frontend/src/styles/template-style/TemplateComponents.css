@@ -5959,6 +5959,28 @@ select {
   box-shadow: 0 0 0 4px rgba(42, 157, 143, 0.12);
 }
 
+.register-user-popup__input--error,
+.register-user-popup__select--error {
+  border-color: #e53935;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12);
+}
+
+.register-user-popup__input--error:focus,
+.register-user-popup__select--error:focus {
+  border-color: #e53935;
+  box-shadow: 0 0 0 4px rgba(229, 57, 53, 0.18);
+}
+
+.overtime-create-popup__tab-error-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  background: #e53935;
+  flex-shrink: 0;
+}
+
 .register-user-popup__select--arrow-offset:focus {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 9.5L8 6L12 9.5' stroke='%231A2A57' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
