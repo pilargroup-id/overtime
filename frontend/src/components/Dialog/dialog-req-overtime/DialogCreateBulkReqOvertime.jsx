@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
 import { ChevronDown, ChevronUp, XClose } from '../../template/TemplateIcons.jsx'
+import ToastAlert from '../ToastAlert.jsx'
 import TabsUserCreateBulkRO from './tabs/TabsUserCreateBulkRO.jsx'
 import Time24HourInput from './Time24HourInput.jsx'
 
@@ -359,12 +360,23 @@ function getDurationInMinutes(startTime, endTime) {
 function formatCompensationOption(compensationType) {
   const name = compensationType.name ?? compensationType.code
   const kind = getCompensationKind(compensationType)
+  const fixedAmount = getFixedAmount(compensationType)
+
+  if (fixedAmount) {
+    return `${name} (Rp${formatNumber(fixedAmount)})`
+  }
 
   return kind ? `${name} (${kind})` : name
 }
 
 function getCompensationKind(compensationType) {
   return String(compensationType?.compensation_kind || '').toUpperCase()
+}
+
+function getFixedAmount(compensationType) {
+  const fixedAmount = Number(compensationType?.fixed_amount)
+
+  return Number.isFinite(fixedAmount) && fixedAmount > 0 ? fixedAmount : null
 }
 
 function getLeaveCompensationPreviewLabel(totalMinutes, multiplier) {
@@ -398,6 +410,7 @@ function getOvertimeComputedFields(values, nationalHolidays, compensationTypes) 
     (compensationType) => String(compensationType.id) === String(values.compensation_type_id),
   )
   const compensationKind = getCompensationKind(selectedCompensationType)
+  const selectedFixedAmount = getFixedAmount(selectedCompensationType)
   const leaveCompensationPreviewLabel = getLeaveCompensationPreviewLabel(
     durationMinutes,
     compensationMultiplier,
@@ -411,6 +424,7 @@ function getOvertimeComputedFields(values, nationalHolidays, compensationTypes) 
     compensationMultiplier,
     selectedCompensationType,
     compensationKind,
+    selectedFixedAmount,
     leaveCompensationPreviewLabel,
   }
 }
@@ -433,6 +447,7 @@ function DialogCreateBulkReqOvertime({
   const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [errorSeverity, setErrorSeverity] = useState('error')
   const [activeTab, setActiveTab] = useState('general')
 
   const resetDialogState = useCallback(() => {
@@ -442,6 +457,7 @@ function DialogCreateBulkReqOvertime({
     setIsEmployeeDropdownOpen(false)
     setIsSubmitting(false)
     setErrorMessage('')
+    setErrorSeverity('error')
     setActiveTab('general')
   }, [])
 
@@ -511,6 +527,7 @@ function DialogCreateBulkReqOvertime({
         }
 
         setCompensationTypes([])
+        setErrorSeverity('error')
         setErrorMessage(error?.message || 'Gagal memuat compensation types.')
       } finally {
         if (isMounted) {
@@ -575,6 +592,7 @@ function DialogCreateBulkReqOvertime({
           }
 
           setEligibleEmployees([])
+          setErrorSeverity('error')
           setErrorMessage(error?.message || 'Gagal memuat eligible employees.')
         } finally {
           if (isMounted) {
@@ -836,6 +854,7 @@ function DialogCreateBulkReqOvertime({
         (compensationType) => String(compensationType.id) === String(compensationTypeId),
       )
       const compensationKind = getCompensationKind(selectedCompensationType)
+      const fixedAmount = getFixedAmount(selectedCompensationType)
 
       const item = {
         employee_id: employeeId,
@@ -845,11 +864,12 @@ function DialogCreateBulkReqOvertime({
         end_time: endTime,
         compensation_type_id: compensationTypeId ? Number(compensationTypeId) : null,
         compensation_kind: compensationKind,
+        compensation_fixed_amount: fixedAmount,
         task_description: String(taskDescription ?? '').trim(),
         result_description: String(resultDescription ?? '').trim(),
       }
 
-      if (compensationKind === 'MONEY') {
+      if (compensationKind === 'MONEY' && !fixedAmount) {
         item.compensation_amount = compensationAmount ? Number(compensationAmount) : null
       }
 
@@ -862,6 +882,7 @@ function DialogCreateBulkReqOvertime({
     const wireItems = items.map((item) => {
       const wireItem = { ...item }
       delete wireItem.compensation_kind
+      delete wireItem.compensation_fixed_amount
       return wireItem
     })
 
@@ -870,6 +891,7 @@ function DialogCreateBulkReqOvertime({
         String(compensationType.id) === String(formValues.compensation_type_id),
     )
     const generalCompensationKind = getCompensationKind(selectedGeneralCompensationType)
+    const generalFixedAmount = getFixedAmount(selectedGeneralCompensationType)
 
     const payload = {
       employee_ids: formValues.employee_ids,
@@ -887,20 +909,20 @@ function DialogCreateBulkReqOvertime({
       items: wireItems,
     }
 
-    if (generalCompensationKind === 'MONEY') {
+    if (generalCompensationKind === 'MONEY' && !generalFixedAmount) {
       payload.compensation_amount = formValues.compensation_amount
         ? Number(formValues.compensation_amount)
         : null
     }
 
-    return { ...payload, generalCompensationKind }
+    return { ...payload, generalCompensationKind, generalFixedAmount }
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
     const items = buildEmployeeItems()
-    const { generalCompensationKind, ...payload } = buildPayload()
+    const { generalCompensationKind, generalFixedAmount, ...payload } = buildPayload()
     const isEqualized = formValues.equalize
     const generalDurationMinutes = getDurationInMinutes(payload.start_time, payload.end_time)
 
@@ -917,7 +939,11 @@ function DialogCreateBulkReqOvertime({
         return true
       }
 
-      if (item.compensation_kind === 'MONEY' && !(Number(item.compensation_amount) > 0)) {
+      if (
+        item.compensation_kind === 'MONEY' &&
+        !item.compensation_fixed_amount &&
+        !(Number(item.compensation_amount) > 0)
+      ) {
         return true
       }
 
@@ -936,6 +962,7 @@ function DialogCreateBulkReqOvertime({
     const missingGeneralCompensationAmount =
       isEqualized &&
       generalCompensationKind === 'MONEY' &&
+      !generalFixedAmount &&
       !(Number(payload.compensation_amount) > 0)
     const invalidGeneralLeaveDuration =
       isEqualized && generalCompensationKind === 'LEAVE' && generalDurationMinutes < 240
@@ -953,6 +980,7 @@ function DialogCreateBulkReqOvertime({
       invalidGeneralLeaveDuration ||
       (!isEqualized && hasIncompleteItems)
     ) {
+      setErrorSeverity('error')
       setErrorMessage(
         'Pilih employee, lengkapi data utama, lalu isi Day Type, Work Date, Start/End Time, Compensation, Task Description, dan Result Description per employee, atau centang Equalize untuk isi sekaligus.',
       )
@@ -977,10 +1005,11 @@ function DialogCreateBulkReqOvertime({
 
             return `${employeeLabel}: ${item.message}`
           })
-          .join('; ')
+          .join('\n')
 
+        setErrorSeverity('warning')
         setErrorMessage(
-          `${result.success_count} dari ${result.total} request berhasil dibuat. Gagal untuk ${failedItems.length} employee — ${failedMessage}`,
+          `${result.success_count} dari ${result.total} request berhasil dibuat. Gagal untuk ${failedItems.length} employee:\n${failedMessage}`,
         )
         return
       }
@@ -992,6 +1021,7 @@ function DialogCreateBulkReqOvertime({
         ? failedItems.map((item) => item.message).filter(Boolean).join(', ')
         : ''
 
+      setErrorSeverity('error')
       setErrorMessage(
         failedMessage || error?.message || 'Gagal membuat bulk request overtime.',
       )
@@ -1023,6 +1053,7 @@ function DialogCreateBulkReqOvertime({
     isSelectedNationalHoliday,
     compensationMultiplier,
     compensationKind,
+    selectedFixedAmount,
     leaveCompensationPreviewLabel,
   } = getOvertimeComputedFields(formValues, nationalHolidays, compensationTypes)
 
@@ -1304,7 +1335,7 @@ function DialogCreateBulkReqOvertime({
                         >
                           Compensation Amount
                         </label>
-                        {compensationKind === 'MONEY' ? (
+                        {compensationKind === 'MONEY' && !selectedFixedAmount ? (
                           <input
                             id="req-overtime-compensation-amount"
                             name="compensation_amount"
@@ -1323,7 +1354,13 @@ function DialogCreateBulkReqOvertime({
                             name="compensation_amount"
                             type="text"
                             className="register-user-popup__input"
-                            value={compensationKind === 'LEAVE' ? leaveCompensationPreviewLabel : ''}
+                            value={
+                              compensationKind === 'LEAVE'
+                                ? leaveCompensationPreviewLabel
+                                : compensationKind === 'MONEY' && selectedFixedAmount
+                                  ? `Rp${formatNumber(selectedFixedAmount)}`
+                                  : ''
+                            }
                             placeholder="-"
                             readOnly
                             disabled
@@ -1495,7 +1532,8 @@ function DialogCreateBulkReqOvertime({
                             >
                               Compensation Amount
                             </label>
-                            {activeEmployeeComputed.compensationKind === 'MONEY' ? (
+                            {activeEmployeeComputed.compensationKind === 'MONEY' &&
+                            !activeEmployeeComputed.selectedFixedAmount ? (
                               <input
                                 id={`req-overtime-${activeTab}-compensation-amount`}
                                 name="compensation_amount"
@@ -1518,7 +1556,10 @@ function DialogCreateBulkReqOvertime({
                                 value={
                                   activeEmployeeComputed.compensationKind === 'LEAVE'
                                     ? activeEmployeeComputed.leaveCompensationPreviewLabel
-                                    : ''
+                                    : activeEmployeeComputed.compensationKind === 'MONEY' &&
+                                        activeEmployeeComputed.selectedFixedAmount
+                                      ? `Rp${formatNumber(activeEmployeeComputed.selectedFixedAmount)}`
+                                      : ''
                                 }
                                 placeholder="-"
                                 readOnly
@@ -1688,11 +1729,6 @@ function DialogCreateBulkReqOvertime({
                     </div>
                   ) : null}
                 </div>
-                {errorMessage ? (
-                  <p className="register-user-popup__hint" role="alert">
-                    {errorMessage}
-                  </p>
-                ) : null}
               </div>
             </div>
           </div>
@@ -1719,7 +1755,18 @@ function DialogCreateBulkReqOvertime({
     </div>
   )
 
-  return createPortal(dialogNode, document.body)
+  return createPortal(
+    <>
+      {dialogNode}
+      <ToastAlert
+        open={Boolean(errorMessage)}
+        onClose={() => setErrorMessage('')}
+        message={errorMessage}
+        severity={errorSeverity}
+      />
+    </>,
+    document.body,
+  )
 }
 
 export default DialogCreateBulkReqOvertime

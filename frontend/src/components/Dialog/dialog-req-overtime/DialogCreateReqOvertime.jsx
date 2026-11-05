@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import api from '../../../services/api.js'
 import { XClose } from '../../template/TemplateIcons.jsx'
+import ToastAlert from '../ToastAlert.jsx'
 import Time24HourInput from './Time24HourInput.jsx'
 
 const initialFormValues = {
@@ -258,12 +259,23 @@ function getDurationInMinutes(startTime, endTime) {
 function formatCompensationOption(compensationType) {
   const name = compensationType.name ?? compensationType.code
   const kind = getCompensationKind(compensationType)
+  const fixedAmount = getFixedAmount(compensationType)
+
+  if (fixedAmount) {
+    return `${name} (Rp${formatNumber(fixedAmount)})`
+  }
 
   return kind ? `${name} (${kind})` : name
 }
 
 function getCompensationKind(compensationType) {
   return String(compensationType?.compensation_kind || '').toUpperCase()
+}
+
+function getFixedAmount(compensationType) {
+  const fixedAmount = Number(compensationType?.fixed_amount)
+
+  return Number.isFinite(fixedAmount) && fixedAmount > 0 ? fixedAmount : null
 }
 
 function getLeaveCompensationPreviewLabel(totalMinutes, multiplier) {
@@ -471,24 +483,6 @@ function DialogCreateReqOvertime({
         nextValues.compensation_amount = ''
       }
 
-      if (name === 'start_time' || name === 'end_time') {
-        const hasCompleteTimeRange = Boolean(nextValues.start_time) && Boolean(nextValues.end_time)
-        const nextDurationMinutes = getDurationInMinutes(
-          nextValues.start_time,
-          nextValues.end_time,
-        )
-        const selectedCompensationType = compensationTypes.find(
-          (compensationType) =>
-            String(compensationType.id) === String(nextValues.compensation_type_id),
-        )
-        const selectedKind = getCompensationKind(selectedCompensationType)
-
-        if (hasCompleteTimeRange && selectedKind === 'LEAVE' && nextDurationMinutes < 240) {
-          nextValues.compensation_type_id = ''
-          nextValues.compensation_amount = ''
-        }
-      }
-
       return nextValues
     })
   }
@@ -499,6 +493,7 @@ function DialogCreateReqOvertime({
         String(compensationType.id) === String(formValues.compensation_type_id),
     )
     const selectedKind = getCompensationKind(selectedCompensationType)
+    const fixedAmount = getFixedAmount(selectedCompensationType)
 
     const payload = {
       day_type: formValues.day_type,
@@ -512,19 +507,19 @@ function DialogCreateReqOvertime({
         : null,
     }
 
-    if (selectedKind === 'MONEY') {
+    if (selectedKind === 'MONEY' && !fixedAmount) {
       payload.compensation_amount = formValues.compensation_amount
         ? Number(formValues.compensation_amount)
         : null
     }
 
-    return { ...payload, compensationKind: selectedKind }
+    return { ...payload, compensationKind: selectedKind, fixedAmount }
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    const { compensationKind, ...payload } = buildPayload()
+    const { compensationKind, fixedAmount, ...payload } = buildPayload()
     const durationMinutes = getDurationInMinutes(payload.start_time, payload.end_time)
 
     if (
@@ -540,7 +535,7 @@ function DialogCreateReqOvertime({
       return
     }
 
-    if (compensationKind === 'MONEY' && !(Number(payload.compensation_amount) > 0)) {
+    if (compensationKind === 'MONEY' && !fixedAmount && !(Number(payload.compensation_amount) > 0)) {
       setErrorMessage('Nominal Compensation Amount wajib diisi untuk kompensasi Uang.')
       return
     }
@@ -588,6 +583,7 @@ function DialogCreateReqOvertime({
       String(compensationType.id) === String(formValues.compensation_type_id),
   )
   const compensationKind = getCompensationKind(selectedCompensationType)
+  const selectedFixedAmount = getFixedAmount(selectedCompensationType)
   const durationMinutes = getDurationInMinutes(formValues.start_time, formValues.end_time)
   const leaveCompensationPreviewLabel = getLeaveCompensationPreviewLabel(
     durationMinutes,
@@ -782,7 +778,7 @@ function DialogCreateReqOvertime({
                     >
                       Compensation Amount
                     </label>
-                    {compensationKind === 'MONEY' ? (
+                    {compensationKind === 'MONEY' && !selectedFixedAmount ? (
                       <input
                         id="req-overtime-compensation-amount"
                         name="compensation_amount"
@@ -800,8 +796,14 @@ function DialogCreateReqOvertime({
                         id="req-overtime-compensation-amount"
                         name="compensation_amount"
                         type="text"
-                        className="register-user-popup__input"
-                        value={compensationKind === 'LEAVE' ? leaveCompensationPreviewLabel : ''}
+                        className="register-user-popup__input register-user-popup__input--static"
+                        value={
+                          compensationKind === 'LEAVE'
+                            ? leaveCompensationPreviewLabel
+                            : compensationKind === 'MONEY' && selectedFixedAmount
+                              ? `Rp${formatNumber(selectedFixedAmount)}`
+                              : ''
+                        }
                         placeholder="-"
                         readOnly
                         disabled
@@ -833,7 +835,7 @@ function DialogCreateReqOvertime({
                           id="req-overtime-duration"
                           name="duration"
                           type="text"
-                          className="register-user-popup__input"
+                          className="register-user-popup__input register-user-popup__input--static"
                           value={durationLabel}
                           placeholder="0 menit"
                           readOnly
@@ -876,11 +878,6 @@ function DialogCreateReqOvertime({
                     </div>
                   ))}
                 </div>
-                {errorMessage ? (
-                  <p className="register-user-popup__hint" role="alert">
-                    {errorMessage}
-                  </p>
-                ) : null}
               </div>
             </div>
           </div>
@@ -907,7 +904,18 @@ function DialogCreateReqOvertime({
     </div>
   )
 
-  return createPortal(dialogNode, document.body)
+  return createPortal(
+    <>
+      {dialogNode}
+      <ToastAlert
+        open={Boolean(errorMessage)}
+        onClose={() => setErrorMessage('')}
+        message={errorMessage}
+        severity="error"
+      />
+    </>,
+    document.body,
+  )
 }
 
 export default DialogCreateReqOvertime
