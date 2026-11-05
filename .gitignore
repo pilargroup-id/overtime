@@ -94,7 +94,7 @@ desktop.ini
 *.swo
 
 # Database dumps / local backups
-*.sql
+# *.sql
 *.dump
 *.bak
 *.backup

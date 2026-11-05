@@ -122,11 +122,12 @@ function calculateCompensationSnapshot({
   const kind = String(compensationType.compensation_kind || '').toUpperCase();
 
   if (kind === 'MONEY') {
-    const amount = normalizePositiveAmount(manualAmount);
+    const fixedAmount = normalizePositiveAmount(compensationType.fixed_amount);
+    const amount = fixedAmount !== null ? fixedAmount : normalizePositiveAmount(manualAmount);
 
     if (amount === null) {
       throw createValidationError({
-        compensation_amount: 'compensation_amount is required and must be greater than 0 for MONEY',
+        compensation_amount: 'compensation_amount is required and must be greater than 0 for manual MONEY compensation',
       });
     }
 
@@ -146,7 +147,14 @@ function calculateCompensationSnapshot({
       });
     }
 
-    const baseLeaveDays = Number(totalMinutes) >= 480 ? 1 : 0.5;
+    let baseLeaveDays = 0.5;
+
+    if (Number(totalMinutes) >= 720) {
+      baseLeaveDays = 1.5;
+    } else if (Number(totalMinutes) >= 480) {
+      baseLeaveDays = 1;
+    }
+
     const multiplier = Number(nationalHolidayMultiplier) > 0
       ? Number(nationalHolidayMultiplier)
       : 1;
