@@ -478,6 +478,9 @@ function DialogEditReqOvertime({
   const dayTypeSelectOptions = dayTypeOptions.includes(formValues.day_type)
     ? dayTypeOptions
     : [...dayTypeOptions, formValues.day_type].filter(Boolean)
+  const departmentLabel = request?.department_name_snapshot || '-'
+  const departmentClassLabel = request?.department_class_snapshot || '-'
+  const companyLabel = request?.company_name_snapshot || '-'
 
   const dialogNode = (
     <div
@@ -555,6 +558,57 @@ function DialogEditReqOvertime({
                       value={formValues.work_date}
                       onChange={handleInputChange}
                       disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--third">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-department-id"
+                    >
+                      Department
+                    </label>
+                    <input
+                      id="edit-req-overtime-department-id"
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={departmentLabel}
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--third">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-department-class"
+                    >
+                      Class
+                    </label>
+                    <input
+                      id="edit-req-overtime-department-class"
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={departmentClassLabel}
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--third">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="edit-req-overtime-company-id"
+                    >
+                      Company
+                    </label>
+                    <input
+                      id="edit-req-overtime-company-id"
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={companyLabel}
+                      readOnly
+                      disabled
                     />
                   </div>
 

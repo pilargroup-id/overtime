@@ -91,22 +91,6 @@ function normalizeUserProfile(responseData) {
   }
 }
 
-function dedupeByValue(values) {
-  const seen = new Set()
-  const result = []
-
-  values.forEach((value) => {
-    if (!value || seen.has(value)) {
-      return
-    }
-
-    seen.add(value)
-    result.push(value)
-  })
-
-  return result
-}
-
 function getDepartmentOptions(departments) {
   return [...departments]
     .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
@@ -115,18 +99,6 @@ function getDepartmentOptions(departments) {
       label: department.name || department.code || String(department.id),
       isPrimary: Number(department.is_primary) === 1,
     }))
-}
-
-function getDepartmentClassOptions(departments, departmentId) {
-  const matchingDepartments = departmentId
-    ? departments.filter((department) => String(department.id) === String(departmentId))
-    : departments
-  const classValues = dedupeByValue(matchingDepartments.map((department) => department.class))
-
-  return classValues.map((classValue) => ({
-    value: classValue,
-    label: classValue,
-  }))
 }
 
 function getCompanyOptions(companies) {
@@ -623,10 +595,6 @@ function DialogCreateReqOvertime({
   )
   const durationLabel = formatDuration(formValues.start_time, formValues.end_time)
   const departmentOptions = getDepartmentOptions(userOrganization.departments)
-  const departmentClassOptions = getDepartmentClassOptions(
-    userOrganization.departments,
-    formValues.department_id,
-  )
   const companyOptions = getCompanyOptions(userOrganization.companies)
 
   const dialogNode = (
@@ -717,30 +685,18 @@ function DialogCreateReqOvertime({
                     >
                       Department
                     </label>
-                    <select
+                    <input
                       id="req-overtime-department-id"
-                      name="department_id"
-                      className="register-user-popup__select"
-                      value={formValues.department_id}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingUserOrganization ||
-                        departmentOptions.length <= 1
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={
+                        departmentOptions.find(
+                          (option) => option.value === formValues.department_id,
+                        )?.label || (isLoadingUserOrganization ? 'Loading...' : '-')
                       }
-                    >
-                      {departmentOptions.length === 0 ? (
-                        <option value="">
-                          {isLoadingUserOrganization ? 'Loading...' : '-'}
-                        </option>
-                      ) : (
-                        departmentOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      readOnly
+                      disabled
+                    />
                   </div>
 
                   <div className="register-user-popup__field overtime-create-popup__field--third">
@@ -750,30 +706,14 @@ function DialogCreateReqOvertime({
                     >
                       Class
                     </label>
-                    <select
+                    <input
                       id="req-overtime-department-class"
-                      name="department_class"
-                      className="register-user-popup__select"
-                      value={formValues.department_class}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingUserOrganization ||
-                        departmentClassOptions.length <= 1
-                      }
-                    >
-                      {departmentClassOptions.length === 0 ? (
-                        <option value="">
-                          {isLoadingUserOrganization ? 'Loading...' : '-'}
-                        </option>
-                      ) : (
-                        departmentClassOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={formValues.department_class || (isLoadingUserOrganization ? 'Loading...' : '-')}
+                      readOnly
+                      disabled
+                    />
                   </div>
 
                   <div className="register-user-popup__field overtime-create-popup__field--third">
@@ -783,30 +723,17 @@ function DialogCreateReqOvertime({
                     >
                       Company
                     </label>
-                    <select
+                    <input
                       id="req-overtime-company-id"
-                      name="company_id"
-                      className="register-user-popup__select"
-                      value={formValues.company_id}
-                      onChange={handleInputChange}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingUserOrganization ||
-                        companyOptions.length <= 1
+                      type="text"
+                      className="register-user-popup__input register-user-popup__input--static"
+                      value={
+                        companyOptions.find((option) => option.value === formValues.company_id)
+                          ?.label || (isLoadingUserOrganization ? 'Loading...' : '-')
                       }
-                    >
-                      {companyOptions.length === 0 ? (
-                        <option value="">
-                          {isLoadingUserOrganization ? 'Loading...' : '-'}
-                        </option>
-                      ) : (
-                        companyOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      readOnly
+                      disabled
+                    />
                   </div>
 
                   <div className="register-user-popup__field overtime-create-popup__field--half">
@@ -846,6 +773,40 @@ function DialogCreateReqOvertime({
                         multiplier hari libur nasional.
                       </p>
                     ) : null}
+                  </div>
+
+                  <div className="register-user-popup__field overtime-create-popup__field--half">
+                    <label
+                      className="register-user-popup__label"
+                      htmlFor="req-overtime-compensation-amount"
+                    >
+                      Compensation Amount
+                    </label>
+                    {compensationKind === 'MONEY' ? (
+                      <input
+                        id="req-overtime-compensation-amount"
+                        name="compensation_amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="register-user-popup__input"
+                        value={formValues.compensation_amount}
+                        placeholder="Masukkan nominal"
+                        onChange={handleInputChange}
+                        disabled={isSubmitting}
+                      />
+                    ) : (
+                      <input
+                        id="req-overtime-compensation-amount"
+                        name="compensation_amount"
+                        type="text"
+                        className="register-user-popup__input"
+                        value={compensationKind === 'LEAVE' ? leaveCompensationPreviewLabel : ''}
+                        placeholder="-"
+                        readOnly
+                        disabled
+                      />
+                    )}
                   </div>
 
                   {reqOvertimeTextFields.map((field) => (
@@ -891,40 +852,6 @@ function DialogCreateReqOvertime({
                       )}
                     </div>
                   ))}
-
-                  <div className="register-user-popup__field overtime-create-popup__field--half">
-                    <label
-                      className="register-user-popup__label"
-                      htmlFor="req-overtime-compensation-amount"
-                    >
-                      Compensation Amount
-                    </label>
-                    {compensationKind === 'MONEY' ? (
-                      <input
-                        id="req-overtime-compensation-amount"
-                        name="compensation_amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="register-user-popup__input"
-                        value={formValues.compensation_amount}
-                        placeholder="Masukkan nominal"
-                        onChange={handleInputChange}
-                        disabled={isSubmitting}
-                      />
-                    ) : (
-                      <input
-                        id="req-overtime-compensation-amount"
-                        name="compensation_amount"
-                        type="text"
-                        className="register-user-popup__input"
-                        value={compensationKind === 'LEAVE' ? leaveCompensationPreviewLabel : ''}
-                        placeholder="-"
-                        readOnly
-                        disabled
-                      />
-                    )}
-                  </div>
 
                   {reqOvertimeTextareaFields.map((field) => (
                     <div

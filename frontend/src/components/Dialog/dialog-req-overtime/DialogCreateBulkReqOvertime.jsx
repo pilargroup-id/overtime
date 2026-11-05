@@ -33,13 +33,14 @@ const EQUALIZABLE_FIELD_NAMES = [
 
 const dayTypeOptions = ['WORKDAY', 'HOLIDAY', 'WEEKEND']
 
+const workDateField = {
+  name: 'work_date',
+  label: 'Work Date',
+  type: 'date',
+  className: 'overtime-create-popup__field--half',
+}
+
 const reqOvertimeTextFields = [
-  {
-    name: 'work_date',
-    label: 'Work Date',
-    type: 'date',
-    className: 'overtime-create-popup__field--half',
-  },
   {
     name: 'start_time',
     label: 'Start Time',
@@ -1237,6 +1238,26 @@ function DialogCreateBulkReqOvertime({
                         </select>
                       </div>
 
+                      <div
+                        className={`register-user-popup__field ${workDateField.className}`}
+                      >
+                        <label
+                          className="register-user-popup__label"
+                          htmlFor={`req-overtime-${workDateField.name}`}
+                        >
+                          {workDateField.label}
+                        </label>
+                        <input
+                          id={`req-overtime-${workDateField.name}`}
+                          name={workDateField.name}
+                          type={workDateField.type}
+                          className="register-user-popup__input"
+                          value={formValues[workDateField.name]}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
                       <div className="register-user-popup__field overtime-create-popup__field--half">
                         <label
                           className="register-user-popup__label"
@@ -1274,6 +1295,40 @@ function DialogCreateBulkReqOvertime({
                             multiplier hari libur nasional.
                           </p>
                         ) : null}
+                      </div>
+
+                      <div className="register-user-popup__field overtime-create-popup__field--half">
+                        <label
+                          className="register-user-popup__label"
+                          htmlFor="req-overtime-compensation-amount"
+                        >
+                          Compensation Amount
+                        </label>
+                        {compensationKind === 'MONEY' ? (
+                          <input
+                            id="req-overtime-compensation-amount"
+                            name="compensation_amount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="register-user-popup__input"
+                            value={formValues.compensation_amount}
+                            placeholder="Masukkan nominal"
+                            onChange={handleInputChange}
+                            disabled={isSubmitting}
+                          />
+                        ) : (
+                          <input
+                            id="req-overtime-compensation-amount"
+                            name="compensation_amount"
+                            type="text"
+                            className="register-user-popup__input"
+                            value={compensationKind === 'LEAVE' ? leaveCompensationPreviewLabel : ''}
+                            placeholder="-"
+                            readOnly
+                            disabled
+                          />
+                        )}
                       </div>
 
                       {reqOvertimeTextFields.map((field) => (
@@ -1319,40 +1374,6 @@ function DialogCreateBulkReqOvertime({
                           )}
                         </div>
                       ))}
-
-                      <div className="register-user-popup__field overtime-create-popup__field--half">
-                        <label
-                          className="register-user-popup__label"
-                          htmlFor="req-overtime-compensation-amount"
-                        >
-                          Compensation Amount
-                        </label>
-                        {compensationKind === 'MONEY' ? (
-                          <input
-                            id="req-overtime-compensation-amount"
-                            name="compensation_amount"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="register-user-popup__input"
-                            value={formValues.compensation_amount}
-                            placeholder="Masukkan nominal"
-                            onChange={handleInputChange}
-                            disabled={isSubmitting}
-                          />
-                        ) : (
-                          <input
-                            id="req-overtime-compensation-amount"
-                            name="compensation_amount"
-                            type="text"
-                            className="register-user-popup__input"
-                            value={compensationKind === 'LEAVE' ? leaveCompensationPreviewLabel : ''}
-                            placeholder="-"
-                            readOnly
-                            disabled
-                          />
-                        )}
-                      </div>
 
                       {reqOvertimeTextareaFields.map((field) => (
                         <div
@@ -1411,6 +1432,24 @@ function DialogCreateBulkReqOvertime({
                           <div className="register-user-popup__field overtime-create-popup__field--half">
                             <label
                               className="register-user-popup__label"
+                              htmlFor={`req-overtime-${activeTab}-work_date`}
+                            >
+                              Work Date
+                            </label>
+                            <input
+                              id={`req-overtime-${activeTab}-work_date`}
+                              name="work_date"
+                              type="date"
+                              className="register-user-popup__input"
+                              value={activeEmployeeDescription.work_date ?? ''}
+                              onChange={(event) => handleEmployeeDescriptionChange(activeTab, event)}
+                              disabled={isSubmitting}
+                            />
+                          </div>
+
+                          <div className="register-user-popup__field overtime-create-popup__field--half">
+                            <label
+                              className="register-user-popup__label"
                               htmlFor={`req-overtime-${activeTab}-compensation_type_id`}
                             >
                               Compensation
@@ -1447,6 +1486,45 @@ function DialogCreateBulkReqOvertime({
                                 Uang tidak dikali multiplier hari libur nasional.
                               </p>
                             ) : null}
+                          </div>
+
+                          <div className="register-user-popup__field overtime-create-popup__field--half">
+                            <label
+                              className="register-user-popup__label"
+                              htmlFor={`req-overtime-${activeTab}-compensation-amount`}
+                            >
+                              Compensation Amount
+                            </label>
+                            {activeEmployeeComputed.compensationKind === 'MONEY' ? (
+                              <input
+                                id={`req-overtime-${activeTab}-compensation-amount`}
+                                name="compensation_amount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="register-user-popup__input"
+                                value={activeEmployeeDescription.compensation_amount ?? ''}
+                                placeholder="Masukkan nominal"
+                                onChange={(event) =>
+                                  handleEmployeeDescriptionChange(activeTab, event)
+                                }
+                                disabled={isSubmitting}
+                              />
+                            ) : (
+                              <input
+                                id={`req-overtime-${activeTab}-compensation-amount`}
+                                type="text"
+                                className="register-user-popup__input"
+                                value={
+                                  activeEmployeeComputed.compensationKind === 'LEAVE'
+                                    ? activeEmployeeComputed.leaveCompensationPreviewLabel
+                                    : ''
+                                }
+                                placeholder="-"
+                                readOnly
+                                disabled
+                              />
+                            )}
                           </div>
 
                           {reqOvertimeTextFields.map((field) => (
@@ -1492,45 +1570,6 @@ function DialogCreateBulkReqOvertime({
                               )}
                             </div>
                           ))}
-
-                          <div className="register-user-popup__field overtime-create-popup__field--half">
-                            <label
-                              className="register-user-popup__label"
-                              htmlFor={`req-overtime-${activeTab}-compensation-amount`}
-                            >
-                              Compensation Amount
-                            </label>
-                            {activeEmployeeComputed.compensationKind === 'MONEY' ? (
-                              <input
-                                id={`req-overtime-${activeTab}-compensation-amount`}
-                                name="compensation_amount"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className="register-user-popup__input"
-                                value={activeEmployeeDescription.compensation_amount ?? ''}
-                                placeholder="Masukkan nominal"
-                                onChange={(event) =>
-                                  handleEmployeeDescriptionChange(activeTab, event)
-                                }
-                                disabled={isSubmitting}
-                              />
-                            ) : (
-                              <input
-                                id={`req-overtime-${activeTab}-compensation-amount`}
-                                type="text"
-                                className="register-user-popup__input"
-                                value={
-                                  activeEmployeeComputed.compensationKind === 'LEAVE'
-                                    ? activeEmployeeComputed.leaveCompensationPreviewLabel
-                                    : ''
-                                }
-                                placeholder="-"
-                                readOnly
-                                disabled
-                              />
-                            )}
-                          </div>
                         </div>
 
                         <div className="overtime-create-popup__employee-org-fields">
