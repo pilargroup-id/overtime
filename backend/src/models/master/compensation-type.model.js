@@ -34,15 +34,13 @@ async function findAll(filters = {}) {
        code,
        name,
        compensation_kind,
-       amount,
-       leave_days,
        description,
        is_active,
        created_at,
        updated_at
      FROM compensation_types
      ${where.clause}
-     ORDER BY name ASC
+     ORDER BY FIELD(compensation_kind, 'LEAVE', 'MONEY'), name ASC
      LIMIT ? OFFSET ?`,
     [...where.params, Number(filters.limit), Number(filters.offset)]
   );
@@ -70,8 +68,6 @@ async function findById(id) {
        code,
        name,
        compensation_kind,
-       amount,
-       leave_days,
        description,
        is_active,
        created_at,
@@ -91,17 +87,13 @@ async function create(data) {
        code,
        name,
        compensation_kind,
-       amount,
-       leave_days,
        description,
        is_active
-     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?)`,
     [
       data.code,
       data.name,
       data.compensation_kind,
-      data.amount,
-      data.leave_days,
       data.description,
       data.is_active ?? 1,
     ]

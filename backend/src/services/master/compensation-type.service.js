@@ -43,20 +43,6 @@ function validatePayload(payload, isUpdate = false) {
     }
   }
 
-  const kind = payload.compensation_kind;
-
-  if (kind === 'MONEY') {
-    if (payload.amount === undefined || payload.amount === null || payload.amount === '') {
-      errors.amount = 'Amount is required when compensation_kind is MONEY';
-    }
-  }
-
-  if (kind === 'LEAVE') {
-    if (payload.leave_days === undefined || payload.leave_days === null || payload.leave_days === '') {
-      errors.leave_days = 'Leave days is required when compensation_kind is LEAVE';
-    }
-  }
-
   if (payload.is_active !== undefined) {
     const isActive = normalizeIsActive(payload.is_active);
 
@@ -72,13 +58,13 @@ function validatePayload(payload, isUpdate = false) {
 
 function buildPayload(payload) {
   return {
-    code              : payload.code !== undefined ? String(payload.code).trim() : undefined,
-    name              : payload.name !== undefined ? String(payload.name).trim() : undefined,
-    compensation_kind : payload.compensation_kind,
-    amount            : payload.amount ?? null,
-    leave_days        : payload.leave_days ?? null,
-    description       : payload.description ?? null,
-    is_active         : normalizeIsActive(payload.is_active),
+    code: payload.code !== undefined ? String(payload.code).trim() : undefined,
+    name: payload.name !== undefined ? String(payload.name).trim() : undefined,
+    compensation_kind: payload.compensation_kind,
+    description: payload.description !== undefined
+      ? (String(payload.description).trim() || null)
+      : undefined,
+    is_active: normalizeIsActive(payload.is_active),
   };
 }
 
@@ -88,9 +74,9 @@ async function list(query) {
   const offset = (page - 1) * limit;
 
   const filters = {
-    search            : query.search || null,
-    compensation_kind : query.compensation_kind || null,
-    is_active         : query.is_active !== undefined ? query.is_active : null,
+    search: query.search || null,
+    compensation_kind: query.compensation_kind || null,
+    is_active: query.is_active !== undefined ? query.is_active : null,
     page,
     limit,
     offset,
@@ -118,7 +104,6 @@ async function getById(id) {
 
 async function create(payload) {
   validatePayload(payload);
-
   const data = buildPayload(payload);
 
   try {
@@ -126,7 +111,12 @@ async function create(payload) {
     return CompensationTypeModel.findById(id);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      throw createValidationError({ code: 'Code already exists' });
+      const duplicateKind = String(err.message || '').includes('uq_compensation_kind');
+      throw createValidationError(
+        duplicateKind
+          ? { compensation_kind: 'Only one master row is allowed for each compensation kind' }
+          : { code: 'Code already exists' }
+      );
     }
 
     throw err;
@@ -141,7 +131,6 @@ async function update(id, payload) {
   }
 
   validatePayload(payload, true);
-
   const data = buildPayload(payload);
 
   try {
@@ -149,7 +138,12 @@ async function update(id, payload) {
     return CompensationTypeModel.findById(id);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      throw createValidationError({ code: 'Code already exists' });
+      const duplicateKind = String(err.message || '').includes('uq_compensation_kind');
+      throw createValidationError(
+        duplicateKind
+          ? { compensation_kind: 'Only one master row is allowed for each compensation kind' }
+          : { code: 'Code already exists' }
+      );
     }
 
     throw err;

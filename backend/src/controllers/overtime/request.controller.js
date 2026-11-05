@@ -43,6 +43,15 @@ async function compensationOptions(req, res, next) {
   }
 }
 
+async function nationalHolidayOptions(req, res, next) {
+  try {
+    const result = await RequestService.getNationalHolidayOptions();
+    return R.ok(res, result, 'National holiday options fetched successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function eligibleEmployees(req, res, next) {
   try {
     const result = await RequestService.getEligibleEmployees(req.query, req.user);
@@ -148,6 +157,7 @@ module.exports = {
   index,
   show,
   compensationOptions,
+  nationalHolidayOptions,
   eligibleEmployees,
   store,
   update,

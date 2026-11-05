@@ -26,6 +26,13 @@ router.get(
 );
 
 router.get(
+  '/national-holiday-options',
+  authenticate,
+  requireApp('overtime'),
+  RequestController.nationalHolidayOptions
+);
+
+router.get(
   '/eligible-employees',
   authenticate,
   requireApp('overtime'),

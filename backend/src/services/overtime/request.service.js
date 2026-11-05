@@ -98,26 +98,71 @@ function calculateTotalMinutes(workDate, startTime, endDate, endTime) {
 }
 
 
-function calculateCompensationSnapshot(compensationType, multiplier) {
-  const normalizedMultiplier = Number(multiplier);
-  const amount = compensationType.amount === null || compensationType.amount === undefined
-    ? null
-    : Number(compensationType.amount);
-  const leaveDays = compensationType.leave_days === null || compensationType.leave_days === undefined
-    ? null
-    : Number(compensationType.leave_days);
+function normalizePositiveAmount(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
 
-  return {
-    compensation_multiplier: normalizedMultiplier,
-    compensation_amount_snapshot: amount,
-    compensation_leave_days_snapshot: leaveDays,
-    final_compensation_amount: amount === null
-      ? null
-      : Number((amount * normalizedMultiplier).toFixed(2)),
-    final_compensation_leave_days: leaveDays === null
-      ? null
-      : Number((leaveDays * normalizedMultiplier).toFixed(2)),
-  };
+  const raw = String(value).trim();
+
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+    return null;
+  }
+
+  const amount = Number(raw);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function calculateCompensationSnapshot({
+  compensationType,
+  totalMinutes,
+  nationalHolidayMultiplier,
+  manualAmount,
+}) {
+  const kind = String(compensationType.compensation_kind || '').toUpperCase();
+
+  if (kind === 'MONEY') {
+    const amount = normalizePositiveAmount(manualAmount);
+
+    if (amount === null) {
+      throw createValidationError({
+        compensation_amount: 'compensation_amount is required and must be greater than 0 for MONEY',
+      });
+    }
+
+    return {
+      compensation_multiplier: 1,
+      compensation_amount_snapshot: Number(amount.toFixed(2)),
+      compensation_leave_days_snapshot: null,
+      final_compensation_amount: Number(amount.toFixed(2)),
+      final_compensation_leave_days: null,
+    };
+  }
+
+  if (kind === 'LEAVE') {
+    if (Number(totalMinutes) < 240) {
+      throw createValidationError({
+        duration: 'LEAVE compensation requires at least 4 hours of overtime',
+      });
+    }
+
+    const baseLeaveDays = Number(totalMinutes) >= 480 ? 1 : 0.5;
+    const multiplier = Number(nationalHolidayMultiplier) > 0
+      ? Number(nationalHolidayMultiplier)
+      : 1;
+
+    return {
+      compensation_multiplier: multiplier,
+      compensation_amount_snapshot: null,
+      compensation_leave_days_snapshot: baseLeaveDays,
+      final_compensation_amount: null,
+      final_compensation_leave_days: Number((baseLeaveDays * multiplier).toFixed(2)),
+    };
+  }
+
+  throw createValidationError({
+    compensation_type_id: 'Compensation type kind must be MONEY or LEAVE',
+  });
 }
 
 function validateBulkPayload(payload = {}) {
@@ -167,6 +212,9 @@ function normalizeBulkItems(payload = {}) {
     compensation_type_id: useGeneralValues
       ? payload.compensation_type_id
       : item.compensation_type_id ?? payload.compensation_type_id,
+    compensation_amount: useGeneralValues
+      ? payload.compensation_amount
+      : item.compensation_amount ?? payload.compensation_amount,
     task_description: useGeneralValues
       ? payload.task_description
       : item.task_description ?? payload.task_description,
@@ -567,6 +615,14 @@ async function getCompensationOptions() {
   });
 }
 
+async function getNationalHolidayOptions() {
+  return NationalHolidayModel.findAll({
+    is_active: 1,
+    limit: 1000,
+    offset: 0,
+  });
+}
+
 async function getEligibleEmployees(query = {}, authUser) {
   const permissions = await UserPermissionModel.findActiveByUserId(authUser.id);
 
@@ -664,11 +720,13 @@ async function create(payload, authUser) {
     normalizeDate(payload.work_date)
   );
   const resolvedDayType = nationalHoliday ? 'NATIONAL_HOLIDAY' : payload.day_type;
-  const multiplier = nationalHoliday ? Number(nationalHoliday.multiplier) : 1;
-  const compensationSnapshot = calculateCompensationSnapshot(
+  const nationalHolidayMultiplier = nationalHoliday ? Number(nationalHoliday.multiplier) : 1;
+  const compensationSnapshot = calculateCompensationSnapshot({
     compensationType,
-    multiplier
-  );
+    totalMinutes,
+    nationalHolidayMultiplier,
+    manualAmount: payload.compensation_amount,
+  });
 
   const sourceType = await assertCanSubmitForEmployee(authUser, employee);
   const { rule, initialApprover } = await ApprovalResolverService.resolveInitialApproval(employee);
@@ -777,11 +835,13 @@ async function update(id, payload, authUser) {
   }
 
   const resolvedDayType = nationalHoliday ? 'NATIONAL_HOLIDAY' : payload.day_type;
-  const multiplier = nationalHoliday ? Number(nationalHoliday.multiplier) : 1;
-  const compensationSnapshot = calculateCompensationSnapshot(
+  const nationalHolidayMultiplier = nationalHoliday ? Number(nationalHoliday.multiplier) : 1;
+  const compensationSnapshot = calculateCompensationSnapshot({
     compensationType,
-    multiplier
-  );
+    totalMinutes,
+    nationalHolidayMultiplier,
+    manualAmount: payload.compensation_amount,
+  });
 
   const accessPermissions = await getRequestAccessPermissions(authUser);
 
@@ -978,6 +1038,7 @@ module.exports = {
   list,
   getById,
   getCompensationOptions,
+  getNationalHolidayOptions,
   getEligibleEmployees,
   create,
   update,

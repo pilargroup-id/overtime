@@ -193,8 +193,8 @@ async function findAllForApprover(filters = {}, authUser) {
        ct.code AS compensation_code,
        ct.name AS compensation_name,
        ct.compensation_kind,
-       COALESCE(r.compensation_amount_snapshot, ct.amount) AS compensation_amount,
-       COALESCE(r.compensation_leave_days_snapshot, ct.leave_days) AS compensation_leave_days
+       r.compensation_amount_snapshot AS compensation_amount,
+       r.compensation_leave_days_snapshot AS compensation_leave_days
      FROM request_approvals ra
      INNER JOIN requests r ON r.id = ra.request_id
      INNER JOIN compensation_types ct ON ct.id = r.compensation_type_id
@@ -339,8 +339,8 @@ async function findById(id) {
        ct.code AS compensation_code,
        ct.name AS compensation_name,
        ct.compensation_kind,
-       COALESCE(r.compensation_amount_snapshot, ct.amount) AS compensation_amount,
-       COALESCE(r.compensation_leave_days_snapshot, ct.leave_days) AS compensation_leave_days
+       r.compensation_amount_snapshot AS compensation_amount,
+       r.compensation_leave_days_snapshot AS compensation_leave_days
      FROM request_approvals ra
      INNER JOIN requests r ON r.id = ra.request_id
      INNER JOIN compensation_types ct ON ct.id = r.compensation_type_id

@@ -184,8 +184,8 @@ async function findAll(filters = {}, authUser = null) {
        ct.code AS compensation_code,
        ct.name AS compensation_name,
        ct.compensation_kind,
-       COALESCE(r.compensation_amount_snapshot, ct.amount) AS compensation_amount,
-       COALESCE(r.compensation_leave_days_snapshot, ct.leave_days) AS compensation_leave_days,
+       r.compensation_amount_snapshot AS compensation_amount,
+       r.compensation_leave_days_snapshot AS compensation_leave_days,
 
        ra.id AS approval_id,
        ra.approver_id,
@@ -230,8 +230,8 @@ async function findById(id) {
        ct.code AS compensation_code,
        ct.name AS compensation_name,
        ct.compensation_kind,
-       COALESCE(r.compensation_amount_snapshot, ct.amount) AS compensation_amount,
-       COALESCE(r.compensation_leave_days_snapshot, ct.leave_days) AS compensation_leave_days,
+       r.compensation_amount_snapshot AS compensation_amount,
+       r.compensation_leave_days_snapshot AS compensation_leave_days,
 
        ra.id AS approval_id,
        ra.approval_level,
