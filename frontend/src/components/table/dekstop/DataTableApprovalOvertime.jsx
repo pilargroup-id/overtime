@@ -168,7 +168,19 @@ function formatSubmittedByMeta(row) {
   return ''
 }
 
-function formatCompensation(row, compensationTypeMap) {
+function formatNumber(value) {
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue)) {
+    return null
+  }
+
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 2,
+  }).format(numberValue)
+}
+
+function getCompensationName(row, compensationTypeMap) {
   const compensationNameFields = [
     'compensation_name',
     'compensation_type_name',
@@ -189,6 +201,28 @@ function formatCompensation(row, compensationTypeMap) {
   const mappedName = compensationTypeMap.get(String(row.compensation_type_id))
 
   return mappedName ? formatValue(mappedName) : formatValue(row.compensation_type_id)
+}
+
+function getCompensationLeaveDays(row) {
+  const leaveDays =
+    row?.final_compensation_leave_days ??
+    row?.compensation_leave_days_snapshot ??
+    row?.compensation_leave_days
+
+  const numberValue = Number(leaveDays)
+
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null
+}
+
+function formatCompensation(row, compensationTypeMap) {
+  const name = getCompensationName(row, compensationTypeMap)
+  const leaveDays = getCompensationLeaveDays(row)
+
+  if (leaveDays !== null) {
+    return `${name} (${formatNumber(leaveDays)} hari)`
+  }
+
+  return name
 }
 
 function getRequestStatus(row) {
