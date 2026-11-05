@@ -14,6 +14,11 @@ function buildWhere(filters = {}) {
     params.push(Number(filters.department_id));
   }
 
+  if (filters.requester_job_position_name) {
+    where.push('requester_job_position_name = ?');
+    params.push(filters.requester_job_position_name);
+  }
+
   if (filters.approver_scope_type) {
     where.push('approver_scope_type = ?');
     params.push(filters.approver_scope_type);
@@ -56,6 +61,7 @@ async function findAll(filters = {}) {
        requester_min_job_level_value,
        requester_max_job_level_value,
        department_id,
+       requester_job_position_name,
        approver_scope_type,
        approver_department_id,
        approver_job_level_name,
@@ -98,6 +104,7 @@ async function findById(id) {
        requester_min_job_level_value,
        requester_max_job_level_value,
        department_id,
+       requester_job_position_name,
        approver_scope_type,
        approver_department_id,
        approver_job_level_name,
@@ -125,6 +132,7 @@ async function create(data) {
        requester_min_job_level_value,
        requester_max_job_level_value,
        department_id,
+       requester_job_position_name,
        approver_scope_type,
        approver_department_id,
        approver_job_level_name,
@@ -133,13 +141,14 @@ async function create(data) {
        intermediate_job_level_value,
        priority,
        is_active
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.code,
       data.name,
       data.requester_min_job_level_value,
       data.requester_max_job_level_value,
       data.department_id,
+      data.requester_job_position_name ?? null,
       data.approver_scope_type,
       data.approver_department_id,
       data.approver_job_level_name,
@@ -179,7 +188,7 @@ async function update(id, data) {
   );
 }
 
-async function findMatchingRule({ jobLevelValue, departmentId }) {
+async function findMatchingRule({ jobLevelValue, departmentId, jobPosition }) {
   const [rows] = await db.query(
     `SELECT
        id,
@@ -188,6 +197,7 @@ async function findMatchingRule({ jobLevelValue, departmentId }) {
        requester_min_job_level_value,
        requester_max_job_level_value,
        department_id,
+       requester_job_position_name,
        approver_scope_type,
        approver_department_id,
        approver_job_level_name,
@@ -202,12 +212,17 @@ async function findMatchingRule({ jobLevelValue, departmentId }) {
      WHERE is_active = 1
        AND ? BETWEEN requester_min_job_level_value AND requester_max_job_level_value
        AND (department_id = ? OR department_id IS NULL)
+       AND (
+         requester_job_position_name IS NULL
+         OR LOWER(TRIM(requester_job_position_name)) = LOWER(TRIM(?))
+       )
      ORDER BY
+       CASE WHEN requester_job_position_name IS NOT NULL THEN 0 ELSE 1 END ASC,
        CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END ASC,
        priority ASC,
        id ASC
      LIMIT 1`,
-    [Number(jobLevelValue), departmentId]
+    [Number(jobLevelValue), departmentId, jobPosition ?? '']
   );
 
   return rows[0] || null;
