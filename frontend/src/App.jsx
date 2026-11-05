@@ -19,6 +19,7 @@ const DEFAULT_USER_PROFILE = {
   jobLevelId: null,
   jobLevelValue: null,
   jobLevelName: null,
+  isSpecificApprover: false,
 }
 
 function getCurrentPath() {
@@ -43,6 +44,7 @@ function getUserProfileFromAuthResponse(response) {
     jobLevelId: authUser.job_level_id ?? null,
     jobLevelValue: authUser.job_level_value ?? null,
     jobLevelName: authUser.job_level ?? null,
+    isSpecificApprover: Boolean(authUser.is_specific_approver),
   }
 }
 
@@ -235,6 +237,7 @@ function App() {
         userJobLevelId={currentUser.jobLevelId}
         userJobLevelValue={currentUser.jobLevelValue}
         userJobLevelName={currentUser.jobLevelName}
+        userIsSpecificApprover={currentUser.isSpecificApprover}
         onToggleCollapse={() => setSidebarCollapsed((currentValue) => !currentValue)}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />

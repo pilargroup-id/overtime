@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const UserModel = require('../models/user.model');
 const UserPermissionModel = require('../models/master/user-permission.model');
+const ApprovalRuleModel = require('../models/master/approval-rule.model');
 
 let devTokenCache = { token: null, exp: 0 };
 
@@ -189,7 +190,10 @@ async function resolveToken(bearerToken) {
     }
   }
 
-  const permissions = await UserPermissionModel.findActiveByUserId(user.id);
+  const [permissions, isSpecificApprover] = await Promise.all([
+    UserPermissionModel.findActiveByUserId(user.id),
+    ApprovalRuleModel.existsActiveSpecificApprover(user.id),
+  ]);
 
   return {
     token,
@@ -197,17 +201,22 @@ async function resolveToken(bearerToken) {
     user: {
       ...user,
       permissions,
+      is_specific_approver: isSpecificApprover,
     },
   };
 }
 
 async function getCurrentUser(token) {
   const user = await fetchProfileFromPilargroup(token);
-  const permissions = await UserPermissionModel.findActiveByUserId(user.id);
+  const [permissions, isSpecificApprover] = await Promise.all([
+    UserPermissionModel.findActiveByUserId(user.id),
+    ApprovalRuleModel.existsActiveSpecificApprover(user.id),
+  ]);
 
   return {
     ...user,
     permissions,
+    is_specific_approver: isSpecificApprover,
   };
 }
 
