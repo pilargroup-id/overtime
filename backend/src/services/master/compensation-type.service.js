@@ -2,6 +2,20 @@ const CompensationTypeModel = require('../../models/master/compensation-type.mod
 
 const ALLOWED_KINDS = ['MONEY', 'LEAVE'];
 
+function normalizeFixedAmount(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  const raw = String(value).trim();
+
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+    return value;
+  }
+
+  const amount = Number(raw);
+  return Number.isFinite(amount) && amount > 0 ? Number(amount.toFixed(2)) : value;
+}
+
 function createValidationError(errors) {
   const err = new Error('Validation failed');
   err.statusCode = 400;
@@ -43,6 +57,21 @@ function validatePayload(payload, isUpdate = false) {
     }
   }
 
+  if (!isUpdate || payload.fixed_amount !== undefined || payload.compensation_kind !== undefined) {
+    const kind = payload.compensation_kind;
+    const fixedAmount = normalizeFixedAmount(payload.fixed_amount);
+
+    if (kind === 'LEAVE' && fixedAmount !== undefined && fixedAmount !== null) {
+      errors.fixed_amount = 'fixed_amount must be empty for LEAVE';
+    }
+
+    if (fixedAmount !== undefined && fixedAmount !== null) {
+      if (typeof fixedAmount !== 'number' || !Number.isFinite(fixedAmount) || fixedAmount <= 0) {
+        errors.fixed_amount = 'fixed_amount must be a positive number with maximum 2 decimal places';
+      }
+    }
+  }
+
   if (payload.is_active !== undefined) {
     const isActive = normalizeIsActive(payload.is_active);
 
@@ -61,6 +90,7 @@ function buildPayload(payload) {
     code: payload.code !== undefined ? String(payload.code).trim() : undefined,
     name: payload.name !== undefined ? String(payload.name).trim() : undefined,
     compensation_kind: payload.compensation_kind,
+    fixed_amount: normalizeFixedAmount(payload.fixed_amount),
     description: payload.description !== undefined
       ? (String(payload.description).trim() || null)
       : undefined,
@@ -111,12 +141,7 @@ async function create(payload) {
     return CompensationTypeModel.findById(id);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      const duplicateKind = String(err.message || '').includes('uq_compensation_kind');
-      throw createValidationError(
-        duplicateKind
-          ? { compensation_kind: 'Only one master row is allowed for each compensation kind' }
-          : { code: 'Code already exists' }
-      );
+      throw createValidationError({ code: 'Code already exists' });
     }
 
     throw err;
@@ -130,7 +155,7 @@ async function update(id, payload) {
     return null;
   }
 
-  validatePayload(payload, true);
+  validatePayload({ ...existing, ...payload }, true);
   const data = buildPayload(payload);
 
   try {
@@ -138,12 +163,7 @@ async function update(id, payload) {
     return CompensationTypeModel.findById(id);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      const duplicateKind = String(err.message || '').includes('uq_compensation_kind');
-      throw createValidationError(
-        duplicateKind
-          ? { compensation_kind: 'Only one master row is allowed for each compensation kind' }
-          : { code: 'Code already exists' }
-      );
+      throw createValidationError({ code: 'Code already exists' });
     }
 
     throw err;
