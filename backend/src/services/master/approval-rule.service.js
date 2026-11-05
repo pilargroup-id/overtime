@@ -90,6 +90,12 @@ function validatePayload(payload, isUpdate = false) {
     }
   }
 
+  if (payload.requester_job_position_name !== undefined && payload.requester_job_position_name !== null) {
+    if (String(payload.requester_job_position_name).trim().length > 100) {
+      errors.requester_job_position_name = 'Requester job position name must not exceed 100 characters';
+    }
+  }
+
   if (!isUpdate || payload.approver_scope_type !== undefined) {
     if (
       !payload.approver_scope_type ||
@@ -205,6 +211,11 @@ function buildPayload(payload) {
       ? Number(payload.requester_max_job_level_value)
       : undefined,
     department_id                 : normalizeNullable(payload.department_id),
+    requester_job_position_name   : payload.requester_job_position_name !== undefined
+      ? (payload.requester_job_position_name === null
+        ? null
+        : (String(payload.requester_job_position_name).trim() || null))
+      : undefined,
     approver_scope_type           : payload.approver_scope_type,
     approver_department_id        : approverDepartmentId,
     approver_job_level_name       : approverTarget,
@@ -314,6 +325,17 @@ function createJobLevelOptionsFromUsers(users = []) {
   );
 }
 
+function createJobPositionOptionsFromUsers(users = []) {
+  const positions = new Set();
+
+  users.forEach((user) => {
+    const position = String(user.job_position || '').trim();
+    if (position) positions.add(position);
+  });
+
+  return [...positions].sort((a, b) => a.localeCompare(b));
+}
+
 async function getOptions() {
   const users = await UserModel.findActiveUsersForOvertimeOptions({
     allUsers: true,
@@ -336,6 +358,7 @@ async function getOptions() {
     })),
     departments: createDepartmentOptionsFromUsers(users),
     job_levels: createJobLevelOptionsFromUsers(users),
+    job_positions: createJobPositionOptionsFromUsers(users),
   };
 }
 
@@ -362,6 +385,7 @@ async function list(query) {
   const filters = {
     search              : query.search || null,
     department_id       : query.department_id || null,
+    requester_job_position_name: query.requester_job_position_name || null,
     approver_scope_type : query.approver_scope_type || null,
     approver_job_level_name: query.approver_job_level_name || null,
     approval_type       : query.approval_type || null,

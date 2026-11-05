@@ -30,6 +30,7 @@ async function resolveApprovalRule(employee) {
   const rule = await ApprovalRuleModel.findMatchingRule({
     jobLevelValue: employee.job_level_value,
     departmentId: employee.department_id,
+    jobPosition: employee.job_position,
   });
 
   if (!rule) {
