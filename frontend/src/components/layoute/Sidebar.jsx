@@ -91,8 +91,12 @@ function isStaffLevel(userJobLevelName, userRole) {
   return levelText.includes('staff')
 }
 
-function canShowByJobLevel(item, userJobLevelId, userJobLevelValue, userJobLevelName, userRole) {
+function canShowByJobLevel(item, userJobLevelId, userJobLevelValue, userJobLevelName, userRole, userIsSpecificApprover) {
   if (getItemKey(item) !== 'ApprovalOvertime') {
+    return true
+  }
+
+  if (userIsSpecificApprover) {
     return true
   }
 
@@ -108,6 +112,7 @@ function filterNavigationItems(
   userJobLevelValue = null,
   userJobLevelName = null,
   userRole = null,
+  userIsSpecificApprover = false,
 ) {
   return items.reduce((visibleItems, item) => {
     const visibleChildren = item.children?.length
@@ -118,6 +123,7 @@ function filterNavigationItems(
           userJobLevelValue,
           userJobLevelName,
           userRole,
+          userIsSpecificApprover,
         )
       : undefined
     const hasVisibleChildren = visibleChildren?.length > 0
@@ -130,6 +136,7 @@ function filterNavigationItems(
           userJobLevelValue,
           userJobLevelName,
           userRole,
+          userIsSpecificApprover,
         )) &&
       !hasVisibleChildren
     ) {
@@ -281,6 +288,7 @@ function Sidebar({
   userJobLevelId = null,
   userJobLevelValue = null,
   userJobLevelName = null,
+  userIsSpecificApprover = false,
   primaryItems = primaryNavigationItems,
   secondaryItems = secondaryNavigationItems,
   onAction,
@@ -299,8 +307,9 @@ function Sidebar({
         userJobLevelValue,
         userJobLevelName,
         userRole,
+        userIsSpecificApprover,
       ),
-    [primaryItems, userJobLevelId, userJobLevelName, userJobLevelValue, userPermissions, userRole],
+    [primaryItems, userJobLevelId, userJobLevelName, userJobLevelValue, userPermissions, userRole, userIsSpecificApprover],
   )
   const visibleSecondaryItems = useMemo(
     () =>
@@ -311,8 +320,9 @@ function Sidebar({
         userJobLevelValue,
         userJobLevelName,
         userRole,
+        userIsSpecificApprover,
       ),
-    [secondaryItems, userJobLevelId, userJobLevelName, userJobLevelValue, userPermissions, userRole],
+    [secondaryItems, userJobLevelId, userJobLevelName, userJobLevelValue, userPermissions, userRole, userIsSpecificApprover],
   )
   const activeExpandedGroups = useMemo(
     () => getInitiallyExpandedGroups([...visiblePrimaryItems, ...visibleSecondaryItems], activePath),

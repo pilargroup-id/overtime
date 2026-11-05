@@ -228,6 +228,24 @@ async function findMatchingRule({ jobLevelValue, departmentId, jobPosition }) {
   return rows[0] || null;
 }
 
+async function existsActiveSpecificApprover(userId) {
+  if (!userId) {
+    return false;
+  }
+
+  const [rows] = await db.query(
+    `SELECT 1
+     FROM approval_rules
+     WHERE is_active = 1
+       AND approver_scope_type = 'SPECIFIC_USER'
+       AND approver_job_level_name = ?
+     LIMIT 1`,
+    [userId]
+  );
+
+  return rows.length > 0;
+}
+
 module.exports = {
   findAll,
   countAll,
@@ -235,4 +253,5 @@ module.exports = {
   create,
   update,
   findMatchingRule,
+  existsActiveSpecificApprover,
 };
