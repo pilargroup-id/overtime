@@ -152,6 +152,7 @@ function buildEmployeeFromApproval(approval) {
   return {
     id: approval.employee_id,
     job_level_value: approval.employee_job_level_value_snapshot,
+    job_position: approval.employee_job_position_snapshot,
     department_id: approval.department_id,
     departments: approval.department_id === null || approval.department_id === undefined
       ? []
