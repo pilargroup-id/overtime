@@ -306,6 +306,8 @@ const api = {
       api.get('/overtime/requests/eligible-employees', { ...options, params }),
     compensationOptions: (options) =>
       api.get('/overtime/requests/compensation-options', options),
+    nationalHolidayOptions: (options) =>
+      api.get('/overtime/requests/national-holiday-options', options),
     cancel: (id, data = {}, options) =>
       api.put(`/overtime/requests/${id}/cancel`, data, options),
   },
