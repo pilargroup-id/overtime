@@ -127,12 +127,44 @@ function getCompensationLeaveDays(request) {
   return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null
 }
 
+function getCompensationMultiplier(request) {
+  const multiplier = Number(request?.compensation_multiplier)
+
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+}
+
+function getCompensationBaseAmount(request) {
+  const baseAmount = request?.compensation_amount_snapshot ?? request?.compensation_amount
+
+  const numberValue = Number(baseAmount)
+
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+function getFinalCompensationAmount(request) {
+  const finalAmount = Number(request?.final_compensation_amount)
+
+  if (Number.isFinite(finalAmount)) {
+    return finalAmount
+  }
+
+  const baseAmount = getCompensationBaseAmount(request)
+
+  return baseAmount !== null ? baseAmount * getCompensationMultiplier(request) : null
+}
+
 function formatCompensation(request, compensationTypeMap) {
   const name = getCompensationName(request, compensationTypeMap)
   const leaveDays = getCompensationLeaveDays(request)
 
   if (leaveDays !== null) {
     return `${name} (${formatNumber(leaveDays)} hari)`
+  }
+
+  const amount = getFinalCompensationAmount(request)
+
+  if (amount !== null && amount > 0) {
+    return `${name} (Rp${formatNumber(amount)})`
   }
 
   return name
